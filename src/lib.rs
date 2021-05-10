@@ -1,3 +1,8 @@
+mod fuzzy_score;
+
+use fuzzy_score::FuzzyMatch;
+
+use ansi_term::{self, Color};
 use clap::{App, Arg, ArgMatches};
 
 use std::env;
@@ -5,7 +10,21 @@ use std::env;
 /// This function handles all the application logic. The `main` function is merely a `run` call.
 pub fn run() {
     let config = Config::new(env::args());
-    println!("pattern: {}, file: {}", config.pattern, config.file);
+    let fuzzy_match = FuzzyMatch::new(&config.pattern, &config.file);
+    let score = fuzzy_match.score();
+    let mut s = String::new();
+    for item in fuzzy_match.matches().iter() {
+        if item.is_match {
+            s.push_str(&Color::Red.paint(item.character.to_string()).to_string());
+        } else {
+            s.push(item.character);
+        }
+    }
+    println!(
+        "{}, score: {}",
+        s,
+        Color::Blue.bold().paint(score.to_string())
+    );
 }
 
 #[derive(Debug, PartialEq)]
