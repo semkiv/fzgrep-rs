@@ -2,8 +2,8 @@ mod fuzzy_score;
 
 use fuzzy_score::FuzzyMatch;
 
-use ansi_term::{self, Color};
 use clap::{App, Arg, ArgMatches};
+use colored::Colorize;
 
 use std::env;
 
@@ -15,16 +15,12 @@ pub fn run() {
     let mut s = String::new();
     for item in fuzzy_match.matches().iter() {
         if item.is_match {
-            s.push_str(&Color::Red.paint(item.character.to_string()).to_string());
+            s.push_str(&item.character.to_string().red().to_string());
         } else {
             s.push(item.character);
         }
     }
-    println!(
-        "{}, score: {}",
-        s,
-        Color::Blue.bold().paint(score.to_string())
-    );
+    println!("{}, score: {}", s, score.to_string().bold().blue());
 }
 
 #[derive(Debug, PartialEq)]
@@ -39,7 +35,7 @@ impl Config {
 
         Config {
             pattern: String::from(matches.value_of("pattern").unwrap()),
-            file: String::from(matches.value_of("file").unwrap()),
+            file: String::from(matches.value_of("text").unwrap()),
         }
     }
 }
@@ -56,9 +52,9 @@ fn parse_args<'a>(args: impl Iterator<Item = String>) -> ArgMatches<'a> {
                 .required(true),
         )
         .arg(
-            Arg::with_name("file")
-                .value_name("FILE")
-                .help("Sets the file to search in")
+            Arg::with_name("text")
+                .value_name("TEXT")
+                .help("Sets the text to search in")
                 .takes_value(true)
                 .required(true),
         )
