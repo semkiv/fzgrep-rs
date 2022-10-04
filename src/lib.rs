@@ -2,7 +2,7 @@ mod fuzzy_score;
 
 use fuzzy_score::FuzzyMatch;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use colored::Colorize;
 
 use std::env;
@@ -34,28 +34,26 @@ impl Config {
         let matches = parse_args(args);
 
         Config {
-            pattern: String::from(matches.value_of("pattern").unwrap()),
-            file: String::from(matches.value_of("text").unwrap()),
+            pattern: matches.get_one::<String>("pattern").unwrap().clone(),
+            file: matches.get_one::<String>("text").unwrap().clone(),
         }
     }
 }
 
-fn parse_args<'a>(args: impl Iterator<Item = String>) -> ArgMatches<'a> {
-    App::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
+fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
+    Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
         .arg(
-            Arg::with_name("pattern")
+            Arg::new("pattern")
                 .value_name("PATTERN")
                 .help("Sets the pattern to match")
-                .takes_value(true)
                 .required(true),
         )
         .arg(
-            Arg::with_name("text")
+            Arg::new("text")
                 .value_name("TEXT")
                 .help("Sets the text to search in")
-                .takes_value(true)
                 .required(true),
         )
         .get_matches_from(args)
