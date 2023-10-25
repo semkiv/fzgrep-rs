@@ -9,3 +9,4 @@ edition = "2021"
 [dependencies]
 clap = "4.*"
 colored = "2.*"
+vscode-fuzzy-score-rs = { git = "https://github.com/semkiv/vs-code-fuzzy-score-rs.git", tag = "v0.1.0" }
