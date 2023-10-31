@@ -1,15 +1,100 @@
 use colored::Colorize;
-use details::{Config, FileMatch, MatchingLine};
+use details::{MatchInFile, MatchInLine};
 use log::debug;
-use std::error::Error;
-use std::fs;
-use std::io::{self, BufReader};
+use std::{
+    error::Error,
+    fs,
+    io::{self, BufReader},
+};
+
+/// Represents a run configuration. At the moment and until more command line parameters are available,
+/// it only holds the query and the list of files.
+#[derive(Debug)]
+pub struct Config {
+    query: String,
+    targets: Vec<String>,
+}
+
+impl Config {
+    /// A constructor that parses a [`String`] iterator into a run configuration.
+    /// `args` can technically be anything that satisfies the requirements,
+    /// but in practice it is used just with [`std::env::args`].
+    ///
+    /// # Errors:
+    /// * [`Err<String>`] if parsing `args` fails. This can happen in theory fail,
+    /// but it practice it can be caused only by a violation of the constraints imposed by the parser,
+    /// in which case it should exit using other mechanism (see below).
+    /// * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
+    /// the parser will cause the program to exit fast using [`std::process::exit`].
+    /// For more info see the [`clap`] crate documentation.
+    ///
+    /// # Examples
+    /// ```
+    /// let args = ["self", "query", "file1", "file2", "file3"];
+    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(config.query(), "query");
+    /// assert_eq!(config.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
+    ///
+    /// ```
+    ///
+    pub fn new(args: impl Iterator<Item = String>) -> Result<Config, String> {
+        let matches = details::parse_args(args);
+        let query = matches
+            .get_one::<String>("pattern")
+            .ok_or(String::from("Missing QUERY argument (required)"))?;
+
+        let targets = matches
+            .get_many::<String>("file")
+            .map_or(Vec::new(), |files| files.map(String::clone).collect());
+
+        Ok(Config {
+            query: query.clone(),
+            targets,
+        })
+    }
+
+    /// A simple getter that just returns the query.
+    ///
+    /// # Examples
+    /// ```
+    /// let args = ["self", "query"];
+    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(config.query(), "query");
+    /// ```
+    ///
+    pub fn query(&self) -> &str {
+        &self.query
+    }
+
+    /// A simple getter that just returns the list of files.
+    ///
+    /// # Examples
+    /// ```
+    /// let args = ["self", "query", "file1", "file2", "file3"];
+    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(config.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
+    /// ```
+    ///
+    pub fn targets(&self) -> &Vec<String> {
+        &self.targets
+    }
+}
 
 /// This function handles all the application logic. The `main` function is merely a `run` call.
-/// The query and the target are taken from positional command line argument,
-/// the first and the second ones respectively.
-pub fn run(command_line_args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
-    let config = Config::new(command_line_args)?;
+/// The run configuration is based on `args`, which are expected to be a sequence of command line arguments.
+/// The first positional argument is considered the query
+/// and the rest of positional arguments are considered the files to grep.
+/// If no files are supplied `stdin` will used.
+///
+/// # Errors
+/// * [`Box<Err<String>>`] if fails to parse `args`.
+/// * [`Box<std::io::Error>`] if encounters any I/O related issues.
+/// * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
+/// the parser will cause the program to exit fast using [`std::process::exit`].
+/// For more info see the [`clap`] crate documentation.
+///
+pub fn run(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
+    let config = Config::new(args)?;
     debug!("Running with the following configuration: {:?}", config);
 
     let matches = find_matches(&config)?;
@@ -18,27 +103,30 @@ pub fn run(command_line_args: impl Iterator<Item = String>) -> Result<(), Box<dy
     Ok(())
 }
 
-pub fn find_matches(config: &Config) -> Result<Vec<FileMatch>, Box<dyn Error>> {
+/// Find fuzzy matches using the configuration supplied `config`.
+///
+/// # Errors
+/// * io::Error if encounters any I/O related issues.
+///
+pub fn find_matches(config: &Config) -> Result<Vec<MatchInFile>, io::Error> {
     let mut matches = Vec::new();
     if config.targets.is_empty() {
         // no files specified => default to stdin
         let stdin_reader = Box::new(BufReader::new(io::stdin()));
-        for matching_line in details::process_one_target(&config.query, stdin_reader)
-            .map_err(Box::<io::Error>::from)?
+        for matching_line in details::process_one_target(&config.query, stdin_reader)?
         {
-            matches.push(FileMatch {
-                name: None,
+            matches.push(MatchInFile {
+                filename: None,
                 matching_line,
             });
         }
     } else {
         for filename in &config.targets {
             let file_reader = Box::new(BufReader::new(fs::File::open(filename.clone())?));
-            for matching_line in details::process_one_target(&config.query, file_reader)
-                .map_err(Box::<io::Error>::from)?
+            for matching_line in details::process_one_target(&config.query, file_reader)?
             {
-                matches.push(FileMatch {
-                    name: Some(filename.clone()),
+                matches.push(MatchInFile {
+                    filename: Some(filename.clone()),
                     matching_line,
                 });
             }
@@ -55,16 +143,27 @@ pub fn find_matches(config: &Config) -> Result<Vec<FileMatch>, Box<dyn Error>> {
     Ok(matches)
 }
 
-pub fn format_results(matches: Vec<FileMatch>) -> String {
+/// Formats supplied `matches` into a rich text string.
+/// When grepping files the format is as follows:
+/// ```text
+/// <filename>:<line-number>: <colored-matching-line> (score: <score>)
+/// ```
+/// where `colored-matching-line` is a matching line with matching characters painted blue.
+/// In case of using `stdin` the format is slightly different:
+/// ```text
+/// <line-number>: <colored-matching-line> (score: <score>)
+/// ```
+///
+pub fn format_results(matches: Vec<MatchInFile>) -> String {
     let mut ret = String::new();
     let mut match_itr = matches.iter().peekable();
     while let Some(m) = match_itr.next() {
-        let FileMatch {
-            name: filename,
+        let MatchInFile {
+            filename,
             matching_line:
-                MatchingLine {
-                    number: line_number,
-                    content: line,
+                MatchInLine {
+                    line_number,
+                    line_content: line,
                     fuzzy_match,
                 },
         } = m;
@@ -99,54 +198,75 @@ pub fn format_results(matches: Vec<FileMatch>) -> String {
 
 mod details {
     use clap::{Arg, ArgMatches, Command};
-    use std::io::BufRead;
+    use std::{
+        cmp::Ordering,
+        io::{self, BufRead},
+    };
 
-    #[derive(Debug, PartialEq)]
-    pub struct Config {
-        pub query: String,
-        pub targets: Vec<String>,
-    }
-
-    impl Config {
-        pub fn new(args: impl Iterator<Item = String>) -> Result<Config, String> {
-            let matches = parse_args(args);
-            let query = matches
-                .get_one::<String>("pattern")
-                .ok_or(String::from("Missing QUERY argument (required)"))?;
-
-            let targets = matches
-                .get_many::<String>("file")
-                .map_or(Vec::new(), |files| files.map(String::clone).collect());
-
-            Ok(Config {
-                query: query.clone(),
-                targets,
-            })
-        }
-    }
-
-    pub struct MatchingLine {
-        pub number: usize,
-        pub content: String,
+    #[derive(Debug)]
+    pub struct MatchInLine {
+        pub line_number: usize,
+        pub line_content: String,
         pub fuzzy_match: vscode_fuzzy_score_rs::FuzzyMatch,
     }
 
-    pub struct FileMatch {
-        pub name: Option<String>,
-        pub matching_line: MatchingLine,
+    impl PartialEq for MatchInLine {
+        fn eq(&self, other: &Self) -> bool {
+            self.fuzzy_match.eq(&other.fuzzy_match)
+        }
+    }
+
+    impl PartialOrd for MatchInLine {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.fuzzy_match.partial_cmp(&other.fuzzy_match)
+        }
+    }
+
+    impl Eq for MatchInLine {}
+
+    impl Ord for MatchInLine {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.fuzzy_match.cmp(&other.fuzzy_match)
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct MatchInFile {
+        pub filename: Option<String>,
+        pub matching_line: MatchInLine,
+    }
+
+    impl PartialEq for MatchInFile {
+        fn eq(&self, other: &Self) -> bool {
+            self.matching_line.eq(&other.matching_line)
+        }
+    }
+
+    impl PartialOrd for MatchInFile {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.matching_line.partial_cmp(&other.matching_line)
+        }
+    }
+
+    impl Eq for MatchInFile {}
+
+    impl Ord for MatchInFile {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.matching_line.cmp(&other.matching_line)
+        }
     }
 
     pub fn process_one_target(
         query: &str,
         target: Box<dyn BufRead>,
-    ) -> Result<Vec<MatchingLine>, std::io::Error> {
+    ) -> Result<Vec<MatchInLine>, io::Error> {
         let mut ret = Vec::new();
         for (index, line) in target.lines().enumerate() {
             let line = line?;
             if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-                ret.push(MatchingLine {
-                    number: index + 1,
-                    content: line,
+                ret.push(MatchInLine {
+                    line_number: index + 1,
+                    line_content: line,
                     fuzzy_match: m,
                 });
             }
@@ -155,7 +275,7 @@ mod details {
         Ok(ret)
     }
 
-    fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
+    pub fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
         Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
             .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
             .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
@@ -180,29 +300,131 @@ mod test {
     use super::*;
 
     #[test]
+    fn config_query() {
+        let config = Config {
+            query: String::from("test"),
+            targets: Vec::new(),
+        };
+        assert_eq!(config.query(), "test");
+    }
+
+    #[test]
+    fn config_targets() {
+        let config = Config {
+            query: String::from("test"),
+            targets: vec![
+                String::from("File1"),
+                String::from("File2"),
+                String::from("File3"),
+            ],
+        };
+        assert_eq!(
+            config.targets(),
+            &vec![
+                String::from("File1"),
+                String::from("File2"),
+                String::from("File3")
+            ]
+        );
+    }
+
+    #[test]
+    fn args_parsing_stdin() -> Result<(), String> {
+        let args = ["self", "Query"];
+        let config = Config::new(args.into_iter().map(String::from))?;
+        assert_eq!(config.query(), "Query");
+        assert_eq!(config.targets(), &Vec::<String>::new(),);
+        Ok(())
+    }
+
+    #[test]
+    fn args_parsing_files() -> Result<(), String> {
+        let args = ["self", "Query", "File1", "File2", "File3"];
+        let config = Config::new(args.into_iter().map(String::from))?;
+        assert_eq!(config.query(), "Query");
+        assert_eq!(
+            config.targets(),
+            &vec![
+                String::from("File1"),
+                String::from("File2"),
+                String::from("File3")
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn args_parsing_non_ascii_emoji() -> Result<(), String> {
+        let args = ["self", "🐣🦀", "File1", "👨‍🔬.txt", "File3"];
+        let config = Config::new(args.into_iter().map(String::from))?;
+        assert_eq!(config.query(), "🐣🦀");
+        assert_eq!(
+            config.targets(),
+            &vec![
+                String::from("File1"),
+                String::from("👨‍🔬.txt"),
+                String::from("File3")
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn args_parsing_non_ascii_cyrillic() -> Result<(), String> {
+        let args = ["self", "тест", "File1", "тест.txt", "File3"];
+        let config = Config::new(args.into_iter().map(String::from))?;
+        assert_eq!(config.query(), "тест");
+        assert_eq!(
+            config.targets(),
+            &vec![
+                String::from("File1"),
+                String::from("тест.txt"),
+                String::from("File3")
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn args_parsing_non_ascii_chinese() -> Result<(), String> {
+        let args = ["self", "打电", "File1", "测试.txt", "File3"];
+        let config = Config::new(args.into_iter().map(String::from))?;
+        assert_eq!(config.query(), "打电");
+        assert_eq!(
+            config.targets(),
+            &vec![
+                String::from("File1"),
+                String::from("测试.txt"),
+                String::from("File3")
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
     fn results_formatting() {
         let results = vec![
-            FileMatch {
-                name: Some(String::from("First")),
-                matching_line: MatchingLine {
-                    number: 42,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: Some(String::from("First")),
+                matching_line: MatchInLine {
+                    line_number: 42,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 },
             },
-            FileMatch {
-                name: Some(String::from("Second")),
-                matching_line: MatchingLine {
-                    number: 100500,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: Some(String::from("Second")),
+                matching_line: MatchInLine {
+                    line_number: 100500,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 },
             },
-            FileMatch {
-                name: Some(String::from("Third")),
-                matching_line: MatchingLine {
-                    number: 13,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: Some(String::from("Third")),
+                matching_line: MatchInLine {
+                    line_number: 13,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 },
             },
@@ -214,29 +436,29 @@ mod test {
     }
 
     #[test]
-    fn results_formatting_no_name() {
+    fn results_formatting_no_filename() {
         let results = vec![
-            FileMatch {
-                name: None,
-                matching_line: MatchingLine {
-                    number: 42,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: None,
+                matching_line: MatchInLine {
+                    line_number: 42,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 },
             },
-            FileMatch {
-                name: None,
-                matching_line: MatchingLine {
-                    number: 100500,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: None,
+                matching_line: MatchInLine {
+                    line_number: 100500,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 },
             },
-            FileMatch {
-                name: None,
-                matching_line: MatchingLine {
-                    number: 13,
-                    content: String::from("test"),
+            MatchInFile {
+                filename: None,
+                matching_line: MatchInLine {
+                    line_number: 13,
+                    line_content: String::from("test"),
                     fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 },
             },
@@ -253,5 +475,65 @@ mod test {
                 "t".blue()
             )
         )
+    }
+
+    #[test]
+    fn results_sorting() {
+        let mut results = vec![
+            MatchInFile {
+                filename: Some(String::from("Third")),
+                matching_line: MatchInLine {
+                    line_number: 13,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                },
+            },
+            MatchInFile {
+                filename: Some(String::from("First")),
+                matching_line: MatchInLine {
+                    line_number: 100500,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                },
+            },
+            MatchInFile {
+                filename: Some(String::from("Second")),
+                matching_line: MatchInLine {
+                    line_number: 42,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                },
+            },
+        ];
+
+        let expected = vec![
+            MatchInFile {
+                filename: Some(String::from("First")),
+                matching_line: MatchInLine {
+                    line_number: 100500,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                },
+            },
+            MatchInFile {
+                filename: Some(String::from("Second")),
+                matching_line: MatchInLine {
+                    line_number: 42,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                },
+            },
+            MatchInFile {
+                filename: Some(String::from("Third")),
+                matching_line: MatchInLine {
+                    line_number: 13,
+                    line_content: String::from("test"),
+                    fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                },
+            },
+        ];
+
+        results.sort();
+        assert_eq!(results, expected);
     }
 }
