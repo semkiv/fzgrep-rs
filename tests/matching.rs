@@ -1,7 +1,7 @@
 #[test]
 fn ascii_query() -> Result<(), String> {
     let args = [
-        "self",
+        "fzgrep",
         "contigous",
         "resources/tests/👨‍🔬.txt",
         "resources/tests/test.txt",
@@ -197,7 +197,7 @@ fn ascii_query() -> Result<(), String> {
 #[test]
 fn emoji_query() -> Result<(), String> {
     let args = [
-        "self",
+        "fzgrep",
         "🐣🦀",
         "resources/tests/test.txt",
         "resources/tests/👨‍🔬.txt",
@@ -285,7 +285,7 @@ fn emoji_query() -> Result<(), String> {
 #[test]
 fn cyrillic_query() -> Result<(), String> {
     let args = [
-        "self",
+        "fzgrep",
         "тест",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
@@ -421,7 +421,7 @@ fn cyrillic_query() -> Result<(), String> {
 #[test]
 fn chinese_query() -> Result<(), String> {
     let args = [
-        "self",
+        "fzgrep",
         "打电",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
