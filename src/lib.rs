@@ -1,234 +1,16 @@
+mod cli;
+
+pub use cli::{FormattingOptions, FormattingOptionsBuilder, Request};
+pub use vscode_fuzzy_score_rs::FuzzyMatch;
+
 use colored::Colorize;
-use details::{MatchInFile, MatchInLine};
 use log::debug;
 use std::{
+    cmp::Ordering,
     error::Error,
     fs,
-    io::{self, BufReader},
+    io::{self, BufRead, BufReader},
 };
-
-/// Represents a run configuration.
-///
-/// Holds the query, the list of files and the output formatting options.
-///
-#[derive(Debug)]
-pub struct Request {
-    query: String,
-    targets: Vec<String>,
-    formatting_options: FormattingOptions,
-}
-
-impl Request {
-    /// A constructor that parses a [`String`] iterator into a run configuration.
-    ///
-    /// `args` can technically be anything that satisfies the requirements,
-    /// but in practice it is used just with [`std::env::args`].
-    ///
-    /// # Errors:
-    ///
-    ///   * [`Err<String>`] if parsing `args` fails. This can happen in theory fail,
-    ///     but it practice it can be caused only by a violation of the constraints imposed by the parser,
-    /// in which case it should exit using other mechanism (see below).
-    ///   * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
-    ///     the parser will cause the program to exit fast using [`std::process::exit`].
-    ///
-    /// For more info see the [`clap`] crate documentation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
-    /// assert!(!request.formatting_options().line_number());
-    /// ```
-    ///
-    /// ```
-    /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &vec![String::from("file")]);
-    /// assert!(request.formatting_options().line_number());
-    /// ```
-    ///
-    pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
-        let matches = details::parse_args(args);
-        let query = matches
-            .get_one::<String>("pattern")
-            .ok_or(String::from("Missing QUERY argument (required)"))?;
-
-        let targets = matches
-            .get_many::<String>("file")
-            .map_or(Vec::new(), |files| files.map(String::clone).collect());
-
-        let formatting_options_builder =
-            FormattingOptionsBuilder::new().line_number(matches.get_flag("line_number"));
-
-        Ok(Request {
-            query: query.clone(),
-            targets,
-            formatting_options: formatting_options_builder.build(),
-        })
-    }
-
-    /// A simple getter that just returns the query.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let args = ["fzgrep", "query"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// ```
-    ///
-    pub fn query(&self) -> &str {
-        &self.query
-    }
-
-    /// A simple getter that just returns the list of files.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
-    /// ```
-    ///
-    pub fn targets(&self) -> &Vec<String> {
-        &self.targets
-    }
-
-    /// A simple getter that just returns formatting options.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let args = ["fzgrep", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(!request.formatting_options().line_number());
-    /// ```
-    ///
-    /// ```
-    /// let args = ["fzgrep", "-n", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(request.formatting_options().line_number());
-    /// ```
-    ///
-    /// ```
-    /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(request.formatting_options().line_number());
-    /// ```
-    ///
-    pub fn formatting_options(&self) -> FormattingOptions {
-        self.formatting_options
-    }
-}
-
-/// Holds various formatting options.
-///
-/// Specifically:
-///   * whether line numbers should be printed.
-///
-/// Use [`FormattingOptionsBuilder`] to configure [`FormattingOptions`] if needed (using the builder pattern).
-///
-/// # Examples
-///
-/// ```
-/// let options = fzgrep::FormattingOptionsBuilder::new()
-///     .line_number(true)
-///     .build();
-/// assert!(options.line_number());
-/// ```
-///
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FormattingOptions {
-    line_number: bool,
-}
-
-/// A simple getter that just returns the value of `--line-number` flag.
-///
-/// # Examples
-///
-/// ```
-/// let options = fzgrep::FormattingOptions::default();
-/// assert!(!options.line_number());
-/// ```
-///
-/// ```
-/// let options = fzgrep::FormattingOptionsBuilder::new()
-///     .line_number(true)
-///     .build();
-/// assert!(options.line_number());
-/// ```
-///
-impl FormattingOptions {
-    pub fn line_number(&self) -> bool {
-        self.line_number
-    }
-}
-
-/// A builder that can be used to build [`FormattingOptions`] objects.
-///
-/// # Examples
-/// ```
-/// let options = fzgrep::FormattingOptionsBuilder::new()
-///     .line_number(true)
-///     .build();
-/// assert!(options.line_number());
-/// ```
-///
-#[derive(Default)]
-pub struct FormattingOptionsBuilder {
-    line_number: bool,
-}
-
-impl FormattingOptionsBuilder {
-    /// Creates a new builder with default options.
-    ///
-    /// # Examples
-    /// ```
-    /// let builder = fzgrep::FormattingOptionsBuilder::new();
-    /// let options = builder.build();
-    /// assert!(!options.line_number());
-    /// ```
-    ///
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set `line_number` option to the provided value.
-    ///
-    /// # Examples
-    /// ```
-    /// let options = fzgrep::FormattingOptionsBuilder::new()
-    ///     .line_number(true)
-    ///     .build();
-    /// assert!(options.line_number());
-    /// ```
-    ///
-    pub fn line_number(mut self, line_number: bool) -> Self {
-        self.line_number = line_number;
-        self
-    }
-
-    /// Consumes the builder object in exchange for a configured [`FormattingOptions`] object.
-    ///
-    /// # Examples
-    /// ```
-    /// let builder = fzgrep::FormattingOptionsBuilder::new().line_number(true);
-    /// let options = builder.build();
-    /// assert!(options.line_number());
-    /// ```
-    ///
-    pub fn build(self) -> FormattingOptions {
-        FormattingOptions {
-            line_number: self.line_number,
-        }
-    }
-}
 
 /// This function handles all the application logic.
 ///
@@ -266,19 +48,19 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
 ///
 pub fn find_matches(request: &Request) -> Result<Vec<MatchInFile>, io::Error> {
     let mut matches = Vec::new();
-    if request.targets.is_empty() {
+    if request.targets().is_empty() {
         // no files specified => default to stdin
         let stdin_reader = Box::new(BufReader::new(io::stdin()));
-        for matching_line in details::process_one_target(&request.query, stdin_reader)? {
+        for matching_line in process_one_target(request.query(), stdin_reader)? {
             matches.push(MatchInFile {
                 filename: None,
                 matching_line,
             });
         }
     } else {
-        for filename in &request.targets {
+        for filename in request.targets() {
             let file_reader = Box::new(BufReader::new(fs::File::open(filename.clone())?));
-            for matching_line in details::process_one_target(&request.query, file_reader)? {
+            for matching_line in process_one_target(request.query(), file_reader)? {
                 matches.push(MatchInFile {
                     filename: Some(filename.clone()),
                     matching_line,
@@ -287,12 +69,8 @@ pub fn find_matches(request: &Request) -> Result<Vec<MatchInFile>, io::Error> {
         }
     }
 
-    matches.sort_by(|a, b| {
-        b.matching_line
-            .fuzzy_match
-            .score()
-            .cmp(&a.matching_line.fuzzy_match.score())
-    });
+    // sort in descending order
+    matches.sort_by(|a, b| b.cmp(a));
 
     Ok(matches)
 }
@@ -335,20 +113,16 @@ pub fn format_results(matches: Vec<MatchInFile>, options: FormattingOptions) -> 
         }
 
         if let Some(filename) = filename {
-            ret.push_str(&format!("{}:", filename));
-            if !options.line_number {
+            ret.push_str(&format!("{filename}:"));
+            if !options.line_number() {
                 ret.push(' ');
             }
         }
-        if options.line_number {
-            ret.push_str(&format!("{}: ", line_number));
+        if options.line_number() {
+            ret.push_str(&format!("{line_number}: "));
         }
 
-        ret.push_str(&format!(
-            "{} (score {})",
-            colored_target,
-            fuzzy_match.score()
-        ));
+        ret.push_str(&format!("{colored_target} (score {})", fuzzy_match.score()));
 
         if let Some(_) = match_itr.peek() {
             ret.push('\n');
@@ -358,110 +132,108 @@ pub fn format_results(matches: Vec<MatchInFile>, options: FormattingOptions) -> 
     ret
 }
 
-mod details {
-    use clap::{Arg, ArgAction, ArgMatches, Command};
-    use std::{
-        cmp::Ordering,
-        io::{self, BufRead},
-    };
+/// Represents a match in a line.
+#[derive(Debug)]
+pub struct MatchInLine {
+    line_number: usize,
+    line_content: String,
+    fuzzy_match: FuzzyMatch,
+}
 
-    #[derive(Debug)]
-    pub struct MatchInLine {
-        pub line_number: usize,
-        pub line_content: String,
-        pub fuzzy_match: vscode_fuzzy_score_rs::FuzzyMatch,
+impl MatchInLine {
+    /// Just a simple getter that returns a number of the matching line.
+    pub fn line_number(&self) -> usize {
+        self.line_number
     }
 
-    impl PartialEq for MatchInLine {
-        fn eq(&self, other: &Self) -> bool {
-            self.fuzzy_match.eq(&other.fuzzy_match)
+    /// Just a simple getter that returns the whole matching line.
+    pub fn line_content(&self) -> &String {
+        &self.line_content
+    }
+
+    /// Just a simple getter that returns a [`FuzzyMatch`] object for this match.
+    pub fn fuzzy_match(&self) -> &FuzzyMatch {
+        &self.fuzzy_match
+    }
+}
+
+impl PartialEq for MatchInLine {
+    fn eq(&self, other: &Self) -> bool {
+        self.fuzzy_match.eq(&other.fuzzy_match)
+    }
+}
+
+impl PartialOrd for MatchInLine {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.fuzzy_match.partial_cmp(&other.fuzzy_match)
+    }
+}
+
+impl Eq for MatchInLine {}
+
+impl Ord for MatchInLine {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.fuzzy_match.cmp(&other.fuzzy_match)
+    }
+}
+
+/// Represents a match in a file.
+#[derive(Debug)]
+pub struct MatchInFile {
+    filename: Option<String>,
+    matching_line: MatchInLine,
+}
+
+impl MatchInFile {
+    /// Just a simple getter that returns the name of the file.
+    /// In case of using the standard input returns [`None`].
+    pub fn filename(&self) -> &Option<String> {
+        &self.filename
+    }
+
+    /// Just a simple getter that return [`MatchInLine`] object for this match.
+    pub fn matching_line(&self) -> &MatchInLine {
+        &self.matching_line
+    }
+}
+
+impl PartialEq for MatchInFile {
+    fn eq(&self, other: &Self) -> bool {
+        self.matching_line.eq(&other.matching_line)
+    }
+}
+
+impl PartialOrd for MatchInFile {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.matching_line.partial_cmp(&other.matching_line)
+    }
+}
+
+impl Eq for MatchInFile {}
+
+impl Ord for MatchInFile {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.matching_line.cmp(&other.matching_line)
+    }
+}
+
+fn process_one_target(
+    query: &str,
+    target: Box<dyn BufRead>,
+) -> Result<Vec<MatchInLine>, io::Error> {
+    let mut ret = Vec::new();
+    for (index, line) in target.lines().enumerate() {
+        let line = line?;
+        if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
+            ret.push(MatchInLine {
+                line_number: index + 1,
+                line_content: line,
+                fuzzy_match: m,
+            });
         }
     }
 
-    impl PartialOrd for MatchInLine {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            self.fuzzy_match.partial_cmp(&other.fuzzy_match)
-        }
-    }
-
-    impl Eq for MatchInLine {}
-
-    impl Ord for MatchInLine {
-        fn cmp(&self, other: &Self) -> Ordering {
-            self.fuzzy_match.cmp(&other.fuzzy_match)
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct MatchInFile {
-        pub filename: Option<String>,
-        pub matching_line: MatchInLine,
-    }
-
-    impl PartialEq for MatchInFile {
-        fn eq(&self, other: &Self) -> bool {
-            self.matching_line.eq(&other.matching_line)
-        }
-    }
-
-    impl PartialOrd for MatchInFile {
-        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            self.matching_line.partial_cmp(&other.matching_line)
-        }
-    }
-
-    impl Eq for MatchInFile {}
-
-    impl Ord for MatchInFile {
-        fn cmp(&self, other: &Self) -> Ordering {
-            self.matching_line.cmp(&other.matching_line)
-        }
-    }
-
-    pub fn process_one_target(
-        query: &str,
-        target: Box<dyn BufRead>,
-    ) -> Result<Vec<MatchInLine>, io::Error> {
-        let mut ret = Vec::new();
-        for (index, line) in target.lines().enumerate() {
-            let line = line?;
-            if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-                ret.push(MatchInLine {
-                    line_number: index + 1,
-                    line_content: line,
-                    fuzzy_match: m,
-                });
-            }
-        }
-
-        Ok(ret)
-    }
-
-    pub fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
-        Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
-            .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
-            .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
-            .arg(
-                Arg::new("pattern")
-                    .value_name("PATTERN")
-                    .required(true)
-                    .help("Pattern to match"),
-            )
-            .arg(
-                Arg::new("file")
-                    .value_name("FILE")
-                    .num_args(0..)
-                    .help("Files to search in; if none provided uses standard input"),
-            )
-            .arg(
-                Arg::new("line_number")
-                    .short('n')
-                    .long("line-number")
-                    .action(ArgAction::SetTrue)
-                    .help("Print line number with matching lines"),
-            )
-            .get_matches_from(args)
-    }
+    Ok(ret)
 }
 
 #[cfg(test)]
@@ -469,153 +241,301 @@ mod test {
     use super::*;
 
     #[test]
-    fn request_query() {
-        let request = Request {
-            query: String::from("test"),
-            targets: Vec::new(),
-            formatting_options: FormattingOptions { line_number: false },
+    fn match_in_line_line_number() {
+        let m = MatchInLine {
+            line_number: 42,
+            line_content: String::new(),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
         };
-        assert_eq!(request.query(), "test");
+        assert_eq!(m.line_number(), 42);
     }
 
     #[test]
-    fn request_targets() {
-        let request = Request {
-            query: String::from("test"),
-            targets: vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3"),
-            ],
-            formatting_options: FormattingOptions { line_number: false },
+    fn match_in_line_line_content() {
+        let m = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
+        };
+        assert_eq!(m.line_content(), "test");
+    }
+
+    #[test]
+    fn match_in_line_fuzzy_match() {
+        let m = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
         };
         assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3")
-            ]
+            m.fuzzy_match(),
+            &vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap()
         );
     }
 
     #[test]
-    fn request_formatting_options_default() {
-        let request = Request {
-            query: String::from("test"),
-            targets: Vec::new(),
-            formatting_options: FormattingOptions {
-                line_number: true,
-                ..FormattingOptions::default()
+    fn match_in_line_comparisons_ne() {
+        let m1 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tes", "test").unwrap(),
+        };
+        assert_ne!(m1, m2);
+    }
+
+    #[test]
+    fn match_in_line_comparisons_eq() {
+        let m1 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 43,
+            line_content: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+        };
+        assert_eq!(m1, m2);
+    }
+
+    #[test]
+    fn match_in_line_comparisons_lt() {
+        let m1 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 41,
+            line_content: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+        };
+        assert!(m1 < m2);
+    }
+
+    #[test]
+    fn match_in_line_comparisons_gt() {
+        let m1 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 41,
+            line_content: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
+        };
+        assert!(m1 > m2);
+    }
+
+    #[test]
+    fn match_in_line_comparisons_le() {
+        let m1 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 42,
+            line_content: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+        };
+        assert!(m1 <= m2);
+    }
+
+    #[test]
+    fn match_in_line_comparisons_ge() {
+        let m1 = MatchInLine {
+            line_number: 41,
+            line_content: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+        };
+        let m2 = MatchInLine {
+            line_number: 41,
+            line_content: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
+        };
+        assert!(m1 >= m2);
+    }
+
+    #[test]
+    fn match_in_file_filename() {
+        let m = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             },
         };
-        assert!(request.formatting_options().line_number);
+        assert_eq!(m.filename(), &None);
 
-        let request = Request {
-            query: String::from("test"),
-            targets: Vec::new(),
-            formatting_options: FormattingOptions {
-                line_number: false,
-                ..FormattingOptions::default()
+        let m = MatchInFile {
+            filename: Some(String::from("test")),
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             },
         };
-        assert!(!request.formatting_options().line_number);
+        assert_eq!(m.filename().clone().unwrap(), "test");
     }
 
     #[test]
-    fn request_formatting_options_line_number() {
-        let request = Request {
-            query: String::from("test"),
-            targets: Vec::new(),
-            formatting_options: FormattingOptions {
-                line_number: true,
-                ..FormattingOptions::default()
+    fn match_in_file_matching_line() {
+        let m = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             },
         };
-        assert!(request.formatting_options().line_number);
+        assert_eq!(
+            m.matching_line(),
+            &MatchInLine {
+                line_number: 42,
+                line_content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
+            }
+        );
+    }
 
-        let request = Request {
-            query: String::from("test"),
-            targets: Vec::new(),
-            formatting_options: FormattingOptions {
-                line_number: false,
-                ..FormattingOptions::default()
+    #[test]
+    fn match_in_file_comparisons_ne() {
+        let m1 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
             },
         };
-        assert!(!request.formatting_options().line_number);
+        let m2 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            },
+        };
+
+        assert_ne!(m1, m2);
     }
 
     #[test]
-    fn args_parsing_stdin() -> Result<(), String> {
-        let args = ["fzgrep", "Query"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "Query");
-        assert_eq!(request.targets(), &Vec::<String>::new(),);
-        Ok(())
+    fn match_in_file_comparisons_eq() {
+        let m1 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            },
+        };
+        let m2 = MatchInFile {
+            filename: Some(String::from("test")),
+            matching_line: MatchInLine {
+                line_number: 43,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            },
+        };
+
+        assert_eq!(m1, m2);
     }
 
     #[test]
-    fn args_parsing_files() -> Result<(), String> {
-        let args = ["fzgrep", "Query", "File1", "File2", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "Query");
-        assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3")
-            ]
-        );
-        Ok(())
+    fn match_in_file_comparisons_lt() {
+        let m1 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
+            },
+        };
+        let m2 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            },
+        };
+
+        assert!(m1 < m2);
     }
 
     #[test]
-    fn args_parsing_non_ascii_emoji() -> Result<(), String> {
-        let args = ["fzgrep", "🐣🦀", "File1", "👨‍🔬.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "🐣🦀");
-        assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("👨‍🔬.txt"),
-                String::from("File3")
-            ]
-        );
-        Ok(())
+    fn match_in_file_comparisons_gt() {
+        let m1 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            },
+        };
+        let m2 = MatchInFile {
+            filename: Some(String::from("test")),
+            matching_line: MatchInLine {
+                line_number: 43,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
+            },
+        };
+
+        assert!(m1 > m2);
     }
 
     #[test]
-    fn args_parsing_non_ascii_cyrillic() -> Result<(), String> {
-        let args = ["fzgrep", "тест", "File1", "тест.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "тест");
-        assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("тест.txt"),
-                String::from("File3")
-            ]
-        );
-        Ok(())
+    fn match_in_file_comparisons_le() {
+        let m1 = MatchInFile {
+            filename: Some(String::from("test")),
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
+            },
+        };
+        let m2 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            },
+        };
+
+        assert!(m1 < m2);
     }
 
     #[test]
-    fn args_parsing_non_ascii_chinese() -> Result<(), String> {
-        let args = ["fzgrep", "打电", "File1", "测试.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "打电");
-        assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("测试.txt"),
-                String::from("File3")
-            ]
-        );
-        Ok(())
+    fn match_in_file_comparisons_ge() {
+        let m1 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 43,
+                line_content: String::from("test1"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            },
+        };
+        let m2 = MatchInFile {
+            filename: None,
+            matching_line: MatchInLine {
+                line_number: 42,
+                line_content: String::from("test2"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
+            },
+        };
+
+        assert!(m1 > m2);
     }
 
     #[test]
@@ -731,7 +651,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(results, FormattingOptions { line_number: true, ..FormattingOptions::default() }),
+            format_results(results, FormattingOptionsBuilder::new().line_number(true).build()),
             format!(
                 "First:42: {}{}st (score 17)\nSecond:100500: tes{} (score 2)\nThird:13: {}{}s{} (score 19)",
                 "t".blue(),
@@ -775,10 +695,7 @@ mod test {
         assert_eq!(
             format_results(
                 results,
-                FormattingOptions {
-                    line_number: true,
-                    ..FormattingOptions::default()
-                }
+                FormattingOptionsBuilder::new().line_number(true).build()
             ),
             format!(
                 "42: {}{}st (score 17)\n100500: tes{} (score 2)\n13: {}{}s{} (score 19)",

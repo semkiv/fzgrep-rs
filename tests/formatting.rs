@@ -96,7 +96,12 @@ fn line_number_short() {
 
 #[test]
 fn line_number_long() {
-    let args = ["fzgrep", "--line-number", "contigous", "resources/tests/test.txt"];
+    let args = [
+        "fzgrep",
+        "--line-number",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
     let matches = fzgrep::find_matches(&request).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
