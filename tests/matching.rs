@@ -8,10 +8,10 @@ fn ascii_query() -> Result<(), String> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from))?;
-    assert_eq!(config.query(), "contigous");
+    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    assert_eq!(request.query(), "contigous");
     assert_eq!(
-        config.targets(),
+        request.targets(),
         &vec![
             String::from("resources/tests/👨‍🔬.txt"),
             String::from("resources/tests/test.txt"),
@@ -20,7 +20,7 @@ fn ascii_query() -> Result<(), String> {
         ]
     );
 
-    let results = fzgrep::find_matches(&config).unwrap();
+    let results = fzgrep::find_matches(&request).unwrap();
     assert_eq!(results.len(), 12);
 
     assert_eq!(
@@ -204,10 +204,10 @@ fn emoji_query() -> Result<(), String> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from))?;
-    assert_eq!(config.query(), "🐣🦀");
+    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
-        config.targets(),
+        request.targets(),
         &vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/👨‍🔬.txt"),
@@ -216,7 +216,7 @@ fn emoji_query() -> Result<(), String> {
         ]
     );
 
-    let results = fzgrep::find_matches(&config).unwrap();
+    let results = fzgrep::find_matches(&request).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(
@@ -292,10 +292,10 @@ fn cyrillic_query() -> Result<(), String> {
         "resources/tests/👨‍🔬.txt",
         "resources/tests/测试.txt",
     ];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from))?;
-    assert_eq!(config.query(), "тест");
+    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    assert_eq!(request.query(), "тест");
     assert_eq!(
-        config.targets(),
+        request.targets(),
         &vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/тест.txt"),
@@ -304,7 +304,7 @@ fn cyrillic_query() -> Result<(), String> {
         ]
     );
 
-    let results = fzgrep::find_matches(&config).unwrap();
+    let results = fzgrep::find_matches(&request).unwrap();
     assert_eq!(results.len(), 8);
 
     assert_eq!(
@@ -428,10 +428,10 @@ fn chinese_query() -> Result<(), String> {
         "resources/tests/测试.txt",
         "resources/tests/👨‍🔬.txt",
     ];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from))?;
-    assert_eq!(config.query(), "打电");
+    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    assert_eq!(request.query(), "打电");
     assert_eq!(
-        config.targets(),
+        request.targets(),
         &vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/тест.txt"),
@@ -440,7 +440,7 @@ fn chinese_query() -> Result<(), String> {
         ]
     );
 
-    let results = fzgrep::find_matches(&config).unwrap();
+    let results = fzgrep::find_matches(&request).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(

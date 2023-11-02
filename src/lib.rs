@@ -12,13 +12,13 @@ use std::{
 /// Holds the query, the list of files and the output formatting options.
 ///
 #[derive(Debug)]
-pub struct Config {
+pub struct Request {
     query: String,
     targets: Vec<String>,
     formatting_options: FormattingOptions,
 }
 
-impl Config {
+impl Request {
     /// A constructor that parses a [`String`] iterator into a run configuration.
     ///
     /// `args` can technically be anything that satisfies the requirements,
@@ -38,21 +38,21 @@ impl Config {
     ///
     /// ```
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(config.query(), "query");
-    /// assert_eq!(config.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
-    /// assert!(!config.formatting_options().line_number());
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
+    /// assert!(!request.formatting_options().line_number());
     /// ```
     ///
     /// ```
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(config.query(), "query");
-    /// assert_eq!(config.targets(), &vec![String::from("file")]);
-    /// assert!(config.formatting_options().line_number());
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(request.formatting_options().line_number());
     /// ```
     ///
-    pub fn new(args: impl Iterator<Item = String>) -> Result<Config, String> {
+    pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
         let matches = details::parse_args(args);
         let query = matches
             .get_one::<String>("pattern")
@@ -65,7 +65,7 @@ impl Config {
         let formatting_options_builder =
             FormattingOptionsBuilder::new().line_number(matches.get_flag("line_number"));
 
-        Ok(Config {
+        Ok(Request {
             query: query.clone(),
             targets,
             formatting_options: formatting_options_builder.build(),
@@ -78,8 +78,8 @@ impl Config {
     ///
     /// ```
     /// let args = ["fzgrep", "query"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(config.query(), "query");
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
     /// ```
     ///
     pub fn query(&self) -> &str {
@@ -92,8 +92,8 @@ impl Config {
     ///
     /// ```
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(config.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
     /// ```
     ///
     pub fn targets(&self) -> &Vec<String> {
@@ -106,20 +106,20 @@ impl Config {
     ///
     /// ```
     /// let args = ["fzgrep", "query", "file"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(!config.formatting_options().line_number());
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(!request.formatting_options().line_number());
     /// ```
     ///
     /// ```
     /// let args = ["fzgrep", "-n", "query", "file"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(config.formatting_options().line_number());
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.formatting_options().line_number());
     /// ```
     ///
     /// ```
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    /// assert!(config.formatting_options().line_number());
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.formatting_options().line_number());
     /// ```
     ///
     pub fn formatting_options(&self) -> FormattingOptions {
@@ -249,36 +249,36 @@ impl FormattingOptionsBuilder {
 /// For more info see the [`clap`] crate documentation.
 ///
 pub fn run(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
-    let config = Config::new(args)?;
-    debug!("Running with the following configuration: {:?}", config);
+    let request = Request::new(args)?;
+    debug!("Running with the following configuration: {:?}", request);
 
-    let matches = find_matches(&config)?;
-    println!("{}", format_results(matches, config.formatting_options()));
+    let matches = find_matches(&request)?;
+    println!("{}", format_results(matches, request.formatting_options()));
 
     Ok(())
 }
 
-/// Find fuzzy matches using the configuration supplied `config`.
+/// Find fuzzy matches using the configuration supplied `request`.
 ///
 /// # Errors
 ///
 ///   * io::Error if encounters any I/O related issues.
 ///
-pub fn find_matches(config: &Config) -> Result<Vec<MatchInFile>, io::Error> {
+pub fn find_matches(request: &Request) -> Result<Vec<MatchInFile>, io::Error> {
     let mut matches = Vec::new();
-    if config.targets.is_empty() {
+    if request.targets.is_empty() {
         // no files specified => default to stdin
         let stdin_reader = Box::new(BufReader::new(io::stdin()));
-        for matching_line in details::process_one_target(&config.query, stdin_reader)? {
+        for matching_line in details::process_one_target(&request.query, stdin_reader)? {
             matches.push(MatchInFile {
                 filename: None,
                 matching_line,
             });
         }
     } else {
-        for filename in &config.targets {
+        for filename in &request.targets {
             let file_reader = Box::new(BufReader::new(fs::File::open(filename.clone())?));
-            for matching_line in details::process_one_target(&config.query, file_reader)? {
+            for matching_line in details::process_one_target(&request.query, file_reader)? {
                 matches.push(MatchInFile {
                     filename: Some(filename.clone()),
                     matching_line,
@@ -469,18 +469,18 @@ mod test {
     use super::*;
 
     #[test]
-    fn config_query() {
-        let config = Config {
+    fn request_query() {
+        let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions { line_number: false },
         };
-        assert_eq!(config.query(), "test");
+        assert_eq!(request.query(), "test");
     }
 
     #[test]
-    fn config_targets() {
-        let config = Config {
+    fn request_targets() {
+        let request = Request {
             query: String::from("test"),
             targets: vec![
                 String::from("File1"),
@@ -490,7 +490,7 @@ mod test {
             formatting_options: FormattingOptions { line_number: false },
         };
         assert_eq!(
-            config.targets(),
+            request.targets(),
             &vec![
                 String::from("File1"),
                 String::from("File2"),
@@ -500,8 +500,8 @@ mod test {
     }
 
     #[test]
-    fn config_formatting_options_default() {
-        let config = Config {
+    fn request_formatting_options_default() {
+        let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions {
@@ -509,9 +509,9 @@ mod test {
                 ..FormattingOptions::default()
             },
         };
-        assert!(config.formatting_options().line_number);
+        assert!(request.formatting_options().line_number);
 
-        let config = Config {
+        let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions {
@@ -519,12 +519,12 @@ mod test {
                 ..FormattingOptions::default()
             },
         };
-        assert!(!config.formatting_options().line_number);
+        assert!(!request.formatting_options().line_number);
     }
 
     #[test]
-    fn config_formatting_options_line_number() {
-        let config = Config {
+    fn request_formatting_options_line_number() {
+        let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions {
@@ -532,9 +532,9 @@ mod test {
                 ..FormattingOptions::default()
             },
         };
-        assert!(config.formatting_options().line_number);
+        assert!(request.formatting_options().line_number);
 
-        let config = Config {
+        let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions {
@@ -542,25 +542,25 @@ mod test {
                 ..FormattingOptions::default()
             },
         };
-        assert!(!config.formatting_options().line_number);
+        assert!(!request.formatting_options().line_number);
     }
 
     #[test]
     fn args_parsing_stdin() -> Result<(), String> {
         let args = ["fzgrep", "Query"];
-        let config = Config::new(args.into_iter().map(String::from))?;
-        assert_eq!(config.query(), "Query");
-        assert_eq!(config.targets(), &Vec::<String>::new(),);
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "Query");
+        assert_eq!(request.targets(), &Vec::<String>::new(),);
         Ok(())
     }
 
     #[test]
     fn args_parsing_files() -> Result<(), String> {
         let args = ["fzgrep", "Query", "File1", "File2", "File3"];
-        let config = Config::new(args.into_iter().map(String::from))?;
-        assert_eq!(config.query(), "Query");
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "Query");
         assert_eq!(
-            config.targets(),
+            request.targets(),
             &vec![
                 String::from("File1"),
                 String::from("File2"),
@@ -573,10 +573,10 @@ mod test {
     #[test]
     fn args_parsing_non_ascii_emoji() -> Result<(), String> {
         let args = ["fzgrep", "🐣🦀", "File1", "👨‍🔬.txt", "File3"];
-        let config = Config::new(args.into_iter().map(String::from))?;
-        assert_eq!(config.query(), "🐣🦀");
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "🐣🦀");
         assert_eq!(
-            config.targets(),
+            request.targets(),
             &vec![
                 String::from("File1"),
                 String::from("👨‍🔬.txt"),
@@ -589,10 +589,10 @@ mod test {
     #[test]
     fn args_parsing_non_ascii_cyrillic() -> Result<(), String> {
         let args = ["fzgrep", "тест", "File1", "тест.txt", "File3"];
-        let config = Config::new(args.into_iter().map(String::from))?;
-        assert_eq!(config.query(), "тест");
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "тест");
         assert_eq!(
-            config.targets(),
+            request.targets(),
             &vec![
                 String::from("File1"),
                 String::from("тест.txt"),
@@ -605,10 +605,10 @@ mod test {
     #[test]
     fn args_parsing_non_ascii_chinese() -> Result<(), String> {
         let args = ["fzgrep", "打电", "File1", "测试.txt", "File3"];
-        let config = Config::new(args.into_iter().map(String::from))?;
-        assert_eq!(config.query(), "打电");
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "打电");
         assert_eq!(
-            config.targets(),
+            request.targets(),
             &vec![
                 String::from("File1"),
                 String::from("测试.txt"),
