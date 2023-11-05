@@ -12,3 +12,6 @@ colored = "2.0.4"
 env_logger = "0.10.0"
 log = "0.4.20"
 vscode-fuzzy-score-rs = { git = "https://github.com/semkiv/vs-code-fuzzy-score-rs.git", tag = "v0.2.2" }
+
+[dev-dependencies]
+tempfile = "3.8.1"
