@@ -3,9 +3,9 @@ use colored::Colorize;
 #[test]
 fn default() {
     let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&config).unwrap();
-    let formatted = fzgrep::format_results(matches, config.formatting_options());
+    let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    let matches = fzgrep::find_matches(&request.query(), request.targets()).unwrap();
+    let formatted = fzgrep::format_results(matches, request.formatting_options());
     let expected = vec![
         format!(
             "resources/tests/test.txt: {}{}{}{}{}{}u{}{}{} (score 116)",
@@ -50,9 +50,9 @@ fn default() {
 #[test]
 fn line_number_short() {
     let args = ["fzgrep", "-n", "contigous", "resources/tests/test.txt"];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&config).unwrap();
-    let formatted = fzgrep::format_results(matches, config.formatting_options());
+    let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    let matches = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let formatted = fzgrep::format_results(matches, request.formatting_options());
     let expected = vec![
         format!(
             "resources/tests/test.txt:3: {}{}{}{}{}{}u{}{}{} (score 116)",
@@ -96,10 +96,15 @@ fn line_number_short() {
 
 #[test]
 fn line_number_long() {
-    let args = ["fzgrep", "--line-number", "contigous", "resources/tests/test.txt"];
-    let config = fzgrep::Config::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&config).unwrap();
-    let formatted = fzgrep::format_results(matches, config.formatting_options());
+    let args = [
+        "fzgrep",
+        "--line-number",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    let matches = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let formatted = fzgrep::format_results(matches, request.formatting_options());
     let expected = vec![
         format!(
             "resources/tests/test.txt:3: {}{}{}{}{}{}u{}{}{} (score 116)",
