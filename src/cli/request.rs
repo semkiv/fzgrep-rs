@@ -46,6 +46,22 @@ impl Request {
     /// assert!(request.formatting_options().line_number());
     /// ```
     ///
+    /// ```
+    /// let args = ["fzgrep", "--with-filename", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(request.formatting_options().file_name());
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--no-filename", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// ```
+    ///
     pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
         let matches = parse_args(args);
         let query = matches
@@ -56,8 +72,12 @@ impl Request {
             .get_many::<String>("file")
             .map_or(Vec::new(), |files| files.map(String::clone).collect());
 
-        let formatting_options_builder =
-            FormattingOptionsBuilder::new().line_number(matches.get_flag("line_number"));
+        let file_name = matches.get_flag("with_filename")
+            || (!matches.get_flag("no_filename") && targets.len() > 1);
+
+        let formatting_options_builder = FormattingOptionsBuilder::new()
+            .line_number(matches.get_flag("line_number"))
+            .file_name(file_name);
 
         Ok(Request {
             query: query.clone(),
@@ -116,6 +136,18 @@ impl Request {
     /// assert!(request.formatting_options().line_number());
     /// ```
     ///
+    /// ```
+    /// let args = ["fzgrep", "--with-filename", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.formatting_options().file_name());
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--no-filename", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(!request.formatting_options().file_name());
+    /// ```
+    ///
     pub fn formatting_options(&self) -> FormattingOptions {
         self.formatting_options
     }
@@ -125,6 +157,7 @@ fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
+        .after_help("With more than one FILEs assume -f.")
         .arg(
             Arg::new("pattern")
                 .value_name("PATTERN")
@@ -144,6 +177,22 @@ fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .action(ArgAction::SetTrue)
                 .help("Print line number with matching lines"),
         )
+        .arg(
+            Arg::new("with_filename")
+                .short('f')
+                .long("with-filename")
+                .action(ArgAction::SetTrue)
+                .conflicts_with("no_filename")
+                .help("Print file name with output lines"),
+        )
+        .arg(
+            Arg::new("no_filename")
+                .short('F')
+                .long("no-filename")
+                .action(ArgAction::SetTrue)
+                .conflicts_with("with_filename")
+                .help("Suppress the file name prefix on output"),
+        )
         .get_matches_from(args)
 }
 
@@ -156,12 +205,25 @@ mod tests {
         let args = ["fzgrep", "Query"];
         let request = Request::new(args.into_iter().map(String::from))?;
         assert_eq!(request.query(), "Query");
-        assert_eq!(request.targets(), &Vec::<String>::new(),);
+        assert_eq!(request.targets(), &Vec::<String>::new());
+        assert!(!request.formatting_options().line_number());
+        assert!(!request.formatting_options().file_name());
         Ok(())
     }
 
     #[test]
-    fn constructor_files() -> Result<(), String> {
+    fn constructor_single_file() -> Result<(), String> {
+        let args = ["fzgrep", "Query", "File"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "Query");
+        assert_eq!(request.targets(), &vec![String::from("File")]);
+        assert!(!request.formatting_options().line_number());
+        assert!(!request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_multiple_files() -> Result<(), String> {
         let args = ["fzgrep", "Query", "File1", "File2", "File3"];
         let request = Request::new(args.into_iter().map(String::from))?;
         assert_eq!(request.query(), "Query");
@@ -173,6 +235,8 @@ mod tests {
                 String::from("File3")
             ]
         );
+        assert!(!request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
         Ok(())
     }
 
@@ -189,6 +253,8 @@ mod tests {
                 String::from("File3")
             ]
         );
+        assert!(!request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
         Ok(())
     }
 
@@ -205,6 +271,8 @@ mod tests {
                 String::from("File3")
             ]
         );
+        assert!(!request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
         Ok(())
     }
 
@@ -221,6 +289,8 @@ mod tests {
                 String::from("File3")
             ]
         );
+        assert!(!request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
         Ok(())
     }
 
@@ -241,6 +311,74 @@ mod tests {
         assert_eq!(request.query(), "query");
         assert_eq!(request.targets(), &vec![String::from("file")]);
         assert!(request.formatting_options().line_number());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_with_file_name_short() -> Result<(), String> {
+        let args = ["fzgrep", "-f", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_with_file_name_long() -> Result<(), String> {
+        let args = ["fzgrep", "--with-filename", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_no_file_name_short() -> Result<(), String> {
+        let args = ["fzgrep", "-F", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(!request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_no_file_name_long() -> Result<(), String> {
+        let args = ["fzgrep", "--no-filename", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(!request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_all_options_short() -> Result<(), String> {
+        let args = ["fzgrep", "-nf", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
+        Ok(())
+    }
+
+    #[test]
+    fn constructor_all_options_long() -> Result<(), String> {
+        let args = [
+            "fzgrep",
+            "--line-number",
+            "--with-filename",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from))?;
+        assert_eq!(request.query(), "query");
+        assert_eq!(request.targets(), &vec![String::from("file")]);
+        assert!(request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
         Ok(())
     }
 
@@ -280,8 +418,12 @@ mod tests {
         let request = Request {
             query: String::from("test"),
             targets: Vec::new(),
-            formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
+            formatting_options: FormattingOptionsBuilder::new()
+                .line_number(true)
+                .file_name(true)
+                .build(),
         };
         assert!(request.formatting_options().line_number());
+        assert!(request.formatting_options().file_name());
     }
 }

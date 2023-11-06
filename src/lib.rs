@@ -73,14 +73,10 @@ pub fn find_matches(query: &str, targets: &Vec<String>) -> Result<Vec<MatchingLi
 ///
 /// When grepping files the format is as follows:
 /// ```text
-/// <filename>:<line-number>: <colored-matching-line> (score: <score>)
+/// <filename>:<line-number>:<colored-matching-line>
 /// ```
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
-///
-/// In case of using `stdin` the format is slightly different:
-/// ```text
-/// <line-number>: <colored-matching-line> (score: <score>)
-/// ```
+/// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
 pub fn format_results(matches: Vec<MatchingLine>, options: FormattingOptions) -> String {
     let mut ret = String::new();
@@ -107,15 +103,14 @@ pub fn format_results(matches: Vec<MatchingLine>, options: FormattingOptions) ->
             }
         }
 
-        ret.push_str(&format!("{}:", file_name));
-        if !options.line_number() {
-            ret.push(' ');
+        if options.file_name() {
+            ret.push_str(&format!("{file_name}:"));
         }
         if options.line_number() {
-            ret.push_str(&format!("{}: ", line_number));
+            ret.push_str(&format!("{line_number}:"));
         }
 
-        ret.push_str(&format!("{colored_target} (score {})", fuzzy_match.score()));
+        ret.push_str(&format!("{colored_target}"));
 
         if let Some(_) = match_itr.peek() {
             ret.push('\n');
@@ -180,7 +175,7 @@ mod test {
         assert_eq!(
             format_results(results, FormattingOptions::default()),
             format!(
-                "First: {}{}st (score 17)\nSecond: tes{} (score 2)\nThird: {}{}s{} (score 19)",
+                "{}{}st\ntes{}\n{}{}s{}",
                 "t".blue(),
                 "e".blue(),
                 "t".blue(),
@@ -220,9 +215,105 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(results, FormattingOptionsBuilder::new().line_number(true).build()),
+            format_results(
+                results,
+                FormattingOptionsBuilder::new().line_number(true).build()
+            ),
             format!(
-                "First:42: {}{}st (score 17)\nSecond:100500: tes{} (score 2)\nThird:13: {}{}s{} (score 19)",
+                "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
+                "t".blue(),
+                "e".blue(),
+                "t".blue(),
+                "t".blue(),
+                "e".blue(),
+                "t".blue()
+            )
+        )
+    }
+
+    #[test]
+    fn results_formatting_file_name() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                results,
+                FormattingOptionsBuilder::new().file_name(true).build()
+            ),
+            format!(
+                "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
+                "t".blue(),
+                "e".blue(),
+                "t".blue(),
+                "t".blue(),
+                "e".blue(),
+                "t".blue()
+            )
+        )
+    }
+
+    #[test]
+    fn results_formatting_all_options() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                results,
+                FormattingOptionsBuilder::new()
+                    .line_number(true)
+                    .file_name(true)
+                    .build()
+            ),
+            format!(
+                "First:42:{}{}st\nSecond:100500:tes{}\nThird:13:{}{}s{}",
                 "t".blue(),
                 "e".blue(),
                 "t".blue(),
