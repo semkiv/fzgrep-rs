@@ -9,10 +9,7 @@ use colored::Colorize;
 use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
-use std::{
-    error::Error,
-    io::{self, BufRead},
-};
+use std::io::{self, BufRead};
 
 /// This function handles all the application logic.
 ///
@@ -25,15 +22,13 @@ use std::{
 ///
 /// # Errors
 ///
-///   * [`Box<Err<String>>`] if fails to parse `args`.
-///   * [`Box<std::io::Error>`] if encounters any I/O related issues.
+///   * [`std::io::Error`] if encounters any I/O related issues.
 ///   * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
 ///     the parser will cause the program to exit fast using [`std::process::exit`].
 ///
 /// For more info see the [`clap`] crate documentation.
 ///
-pub fn run(args: impl Iterator<Item = String>) -> Result<(), Box<dyn Error>> {
-    let request = Request::new(args)?;
+pub fn run(request: Request) -> Result<(), io::Error> {
     debug!("Running with the following configuration: {:?}", request);
 
     let matches = find_matches(&request.query(), &request.targets())?;

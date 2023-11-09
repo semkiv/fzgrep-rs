@@ -14,7 +14,7 @@
 /// assert!(options.line_number());
 /// ```
 ///
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct FormattingOptions {
     line_number: bool,
     file_name: bool,

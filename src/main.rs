@@ -3,7 +3,10 @@ use std::env;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
-
-    fzgrep::run(env::args())
+    let request = fzgrep::Request::new(env::args())?;
+    env_logger::Builder::new()
+        .filter_level(request.verbosity())
+        .init();
+    fzgrep::run(request)?;
+    Ok(())
 }
