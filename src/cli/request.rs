@@ -1,15 +1,17 @@
 use crate::cli::formatting_options::{FormattingOptions, FormattingOptionsBuilder};
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use log::LevelFilter;
 
 /// Represents a run configuration.
 ///
 /// Holds the query, the list of files and the output formatting options.
 ///
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Request {
     query: String,
     targets: Vec<String>,
     formatting_options: FormattingOptions,
+    verbosity: LevelFilter,
 }
 
 impl Request {
@@ -36,6 +38,7 @@ impl Request {
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &vec![String::from("file1"), String::from("file2"), String::from("file3")]);
     /// assert!(!request.formatting_options().line_number());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
@@ -44,6 +47,7 @@ impl Request {
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &vec![String::from("file")]);
     /// assert!(request.formatting_options().line_number());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
@@ -52,6 +56,7 @@ impl Request {
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &vec![String::from("file")]);
     /// assert!(request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
@@ -60,6 +65,52 @@ impl Request {
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &vec![String::from("file")]);
     /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--quiet", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Off)
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--verbose", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Warn)
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Info)
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vvv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Debug)
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vvvv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.query(), "query");
+    /// assert_eq!(request.targets(), &vec![String::from("file")]);
+    /// assert!(!request.formatting_options().file_name());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Trace)
     /// ```
     ///
     pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
@@ -79,10 +130,23 @@ impl Request {
             .line_number(matches.get_flag("line_number"))
             .file_name(file_name);
 
+        let verbosity = if matches.get_flag("quiet") {
+            LevelFilter::Off
+        } else {
+            match matches.get_count("verbose") {
+                0 => LevelFilter::Error,
+                1 => LevelFilter::Warn,
+                2 => LevelFilter::Info,
+                3 => LevelFilter::Debug,
+                4.. => LevelFilter::Trace,
+            }
+        };
+
         Ok(Request {
             query: query.clone(),
             targets,
             formatting_options: formatting_options_builder.build(),
+            verbosity,
         })
     }
 
@@ -151,6 +215,44 @@ impl Request {
     pub fn formatting_options(&self) -> FormattingOptions {
         self.formatting_options
     }
+
+    /// A simple getter that just returns the verbosity level.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--quiet", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "--verbose", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Warn);
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Info);
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vvv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Debug);
+    /// ```
+    ///
+    /// ```
+    /// let args = ["fzgrep", "-vvvv", "query", "file"];
+    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
+    /// ```
+    ///
+    pub fn verbosity(&self) -> LevelFilter {
+        self.verbosity
+    }
 }
 
 fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
@@ -193,6 +295,23 @@ fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .conflicts_with("with_filename")
                 .help("Suppress the file name prefix on output"),
         )
+        .arg(
+            Arg::new("quiet")
+                .short('q')
+                .long("quiet")
+                .visible_alias("silent")
+                .action(ArgAction::SetTrue)
+                .conflicts_with("verbose")
+                .help("Suppress all output")
+        )
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(ArgAction::Count)
+                .conflicts_with("quiet")
+                .help("Verbose output. Specify multiple times to increase verbosity.\nWithout the switch only errors are reported (unless '-q' is specified);\n\t'-v' additionally enables warning messages;\n\t'-vv' additionally enables info messages;\n\t'-vvv' additionally enables debug messages;\n\tand '-vvvv' additionally enables trace messages.")
+        )
         .get_matches_from(args)
 }
 
@@ -201,185 +320,469 @@ mod tests {
     use super::*;
 
     #[test]
-    fn constructor_stdin() -> Result<(), String> {
-        let args = ["fzgrep", "Query"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "Query");
-        assert_eq!(request.targets(), &Vec::<String>::new());
-        assert!(!request.formatting_options().line_number());
-        assert!(!request.formatting_options().file_name());
-        Ok(())
-    }
-
-    #[test]
-    fn constructor_single_file() -> Result<(), String> {
-        let args = ["fzgrep", "Query", "File"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "Query");
-        assert_eq!(request.targets(), &vec![String::from("File")]);
-        assert!(!request.formatting_options().line_number());
-        assert!(!request.formatting_options().file_name());
-        Ok(())
-    }
-
-    #[test]
-    fn constructor_multiple_files() -> Result<(), String> {
-        let args = ["fzgrep", "Query", "File1", "File2", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "Query");
+    fn constructor_stdin() {
+        let args = ["fzgrep", "query"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
         assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3")
-            ]
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Vec::new(),
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Error
+            }
         );
-        assert!(!request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
     }
 
     #[test]
-    fn constructor_non_ascii_emoji() -> Result<(), String> {
-        let args = ["fzgrep", "🐣🦀", "File1", "👨‍🔬.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "🐣🦀");
+    fn constructor_single_file() {
+        let args = ["fzgrep", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
         assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("👨‍🔬.txt"),
-                String::from("File3")
-            ]
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Error
+            }
         );
-        assert!(!request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
     }
 
     #[test]
-    fn constructor_non_ascii_cyrillic() -> Result<(), String> {
-        let args = ["fzgrep", "тест", "File1", "тест.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "тест");
+    fn constructor_multiple_files() {
+        let args = ["fzgrep", "query", "file1", "file2", "file3"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+
         assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("тест.txt"),
-                String::from("File3")
-            ]
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![
+                    String::from("file1"),
+                    String::from("file2"),
+                    String::from("file3")
+                ],
+                // with multiple files we implicitly enable file names
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
         );
-        assert!(!request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
     }
 
     #[test]
-    fn constructor_non_ascii_chinese() -> Result<(), String> {
-        let args = ["fzgrep", "打电", "File1", "测试.txt", "File3"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "打电");
+    fn constructor_non_ascii_emoji() {
+        let args = ["fzgrep", "🐣🦀", "file1", "👨‍🔬.txt", "file3"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+
         assert_eq!(
-            request.targets(),
-            &vec![
-                String::from("File1"),
-                String::from("测试.txt"),
-                String::from("File3")
-            ]
+            request,
+            Request {
+                query: String::from("🐣🦀"),
+                targets: vec![
+                    String::from("file1"),
+                    String::from("👨‍🔬.txt"),
+                    String::from("file3")
+                ],
+                // with multiple files we implicitly enable file names
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
         );
-        assert!(!request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
     }
 
     #[test]
-    fn constructor_line_number_short() -> Result<(), String> {
+    fn constructor_non_ascii_cyrillic() {
+        let args = ["fzgrep", "тест", "file1", "тест.txt", "file3"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("тест"),
+                targets: vec![
+                    String::from("file1"),
+                    String::from("тест.txt"),
+                    String::from("file3")
+                ],
+                // with multiple files we implicitly enable file names
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_non_ascii_chinese() {
+        let args = ["fzgrep", "打电", "file1", "测试.txt", "file3"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("打电"),
+                targets: vec![
+                    String::from("file1"),
+                    String::from("测试.txt"),
+                    String::from("file3")
+                ],
+                // with multiple files we implicitly enable file names
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_line_number_short() {
         let args = ["fzgrep", "-n", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().line_number());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_line_number_long() -> Result<(), String> {
+    fn constructor_line_number_long() {
         let args = ["fzgrep", "--line-number", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().line_number());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_with_file_name_short() -> Result<(), String> {
+    fn constructor_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().file_name());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_with_file_name_long() -> Result<(), String> {
+    fn constructor_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().file_name());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_no_file_name_short() -> Result<(), String> {
+    fn constructor_no_file_name_short() {
         let args = ["fzgrep", "-F", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(!request.formatting_options().file_name());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_no_file_name_long() -> Result<(), String> {
+    fn constructor_no_file_name_long() {
         let args = ["fzgrep", "--no-filename", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(!request.formatting_options().file_name());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
+                verbosity: LevelFilter::Error
+            }
+        );
     }
 
     #[test]
-    fn constructor_all_options_short() -> Result<(), String> {
-        let args = ["fzgrep", "-nf", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
+    fn constructor_quiet_short() {
+        let args = ["fzgrep", "-q", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Off
+            }
+        );
     }
 
     #[test]
-    fn constructor_all_options_long() -> Result<(), String> {
+    fn constructor_quiet_long() {
+        let args = ["fzgrep", "--quiet", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Off
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_silent_long() {
+        let args = ["fzgrep", "--silent", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Off
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_short() {
+        let args = ["fzgrep", "-v", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Warn
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_long() {
+        let args = ["fzgrep", "--verbose", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Warn
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_info_short() {
+        let args = ["fzgrep", "-vv", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Info
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_info_long() {
+        let args = ["fzgrep", "--verbose", "--verbose", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Info
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_debug_short() {
+        let args = ["fzgrep", "-vvv", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Debug
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_debug_long() {
+        let args = [
+            "fzgrep",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Debug
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_trace_short() {
+        let args = ["fzgrep", "-vvvv", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Trace
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_trace_long() {
+        let args = [
+            "fzgrep",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Trace
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_extra_short() {
+        let args = ["fzgrep", "-vvvvv", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Trace
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_verbose_extra_long() {
+        let args = [
+            "fzgrep",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptions::default(),
+                verbosity: LevelFilter::Trace
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_all_options_short() {
+        let args = ["fzgrep", "-nfv", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new()
+                    .line_number(true)
+                    .file_name(true)
+                    .build(),
+                verbosity: LevelFilter::Warn
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_all_options_long() {
         let args = [
             "fzgrep",
             "--line-number",
             "--with-filename",
+            "--verbose",
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from))?;
-        assert_eq!(request.query(), "query");
-        assert_eq!(request.targets(), &vec![String::from("file")]);
-        assert!(request.formatting_options().line_number());
-        assert!(request.formatting_options().file_name());
-        Ok(())
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: vec![String::from("file")],
+                formatting_options: FormattingOptionsBuilder::new()
+                    .line_number(true)
+                    .file_name(true)
+                    .build(),
+                verbosity: LevelFilter::Warn
+            }
+        );
     }
 
     #[test]
@@ -388,6 +791,7 @@ mod tests {
             query: String::from("test"),
             targets: Vec::new(),
             formatting_options: FormattingOptions::default(),
+            verbosity: LevelFilter::Error,
         };
         assert_eq!(request.query(), "test");
     }
@@ -402,6 +806,7 @@ mod tests {
                 String::from("File3"),
             ],
             formatting_options: FormattingOptions::default(),
+            verbosity: LevelFilter::Error,
         };
         assert_eq!(
             request.targets(),
@@ -422,8 +827,23 @@ mod tests {
                 .line_number(true)
                 .file_name(true)
                 .build(),
+            verbosity: LevelFilter::Error,
         };
         assert!(request.formatting_options().line_number());
         assert!(request.formatting_options().file_name());
+    }
+
+    #[test]
+    fn verbosity() {
+        let request = Request {
+            query: String::from("test"),
+            targets: Vec::new(),
+            formatting_options: FormattingOptionsBuilder::new()
+                .line_number(true)
+                .file_name(true)
+                .build(),
+            verbosity: LevelFilter::Debug,
+        };
+        assert_eq!(request.verbosity(), LevelFilter::Debug);
     }
 }
