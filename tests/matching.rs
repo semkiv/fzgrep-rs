@@ -12,12 +12,12 @@ fn ascii_query() -> Result<(), String> {
     assert_eq!(request.query(), "contigous");
     assert_eq!(
         request.targets(),
-        &vec![
+        &Some(vec![
             String::from("resources/tests/👨‍🔬.txt"),
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/тест.txt"),
             String::from("resources/tests/测试.txt")
-        ]
+        ])
     );
 
     let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
@@ -148,12 +148,12 @@ fn emoji_query() -> Result<(), String> {
     assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
         request.targets(),
-        &vec![
+        &Some(vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/👨‍🔬.txt"),
             String::from("resources/tests/тест.txt"),
             String::from("resources/tests/测试.txt")
-        ]
+        ])
     );
 
     let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
@@ -200,12 +200,12 @@ fn cyrillic_query() -> Result<(), String> {
     assert_eq!(request.query(), "тест");
     assert_eq!(
         request.targets(),
-        &vec![
+        &Some(vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/тест.txt"),
             String::from("resources/tests/👨‍🔬.txt"),
             String::from("resources/tests/测试.txt")
-        ]
+        ])
     );
 
     let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
@@ -276,12 +276,12 @@ fn chinese_query() -> Result<(), String> {
     assert_eq!(request.query(), "打电");
     assert_eq!(
         request.targets(),
-        &vec![
+        &Some(vec![
             String::from("resources/tests/test.txt"),
             String::from("resources/tests/тест.txt"),
             String::from("resources/tests/测试.txt"),
             String::from("resources/tests/👨‍🔬.txt"),
-        ]
+        ])
     );
 
     let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();

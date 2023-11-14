@@ -43,18 +43,24 @@ pub fn run(request: Request) -> Result<(), io::Error> {
 ///
 ///   * io::Error if encounters any I/O related issues.
 ///
-pub fn find_matches(query: &str, targets: &Vec<String>) -> Result<Vec<MatchingLine>, io::Error> {
-    let readers = if targets.is_empty() {
-        vec![Reader::stdin_reader()]
-    } else {
+pub fn find_matches(
+    query: &str,
+    targets: &Option<Vec<String>>,
+) -> Result<Vec<MatchingLine>, io::Error> {
+    let readers = if let Some(targets) = targets {
+        debug!("Using the following input files: {:?}", targets);
         targets
             .iter()
             .map(|f| Reader::file_reader(f))
             .collect::<Result<Vec<_>, _>>()?
+    } else {
+        debug!("No input files specified, using the standard input.");
+        vec![Reader::stdin_reader()]
     };
 
     let mut matches = Vec::new();
     for reader in readers {
+        debug!("Processing {}.", reader.display_name());
         matches.append(&mut process_one_target(query, reader)?);
     }
 
@@ -116,15 +122,20 @@ pub fn format_results(matches: Vec<MatchingLine>, options: FormattingOptions) ->
 }
 
 fn process_one_target(query: &str, target: Reader) -> Result<Vec<MatchingLine>, io::Error> {
-    let displayed_name = target.displayed_name().clone();
+    let display_name = target.display_name().clone();
     let mut ret = Vec::new();
     for (index, line) in target.source().lines().enumerate() {
         let line = line?;
         if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
+            let line_number = index + 1;
+            debug!(
+                "Found a match in {display_name}, line {line_number}, positions {:?}",
+                m.positions()
+            );
             ret.push(MatchingLine {
                 location: Location {
-                    file_name: displayed_name.clone(),
-                    line_number: index + 1,
+                    file_name: display_name.clone(),
+                    line_number,
                 },
                 content: line,
                 fuzzy_match: m,
