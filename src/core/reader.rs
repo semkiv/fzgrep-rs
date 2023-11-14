@@ -26,7 +26,7 @@ impl Reader {
         }
     }
 
-    pub fn displayed_name(&self) -> &String {
+    pub fn display_name(&self) -> &String {
         &self.displayed_name
     }
 
@@ -58,8 +58,8 @@ mod tests {
     fn displayed_name() {
         let tmp = NamedTempFile::new().unwrap();
         let file_reader = Reader::file_reader(tmp.path()).unwrap();
-        assert_eq!(file_reader.displayed_name(), &tmp.path().to_string_lossy());
+        assert_eq!(file_reader.display_name(), &tmp.path().to_string_lossy());
         let stdin_reader = Reader::stdin_reader();
-        assert_eq!(stdin_reader.displayed_name(), "(standard input)");
+        assert_eq!(stdin_reader.display_name(), "(standard input)");
     }
 }
