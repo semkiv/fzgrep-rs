@@ -1,6 +1,5 @@
 use env_logger;
-use std::env;
-use std::error::Error;
+use std::{env, error::Error};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let request = fzgrep::Request::new(env::args())?;
