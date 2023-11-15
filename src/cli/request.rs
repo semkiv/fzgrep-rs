@@ -1,6 +1,7 @@
 use crate::cli::formatting_options::{FormattingOptions, FormattingOptionsBuilder};
 use clap::{parser::ValuesRef, Arg, ArgAction, ArgMatches, Command};
 use log::LevelFilter;
+use std::path::PathBuf;
 
 /// Represents a run configuration.
 ///
@@ -9,7 +10,7 @@ use log::LevelFilter;
 #[derive(Debug, PartialEq)]
 pub struct Request {
     query: String,
-    targets: Option<Vec<String>>,
+    input_files: Option<Vec<PathBuf>>,
     formatting_options: FormattingOptions,
     verbosity: LevelFilter,
 }
@@ -33,118 +34,104 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// let args = ["fzgrep", "query"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &None);
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
-    /// ```
-    ///
-    /// ```
+    /// use fzgrep::Request;
+    /// use std::path::PathBuf;
+    /// // basic usage
     /// let args = ["fzgrep", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
+    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file")]));
     /// assert!(!request.formatting_options().line_number());
     /// assert!(!request.formatting_options().file_name());
     /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // no input files - use the standard input
+    /// let args = ["fzgrep", "query"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.input_files(), &None);
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// use std::path::PathBuf;
+    /// // multiple input files
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file1"), String::from("file2"), String::from("file3")]));
-    /// assert!(!request.formatting_options().line_number());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// // `--with-filename` is assumed in case of multiple input files
     /// assert!(request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // request line numbers to be printed
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // request file names to be printed
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
-    /// let args = ["fzgrep", "--no-filename", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
+    /// use fzgrep::Request;
+    /// // with more than one input file `--with-filename` is assumed
+    /// // it is possible to override this by specifically opting out like so
+    /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(!request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // silence the output
     /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // activate warn log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "--verbose", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Warn)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // activate warn and info log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Info)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Debug)
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvvv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file")]));
-    /// assert!(!request.formatting_options().line_number());
-    /// assert!(!request.formatting_options().file_name());
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Trace)
     /// ```
     ///
     pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
-        let matches = parse_args(args);
+        let matches = match_command_line_args(args);
 
         let formatting_options_builder = FormattingOptionsBuilder::new()
             .line_number(matches.get_flag("line_number"))
@@ -152,7 +139,7 @@ impl Request {
 
         Ok(Request {
             query: Request::query_from(&matches)?,
-            targets: Request::targets_from(&matches),
+            input_files: Request::targets_from(&matches),
             formatting_options: formatting_options_builder.build(),
             verbosity: Request::verbosity_from(&matches),
         })
@@ -163,8 +150,9 @@ impl Request {
     /// # Examples
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "query"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.query(), "query");
     /// ```
     ///
@@ -177,13 +165,15 @@ impl Request {
     /// # Examples
     ///
     /// ```
+    /// use fzgrep::Request;
+    /// use std::path::PathBuf;
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.targets(), &Some(vec![String::from("file1"), String::from("file2"), String::from("file3")]));
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// ```
     ///
-    pub fn targets(&self) -> &Option<Vec<String>> {
-        &self.targets
+    pub fn input_files(&self) -> &Option<Vec<PathBuf>> {
+        &self.input_files
     }
 
     /// A simple getter that just returns formatting options.
@@ -191,32 +181,37 @@ impl Request {
     /// # Examples
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(!request.formatting_options().line_number());
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "-n", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(request.formatting_options().line_number());
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(request.formatting_options().line_number());
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(request.formatting_options().file_name());
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "--no-filename", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert!(!request.formatting_options().file_name());
     /// ```
     ///
@@ -229,32 +224,37 @@ impl Request {
     /// # Examples
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "--verbose", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Warn);
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Info);
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vvv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Debug);
     /// ```
     ///
     /// ```
+    /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vvvv", "query", "file"];
-    /// let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
     /// ```
     ///
@@ -269,10 +269,10 @@ impl Request {
         Ok(query.clone())
     }
 
-    fn targets_from(matches: &ArgMatches) -> Option<Vec<String>> {
+    fn targets_from(matches: &ArgMatches) -> Option<Vec<PathBuf>> {
         matches
             .get_many::<String>("file")
-            .map(|files| files.map(String::clone).collect())
+            .map(|files| files.map(PathBuf::from).collect())
     }
 
     fn file_name_from(matches: &ArgMatches) -> bool {
@@ -313,7 +313,7 @@ impl Request {
     }
 }
 
-fn parse_args(args: impl Iterator<Item = String>) -> ArgMatches {
+fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
@@ -385,7 +385,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: None,
+                input_files: None,
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Error
             }
@@ -400,7 +400,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Error
             }
@@ -416,10 +416,10 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![
-                    String::from("file1"),
-                    String::from("file2"),
-                    String::from("file3")
+                input_files: Some(vec![
+                    PathBuf::from("file1"),
+                    PathBuf::from("file2"),
+                    PathBuf::from("file3")
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
@@ -437,10 +437,10 @@ mod tests {
             request,
             Request {
                 query: String::from("🐣🦀"),
-                targets: Some(vec![
-                    String::from("file1"),
-                    String::from("👨‍🔬.txt"),
-                    String::from("file3")
+                input_files: Some(vec![
+                    PathBuf::from("file1"),
+                    PathBuf::from("👨‍🔬.txt"),
+                    PathBuf::from("file3")
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
@@ -458,10 +458,10 @@ mod tests {
             request,
             Request {
                 query: String::from("тест"),
-                targets: Some(vec![
-                    String::from("file1"),
-                    String::from("тест.txt"),
-                    String::from("file3")
+                input_files: Some(vec![
+                    PathBuf::from("file1"),
+                    PathBuf::from("тест.txt"),
+                    PathBuf::from("file3")
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
@@ -479,10 +479,10 @@ mod tests {
             request,
             Request {
                 query: String::from("打电"),
-                targets: Some(vec![
-                    String::from("file1"),
-                    String::from("测试.txt"),
-                    String::from("file3")
+                input_files: Some(vec![
+                    PathBuf::from("file1"),
+                    PathBuf::from("测试.txt"),
+                    PathBuf::from("file3")
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
@@ -499,7 +499,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
                 verbosity: LevelFilter::Error
             }
@@ -514,7 +514,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
                 verbosity: LevelFilter::Error
             }
@@ -529,7 +529,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 verbosity: LevelFilter::Error
             }
@@ -544,7 +544,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 verbosity: LevelFilter::Error
             }
@@ -559,7 +559,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
                 verbosity: LevelFilter::Error
             }
@@ -574,7 +574,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
                 verbosity: LevelFilter::Error
             }
@@ -589,7 +589,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Off
             }
@@ -604,7 +604,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Off
             }
@@ -619,7 +619,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Off
             }
@@ -634,7 +634,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Warn
             }
@@ -649,7 +649,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Warn
             }
@@ -664,7 +664,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Info
             }
@@ -679,7 +679,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Info
             }
@@ -694,7 +694,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Debug
             }
@@ -716,7 +716,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Debug
             }
@@ -731,7 +731,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Trace
             }
@@ -754,7 +754,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Trace
             }
@@ -769,7 +769,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Trace
             }
@@ -793,7 +793,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
                 verbosity: LevelFilter::Trace
             }
@@ -808,7 +808,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new()
                     .line_number(true)
                     .file_name(true)
@@ -833,7 +833,7 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Some(vec![String::from("file")]),
+                input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new()
                     .line_number(true)
                     .file_name(true)
@@ -847,7 +847,7 @@ mod tests {
     fn query() {
         let request = Request {
             query: String::from("test"),
-            targets: None,
+            input_files: None,
             formatting_options: FormattingOptions::default(),
             verbosity: LevelFilter::Error,
         };
@@ -858,20 +858,20 @@ mod tests {
     fn targets() {
         let request = Request {
             query: String::from("test"),
-            targets: Some(vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3"),
+            input_files: Some(vec![
+                PathBuf::from("File1"),
+                PathBuf::from("File2"),
+                PathBuf::from("File3"),
             ]),
             formatting_options: FormattingOptions::default(),
             verbosity: LevelFilter::Error,
         };
         assert_eq!(
-            request.targets(),
+            request.input_files(),
             &Some(vec![
-                String::from("File1"),
-                String::from("File2"),
-                String::from("File3")
+                PathBuf::from("File1"),
+                PathBuf::from("File2"),
+                PathBuf::from("File3")
             ])
         );
     }
@@ -880,7 +880,7 @@ mod tests {
     fn formatting_options() {
         let request = Request {
             query: String::from("test"),
-            targets: None,
+            input_files: None,
             formatting_options: FormattingOptionsBuilder::new()
                 .line_number(true)
                 .file_name(true)
@@ -895,7 +895,7 @@ mod tests {
     fn verbosity() {
         let request = Request {
             query: String::from("test"),
-            targets: None,
+            input_files: None,
             formatting_options: FormattingOptionsBuilder::new()
                 .line_number(true)
                 .file_name(true)

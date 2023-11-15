@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[test]
 fn ascii_query() -> Result<(), String> {
     let args = [
@@ -11,16 +13,16 @@ fn ascii_query() -> Result<(), String> {
     let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "contigous");
     assert_eq!(
-        request.targets(),
+        request.input_files(),
         &Some(vec![
-            String::from("resources/tests/👨‍🔬.txt"),
-            String::from("resources/tests/test.txt"),
-            String::from("resources/tests/тест.txt"),
-            String::from("resources/tests/测试.txt")
+            PathBuf::from("resources/tests/👨‍🔬.txt"),
+            PathBuf::from("resources/tests/test.txt"),
+            PathBuf::from("resources/tests/тест.txt"),
+            PathBuf::from("resources/tests/测试.txt")
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
     assert_eq!(results.len(), 12);
 
     assert_eq!(results[0].location.file_name, "resources/tests/👨‍🔬.txt");
@@ -147,16 +149,16 @@ fn emoji_query() -> Result<(), String> {
     let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
-        request.targets(),
+        request.input_files(),
         &Some(vec![
-            String::from("resources/tests/test.txt"),
-            String::from("resources/tests/👨‍🔬.txt"),
-            String::from("resources/tests/тест.txt"),
-            String::from("resources/tests/测试.txt")
+            PathBuf::from("resources/tests/test.txt"),
+            PathBuf::from("resources/tests/👨‍🔬.txt"),
+            PathBuf::from("resources/tests/тест.txt"),
+            PathBuf::from("resources/tests/测试.txt")
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -199,16 +201,16 @@ fn cyrillic_query() -> Result<(), String> {
     let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "тест");
     assert_eq!(
-        request.targets(),
+        request.input_files(),
         &Some(vec![
-            String::from("resources/tests/test.txt"),
-            String::from("resources/tests/тест.txt"),
-            String::from("resources/tests/👨‍🔬.txt"),
-            String::from("resources/tests/测试.txt")
+            PathBuf::from("resources/tests/test.txt"),
+            PathBuf::from("resources/tests/тест.txt"),
+            PathBuf::from("resources/tests/👨‍🔬.txt"),
+            PathBuf::from("resources/tests/测试.txt")
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
     assert_eq!(results.len(), 8);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -275,16 +277,16 @@ fn chinese_query() -> Result<(), String> {
     let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "打电");
     assert_eq!(
-        request.targets(),
+        request.input_files(),
         &Some(vec![
-            String::from("resources/tests/test.txt"),
-            String::from("resources/tests/тест.txt"),
-            String::from("resources/tests/测试.txt"),
-            String::from("resources/tests/👨‍🔬.txt"),
+            PathBuf::from("resources/tests/test.txt"),
+            PathBuf::from("resources/tests/тест.txt"),
+            PathBuf::from("resources/tests/测试.txt"),
+            PathBuf::from("resources/tests/👨‍🔬.txt"),
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.targets()).unwrap();
+    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");

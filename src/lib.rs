@@ -9,7 +9,10 @@ use colored::Colorize;
 use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
-use std::io::{self, BufRead};
+use std::{
+    io::{self, BufRead},
+    path::PathBuf,
+};
 
 /// This function handles all the application logic.
 ///
@@ -31,7 +34,7 @@ use std::io::{self, BufRead};
 pub fn run(request: Request) -> Result<(), io::Error> {
     debug!("Running with the following configuration: {:?}", request);
 
-    let matches = find_matches(&request.query(), &request.targets())?;
+    let matches = find_matches(&request.query(), &request.input_files())?;
     println!("{}", format_results(matches, request.formatting_options()));
 
     Ok(())
@@ -45,7 +48,7 @@ pub fn run(request: Request) -> Result<(), io::Error> {
 ///
 pub fn find_matches(
     query: &str,
-    targets: &Option<Vec<String>>,
+    targets: &Option<Vec<PathBuf>>,
 ) -> Result<Vec<MatchingLine>, io::Error> {
     let readers = if let Some(targets) = targets {
         debug!("Using the following input files: {:?}", targets);
