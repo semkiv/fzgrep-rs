@@ -4,9 +4,9 @@ use colored::Colorize;
 fn default_single_file() {
     let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -56,9 +56,9 @@ fn default_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -139,9 +139,9 @@ fn default_multiple_files() {
 fn line_number_short() {
     let args = ["fzgrep", "-n", "contigous", "resources/tests/test.txt"];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "3:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -191,9 +191,9 @@ fn line_number_long() {
         "resources/tests/test.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "3:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -238,9 +238,9 @@ fn line_number_long() {
 fn with_filename_short() {
     let args = ["fzgrep", "-f", "contigous", "resources/tests/test.txt"];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -290,9 +290,9 @@ fn with_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -337,9 +337,9 @@ fn with_filename_long() {
 fn no_filename_short() {
     let args = ["fzgrep", "-F", "contigous", "resources/tests/test.txt"];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -389,9 +389,9 @@ fn no_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -442,9 +442,9 @@ fn no_filename_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -525,9 +525,9 @@ fn no_filename_multiple_files() {
 fn all_options_short() {
     let args = ["fzgrep", "-nf", "contigous", "resources/tests/test.txt"];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),
@@ -578,9 +578,9 @@ fn all_options_long() {
         "resources/tests/test.txt",
     ];
     let request = fzgrep::Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     let formatted = fzgrep::format_results(matches, request.formatting_options());
-    let expected = vec![
+    let expected = [
         format!(
             "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",
             "c".blue(),

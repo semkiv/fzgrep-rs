@@ -22,7 +22,7 @@ impl PartialEq for MatchingLine {
 
 impl PartialOrd for MatchingLine {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.fuzzy_match.partial_cmp(&other.fuzzy_match)
+        Some(self.cmp(other))
     }
 }
 
