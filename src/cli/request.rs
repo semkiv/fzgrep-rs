@@ -304,11 +304,11 @@ impl Request {
         }
 
         match matches.get_count("verbose") {
-            0 => return LevelFilter::Error,
-            1 => return LevelFilter::Warn,
-            2 => return LevelFilter::Info,
-            3 => return LevelFilter::Debug,
-            4.. => return LevelFilter::Trace,
+            0 => LevelFilter::Error,
+            1 => LevelFilter::Warn,
+            2 => LevelFilter::Info,
+            3 => LevelFilter::Debug,
+            4.. => LevelFilter::Trace,
         }
     }
 }

@@ -22,7 +22,7 @@ fn ascii_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     assert_eq!(results.len(), 12);
 
     assert_eq!(results[0].location.file_name, "resources/tests/👨‍🔬.txt");
@@ -158,7 +158,7 @@ fn emoji_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -210,7 +210,7 @@ fn cyrillic_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     assert_eq!(results.len(), 8);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -286,7 +286,7 @@ fn chinese_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(&request.query(), &request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");

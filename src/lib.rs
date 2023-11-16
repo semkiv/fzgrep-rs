@@ -34,7 +34,7 @@ use std::{
 pub fn run(request: Request) -> Result<(), io::Error> {
     debug!("Running with the following configuration: {:?}", request);
 
-    let matches = find_matches(&request.query(), &request.input_files())?;
+    let matches = find_matches(request.query(), request.input_files())?;
     println!("{}", format_results(matches, request.formatting_options()));
 
     Ok(())
@@ -54,7 +54,7 @@ pub fn find_matches(
         debug!("Using the following input files: {:?}", targets);
         targets
             .iter()
-            .map(|f| Reader::file_reader(f))
+            .map(Reader::file_reader)
             .collect::<Result<Vec<_>, _>>()?
     } else {
         debug!("No input files specified, using the standard input.");
@@ -114,9 +114,9 @@ pub fn format_results(matches: Vec<MatchingLine>, options: FormattingOptions) ->
             ret.push_str(&format!("{line_number}:"));
         }
 
-        ret.push_str(&format!("{colored_target}"));
+        ret.push_str(&colored_target);
 
-        if let Some(_) = match_itr.peek() {
+        if match_itr.peek().is_some() {
             ret.push('\n');
         }
     }
