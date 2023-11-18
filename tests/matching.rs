@@ -1,3 +1,4 @@
+use fzgrep::Request;
 use std::path::PathBuf;
 
 #[test]
@@ -10,7 +11,7 @@ fn ascii_query() -> Result<(), String> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "contigous");
     assert_eq!(
         request.input_files(),
@@ -146,7 +147,7 @@ fn emoji_query() -> Result<(), String> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
         request.input_files(),
@@ -198,7 +199,7 @@ fn cyrillic_query() -> Result<(), String> {
         "resources/tests/👨‍🔬.txt",
         "resources/tests/测试.txt",
     ];
-    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "тест");
     assert_eq!(
         request.input_files(),
@@ -274,7 +275,7 @@ fn chinese_query() -> Result<(), String> {
         "resources/tests/测试.txt",
         "resources/tests/👨‍🔬.txt",
     ];
-    let request = fzgrep::Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "打电");
     assert_eq!(
         request.input_files(),

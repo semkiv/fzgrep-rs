@@ -3,7 +3,7 @@ mod core;
 mod matching_results;
 
 pub use cli::{FormattingOptions, FormattingOptionsBuilder, Request};
-pub use vscode_fuzzy_score_rs::FuzzyMatch;
+pub use core::exit_code::ExitCode;
 
 use colored::Colorize;
 use core::reader::Reader;
@@ -18,29 +18,27 @@ use std::{
 ///
 /// The `main` function is merely a `run` call.
 ///
-/// The run configuration is based on `args`, which are expected to be a sequence of command line arguments.
-/// The first positional argument is considered the query
-/// and the rest of positional arguments are considered the files to grep.
-/// If no files are supplied `stdin` will used.
+/// The configuration is passed in `request`.
+/// If no input files are specified in `request`, the standard input is used.
 ///
 /// # Errors
 ///
 ///   * [`std::io::Error`] if encounters any I/O related issues.
-///   * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
-///     the parser will cause the program to exit fast using [`std::process::exit`].
 ///
-/// For more info see the [`clap`] crate documentation.
-///
-pub fn run(request: Request) -> Result<(), io::Error> {
+pub fn run(request: &Request) -> Result<Vec<MatchingLine>, io::Error> {
     debug!("Running with the following configuration: {:?}", request);
-
     let matches = find_matches(request.query(), request.input_files())?;
-    println!("{}", format_results(matches, request.formatting_options()));
-
-    Ok(())
+    if !request.quiet() && !matches.is_empty() {
+        println!(
+            "{}",
+            format_results(&matches, &request.formatting_options())
+        );
+    }
+    Ok(matches)
 }
 
 /// Find fuzzy matches using the configuration supplied `request`.
+/// If there are no input files in the request, the standard input will be used.
 ///
 /// # Errors
 ///
@@ -50,15 +48,12 @@ pub fn find_matches(
     query: &str,
     targets: &Option<Vec<PathBuf>>,
 ) -> Result<Vec<MatchingLine>, io::Error> {
-    let readers = if let Some(targets) = targets {
+    let readers: Box<dyn Iterator<Item = Reader>> = if let Some(targets) = targets {
         debug!("Using the following input files: {:?}", targets);
-        targets
-            .iter()
-            .map(Reader::file_reader)
-            .collect::<Result<Vec<_>, _>>()?
+        Box::new(targets.iter().map_while(|f| Reader::file_reader(f).ok()))
     } else {
         debug!("No input files specified, using the standard input.");
-        vec![Reader::stdin_reader()]
+        Box::new(std::iter::once(Reader::stdin_reader()))
     };
 
     let mut matches = Vec::new();
@@ -82,7 +77,7 @@ pub fn find_matches(
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub fn format_results(matches: Vec<MatchingLine>, options: FormattingOptions) -> String {
+pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> String {
     let mut ret = String::new();
     let mut match_itr = matches.iter().peekable();
     while let Some(m) = match_itr.next() {
@@ -182,7 +177,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(results, FormattingOptions::default()),
+            format_results(&results, &FormattingOptions::default()),
             format!(
                 "{}{}st\ntes{}\n{}{}s{}",
                 "t".blue(),
@@ -225,8 +220,8 @@ mod test {
         ];
         assert_eq!(
             format_results(
-                results,
-                FormattingOptionsBuilder::new().line_number(true).build()
+                &results,
+                &FormattingOptionsBuilder::new().line_number(true).build()
             ),
             format!(
                 "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
@@ -270,8 +265,8 @@ mod test {
         ];
         assert_eq!(
             format_results(
-                results,
-                FormattingOptionsBuilder::new().file_name(true).build()
+                &results,
+                &FormattingOptionsBuilder::new().file_name(true).build()
             ),
             format!(
                 "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
@@ -315,8 +310,8 @@ mod test {
         ];
         assert_eq!(
             format_results(
-                results,
-                FormattingOptionsBuilder::new()
+                &results,
+                &FormattingOptionsBuilder::new()
                     .line_number(true)
                     .file_name(true)
                     .build()

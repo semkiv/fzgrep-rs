@@ -12,6 +12,7 @@ pub struct Request {
     query: String,
     input_files: Option<Vec<PathBuf>>,
     formatting_options: FormattingOptions,
+    quiet: bool,
     verbosity: LevelFilter,
 }
 
@@ -43,7 +44,8 @@ impl Request {
     /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file")]));
     /// assert!(!request.formatting_options().line_number());
     /// assert!(!request.formatting_options().file_name());
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Error)
+    /// assert!(!request.quiet());
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Error);
     /// ```
     ///
     /// ```
@@ -95,7 +97,8 @@ impl Request {
     /// // silence the output
     /// let args = ["fzgrep", "--quiet", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Off)
+    /// assert_eq!(request.quiet(), true);
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
     ///
     /// ```
@@ -103,7 +106,7 @@ impl Request {
     /// // activate warn log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "--verbose", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Warn)
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Warn);
     /// ```
     ///
     /// ```
@@ -111,7 +114,7 @@ impl Request {
     /// // activate warn and info log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vv", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Info)
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Info);
     /// ```
     ///
     /// ```
@@ -119,7 +122,7 @@ impl Request {
     /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvv", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Debug)
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Debug);
     /// ```
     ///
     /// ```
@@ -127,7 +130,7 @@ impl Request {
     /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvvv", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.verbosity(), log::LevelFilter::Trace)
+    /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
     /// ```
     ///
     pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
@@ -141,6 +144,7 @@ impl Request {
             query: Request::query_from(&matches)?,
             input_files: Request::targets_from(&matches),
             formatting_options: formatting_options_builder.build(),
+            quiet: matches.get_flag("quiet"),
             verbosity: Request::verbosity_from(&matches),
         })
     }
@@ -219,6 +223,35 @@ impl Request {
         self.formatting_options
     }
 
+    /// A simple getter that returns whether it has been requested to silence the output
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// let args = ["fzgrep", "query", "file"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(!request.quiet());
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// let args = ["fzgrep", "--quiet", "query", "file"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.quiet());
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// let args = ["fzgrep", "--silent", "query", "file"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.quiet());
+    /// ```
+    ///
+    pub fn quiet(&self) -> bool {
+        self.quiet
+    }
+
     /// A simple getter that just returns the verbosity level.
     ///
     /// # Examples
@@ -227,6 +260,7 @@ impl Request {
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--quiet", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.quiet());
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
     ///
@@ -317,7 +351,10 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
-        .after_help("With more than one FILEs assume -f.")
+        .after_help(
+            "With more than one FILEs assume -f.\n\
+            Exit status is 0 if any match is found, 1 otherwise; if any error(s) occur, the exit status is 2."
+        )
         .arg(
             Arg::new("pattern")
                 .value_name("PATTERN")
@@ -368,7 +405,14 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .long("verbose")
                 .action(ArgAction::Count)
                 .conflicts_with("quiet")
-                .help("Verbose output. Specify multiple times to increase verbosity.\nWithout the switch only errors are reported (unless '-q' is specified);\n\t'-v' additionally enables warning messages;\n\t'-vv' additionally enables info messages;\n\t'-vvv' additionally enables debug messages;\n\tand '-vvvv' additionally enables trace messages.")
+                .help(
+                    "Verbose output. Specify multiple times to increase verbosity.\n\
+                    Without the switch only errors are reported (unless '-q' is specified);\n\
+                    \t'-v' additionally enables warning messages;\n\
+                    \t'-vv' additionally enables info messages;\n\
+                    \t'-vvv' additionally enables debug messages;\n\
+                    \tand '-vvvv' additionally enables trace messages."
+                )
         )
         .get_matches_from(args)
 }
@@ -387,6 +431,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: None,
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -402,6 +447,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -423,6 +469,7 @@ mod tests {
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -444,6 +491,7 @@ mod tests {
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -465,6 +513,7 @@ mod tests {
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -486,6 +535,7 @@ mod tests {
                 ]),
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -501,6 +551,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -516,6 +567,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -531,6 +583,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -546,6 +599,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -561,6 +615,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -576,6 +631,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
+                quiet: false,
                 verbosity: LevelFilter::Error
             }
         );
@@ -591,6 +647,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: true,
                 verbosity: LevelFilter::Off
             }
         );
@@ -606,6 +663,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: true,
                 verbosity: LevelFilter::Off
             }
         );
@@ -621,6 +679,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: true,
                 verbosity: LevelFilter::Off
             }
         );
@@ -636,6 +695,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Warn
             }
         );
@@ -651,6 +711,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Warn
             }
         );
@@ -666,6 +727,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Info
             }
         );
@@ -681,6 +743,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Info
             }
         );
@@ -696,6 +759,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Debug
             }
         );
@@ -718,6 +782,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Debug
             }
         );
@@ -733,6 +798,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Trace
             }
         );
@@ -756,6 +822,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Trace
             }
         );
@@ -771,6 +838,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Trace
             }
         );
@@ -795,6 +863,7 @@ mod tests {
                 query: String::from("query"),
                 input_files: Some(vec![PathBuf::from("file")]),
                 formatting_options: FormattingOptions::default(),
+                quiet: false,
                 verbosity: LevelFilter::Trace
             }
         );
@@ -813,6 +882,7 @@ mod tests {
                     .line_number(true)
                     .file_name(true)
                     .build(),
+                quiet: false,
                 verbosity: LevelFilter::Warn
             }
         );
@@ -838,6 +908,7 @@ mod tests {
                     .line_number(true)
                     .file_name(true)
                     .build(),
+                quiet: false,
                 verbosity: LevelFilter::Warn
             }
         );
@@ -849,6 +920,7 @@ mod tests {
             query: String::from("test"),
             input_files: None,
             formatting_options: FormattingOptions::default(),
+            quiet: false,
             verbosity: LevelFilter::Error,
         };
         assert_eq!(request.query(), "test");
@@ -864,6 +936,7 @@ mod tests {
                 PathBuf::from("File3"),
             ]),
             formatting_options: FormattingOptions::default(),
+            quiet: false,
             verbosity: LevelFilter::Error,
         };
         assert_eq!(
@@ -885,6 +958,7 @@ mod tests {
                 .line_number(true)
                 .file_name(true)
                 .build(),
+            quiet: false,
             verbosity: LevelFilter::Error,
         };
         assert!(request.formatting_options().line_number());
@@ -900,6 +974,7 @@ mod tests {
                 .line_number(true)
                 .file_name(true)
                 .build(),
+            quiet: false,
             verbosity: LevelFilter::Debug,
         };
         assert_eq!(request.verbosity(), LevelFilter::Debug);
