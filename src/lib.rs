@@ -10,9 +10,12 @@ use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
 use std::{
+    env,
     io::{self, BufRead},
+    iter,
     path::PathBuf,
 };
+use walkdir::WalkDir;
 
 /// This function handles all the application logic.
 ///
@@ -27,7 +30,7 @@ use std::{
 ///
 pub fn run(request: &Request) -> Result<Vec<MatchingLine>, io::Error> {
     debug!("Running with the following configuration: {:?}", request);
-    let matches = find_matches(request.query(), request.input_files())?;
+    let matches = find_matches(request.query(), request.targets(), request.recursive())?;
     if !request.quiet() && !matches.is_empty() {
         println!(
             "{}",
@@ -47,17 +50,13 @@ pub fn run(request: &Request) -> Result<Vec<MatchingLine>, io::Error> {
 pub fn find_matches(
     query: &str,
     targets: &Option<Vec<PathBuf>>,
+    recursive: bool,
 ) -> Result<Vec<MatchingLine>, io::Error> {
-    let readers: Box<dyn Iterator<Item = Reader>> = if let Some(targets) = targets {
-        debug!("Using the following input files: {:?}", targets);
-        Box::new(targets.iter().map_while(|f| Reader::file_reader(f).ok()))
-    } else {
-        debug!("No input files specified, using the standard input.");
-        Box::new(std::iter::once(Reader::stdin_reader()))
-    };
+    let readers = make_readers(targets, recursive);
 
     let mut matches = Vec::new();
     for reader in readers {
+        let reader = reader?;
         debug!("Processing {}.", reader.display_name());
         matches.append(&mut process_one_target(query, reader)?);
     }
@@ -117,6 +116,52 @@ pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> 
     }
 
     ret
+}
+
+fn make_readers(
+    targets: &Option<Vec<PathBuf>>,
+    recursive: bool,
+) -> Box<dyn Iterator<Item = Result<Reader, io::Error>> + '_> {
+    if !recursive {
+        // In non-recursive mode we simply create a `Reader` for each of the specified targets
+        // (which are expected to be files in this case).
+        // That is if we have any, otherwise we use the standard input
+        if let Some(targets) = targets {
+            debug!(
+                "*Non*-recursive mode; using the following input files: {:?}",
+                targets
+            );
+            Box::new(targets.iter().map(Reader::file_reader))
+        } else {
+            debug!("*Non*-recursive mode; no input files specified => using STDIN.");
+            Box::new(iter::once(Ok(Reader::stdin_reader())))
+        }
+    } else {
+        // In recursive mode on the other hand we have to account for the fact
+        // that targets can potentially be directories, so we have to process each of them recursively.
+        // Again, that is if we have any, otherwise we use the current working directory.
+        if let Some(targets) = targets {
+            debug!(
+                "Recursive mode; using the following input targets: {:?}",
+                targets
+            );
+            Box::new(
+                targets
+                    .iter()
+                    .map(|p| {
+                        WalkDir::new(p).into_iter().filter_entry(|e| e.metadata().is_ok_and(|m| m.is_file())).map(|s |)
+                    })
+            )
+        } else {
+            debug!("Recursive mode; no input files specified => using CWD.");
+            match env::current_dir() {
+                Ok(cwd) => Box::new(WalkDir::new(cwd)
+                    .into_iter()
+                    .map(|e| Reader::file_reader(e?.path()))),
+                Err(e) => Box::new(iter::once(Err(e))),
+            }
+        }
+    }
 }
 
 fn process_one_target(query: &str, target: Reader) -> Result<Vec<MatchingLine>, io::Error> {

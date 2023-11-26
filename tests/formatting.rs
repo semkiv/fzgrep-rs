@@ -5,7 +5,7 @@ use fzgrep::Request;
 fn default_single_file() {
     let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -57,7 +57,7 @@ fn default_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -140,7 +140,7 @@ fn default_multiple_files() {
 fn line_number_short() {
     let args = ["fzgrep", "-n", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -192,7 +192,7 @@ fn line_number_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -239,7 +239,7 @@ fn line_number_long() {
 fn with_filename_short() {
     let args = ["fzgrep", "-f", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -291,7 +291,7 @@ fn with_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -338,7 +338,7 @@ fn with_filename_long() {
 fn no_filename_short() {
     let args = ["fzgrep", "-F", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -390,7 +390,7 @@ fn no_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -443,7 +443,7 @@ fn no_filename_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -526,7 +526,7 @@ fn no_filename_multiple_files() {
 fn all_options_short() {
     let args = ["fzgrep", "-nf", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(
@@ -579,7 +579,7 @@ fn all_options_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    let matches = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let matches = fzgrep::find_matches(request.query(), request.targets()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.formatting_options());
     let expected = [
         format!(

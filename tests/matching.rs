@@ -1,12 +1,13 @@
 use fzgrep::Request;
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 #[test]
-fn ascii_query() -> Result<(), String> {
+fn ascii_query() -> Result<(), Box<dyn Error>> {
     let args = [
         "fzgrep",
         "contigous",
         "resources/tests/👨‍🔬.txt",
+        "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
@@ -14,16 +15,17 @@ fn ascii_query() -> Result<(), String> {
     let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "contigous");
     assert_eq!(
-        request.input_files(),
+        request.targets(),
         &Some(vec![
             PathBuf::from("resources/tests/👨‍🔬.txt"),
+            PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/тест.txt"),
             PathBuf::from("resources/tests/测试.txt")
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.targets())?;
     assert_eq!(results.len(), 12);
 
     assert_eq!(results[0].location.file_name, "resources/tests/👨‍🔬.txt");
@@ -138,10 +140,11 @@ fn ascii_query() -> Result<(), String> {
 }
 
 #[test]
-fn emoji_query() -> Result<(), String> {
+fn emoji_query() -> Result<(), Box<dyn Error>> {
     let args = [
         "fzgrep",
         "🐣🦀",
+        "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
         "resources/tests/👨‍🔬.txt",
         "resources/tests/тест.txt",
@@ -150,8 +153,9 @@ fn emoji_query() -> Result<(), String> {
     let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
-        request.input_files(),
+        request.targets(),
         &Some(vec![
+            PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/👨‍🔬.txt"),
             PathBuf::from("resources/tests/тест.txt"),
@@ -159,7 +163,7 @@ fn emoji_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.targets())?;
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -190,10 +194,11 @@ fn emoji_query() -> Result<(), String> {
 }
 
 #[test]
-fn cyrillic_query() -> Result<(), String> {
+fn cyrillic_query() -> Result<(), Box<dyn Error>> {
     let args = [
         "fzgrep",
         "тест",
+        "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
         "resources/tests/👨‍🔬.txt",
@@ -202,8 +207,9 @@ fn cyrillic_query() -> Result<(), String> {
     let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "тест");
     assert_eq!(
-        request.input_files(),
+        request.targets(),
         &Some(vec![
+            PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/тест.txt"),
             PathBuf::from("resources/tests/👨‍🔬.txt"),
@@ -211,7 +217,7 @@ fn cyrillic_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.targets())?;
     assert_eq!(results.len(), 8);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
@@ -266,10 +272,11 @@ fn cyrillic_query() -> Result<(), String> {
 }
 
 #[test]
-fn chinese_query() -> Result<(), String> {
+fn chinese_query() -> Result<(), Box<dyn Error>> {
     let args = [
         "fzgrep",
         "打电",
+        "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
@@ -278,8 +285,9 @@ fn chinese_query() -> Result<(), String> {
     let request = Request::new(args.into_iter().map(String::from))?;
     assert_eq!(request.query(), "打电");
     assert_eq!(
-        request.input_files(),
+        request.targets(),
         &Some(vec![
+            PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/тест.txt"),
             PathBuf::from("resources/tests/测试.txt"),
@@ -287,7 +295,7 @@ fn chinese_query() -> Result<(), String> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.input_files()).unwrap();
+    let results = fzgrep::find_matches(request.query(), request.targets())?;
     assert_eq!(results.len(), 4);
 
     assert_eq!(results[0].location.file_name, "resources/tests/test.txt");
