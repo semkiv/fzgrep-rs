@@ -84,9 +84,8 @@ impl Request {
     /// // recursive mode
     /// let args = ["fzgrep", "--recursive", "query", "."];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
-    /// // `--with-filename` is assumed in case of multiple input files
-    /// assert!(request.formatting_options().file_name());
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from(".")]));
+    /// assert!(request.recursive());
     /// ```
     ///
     /// ```
