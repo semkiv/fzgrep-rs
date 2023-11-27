@@ -37,7 +37,10 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[1].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[1].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[1].location.line_number, 6);
     assert_eq!(results[1].content, String::from("contiguous"));
     assert_eq!(results[1].fuzzy_match.score(), 116);
@@ -82,7 +85,10 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[6].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[6].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[6].location.line_number, 4);
     assert_eq!(results[6].content, String::from("Contiguous"));
     assert_eq!(results[6].fuzzy_match.score(), 115);
@@ -127,7 +133,10 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         &vec![24, 25, 26, 27, 31, 33, 54, 75, 116]
     );
 
-    assert_eq!(results[11].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[11].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[11].location.line_number, 1);
     assert_eq!(results[11].content, String::from("Randomly shuffled lines containing ASCII (upper- and lowercase), Cyrillic (upper- and lowercase), Chinese and emoji symbols"));
     assert_eq!(results[11].fuzzy_match.score(), 56);
@@ -193,7 +202,10 @@ fn emoji_query() -> Result<(), Box<dyn Error>> {
     let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
     assert_eq!(results.len(), 5);
 
-    assert_eq!(results[0].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[0].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[0].location.line_number, 2);
     assert_eq!(results[0].content, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[0].fuzzy_match.score(), 4);
@@ -253,7 +265,10 @@ fn cyrillic_query() -> Result<(), Box<dyn Error>> {
     let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
     assert_eq!(results.len(), 10);
 
-    assert_eq!(results[0].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[0].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[0].location.line_number, 3);
     assert_eq!(results[0].content, String::from("тестування"));
     assert_eq!(results[0].fuzzy_match.score(), 46);
@@ -283,7 +298,10 @@ fn cyrillic_query() -> Result<(), Box<dyn Error>> {
     assert_eq!(results[4].fuzzy_match.score(), 46);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
-    assert_eq!(results[5].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[5].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[5].location.line_number, 5);
     assert_eq!(results[5].content, String::from("Текст"));
     assert_eq!(results[5].fuzzy_match.score(), 25);
@@ -343,7 +361,10 @@ fn chinese_query() -> Result<(), Box<dyn Error>> {
     let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
     assert_eq!(results.len(), 5);
 
-    assert_eq!(results[0].location.file_name, "resources/tests/name with spaces.txt");
+    assert_eq!(
+        results[0].location.file_name,
+        "resources/tests/name with spaces.txt"
+    );
     assert_eq!(results[0].location.line_number, 7);
     assert_eq!(results[0].content, String::from("打电动"));
     assert_eq!(results[0].fuzzy_match.score(), 17);
