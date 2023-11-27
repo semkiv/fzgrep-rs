@@ -10,7 +10,8 @@ use std::path::PathBuf;
 #[derive(Debug, PartialEq)]
 pub struct Request {
     query: String,
-    input_files: Option<Vec<PathBuf>>,
+    targets: Option<Vec<PathBuf>>,
+    recursive: bool,
     formatting_options: FormattingOptions,
     quiet: bool,
     verbosity: LevelFilter,
@@ -41,7 +42,8 @@ impl Request {
     /// let args = ["fzgrep", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
     /// assert_eq!(request.query(), "query");
-    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file")]));
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file")]));
+    /// assert!(!request.recursive());
     /// assert!(!request.formatting_options().line_number());
     /// assert!(!request.formatting_options().file_name());
     /// assert!(!request.quiet());
@@ -53,7 +55,16 @@ impl Request {
     /// // no input files - use the standard input
     /// let args = ["fzgrep", "query"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.input_files(), &None);
+    /// assert_eq!(request.targets(), &None);
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// // no input files and `--recursive` flag - use current directory
+    /// let args = ["fzgrep", "--recursive", "query"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.targets(), &None);
+    /// assert!(request.recursive());
     /// ```
     ///
     /// ```
@@ -62,9 +73,19 @@ impl Request {
     /// // multiple input files
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// // `--with-filename` is assumed in case of multiple input files
     /// assert!(request.formatting_options().file_name());
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// use std::path::PathBuf;
+    /// // recursive mode
+    /// let args = ["fzgrep", "--recursive", "query", "."];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from(".")]));
+    /// assert!(request.recursive());
     /// ```
     ///
     /// ```
@@ -142,7 +163,8 @@ impl Request {
 
         Ok(Request {
             query: Request::query_from(&matches)?,
-            input_files: Request::targets_from(&matches),
+            targets: Request::targets_from(&matches),
+            recursive: matches.get_flag("recursive"),
             formatting_options: formatting_options_builder.build(),
             quiet: matches.get_flag("quiet"),
             verbosity: Request::verbosity_from(&matches),
@@ -164,7 +186,8 @@ impl Request {
         &self.query
     }
 
-    /// A simple getter that just returns the list of files.
+    /// A simple getter that just returns the list of input targets,
+    /// files or, potentially (with `--recursive` option), directories.
     ///
     /// # Examples
     ///
@@ -173,11 +196,27 @@ impl Request {
     /// use std::path::PathBuf;
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
-    /// assert_eq!(request.input_files(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// ```
     ///
-    pub fn input_files(&self) -> &Option<Vec<PathBuf>> {
-        &self.input_files
+    pub fn targets(&self) -> &Option<Vec<PathBuf>> {
+        &self.targets
+    }
+
+    /// A simple getter that just returns whether the recursive mode is requested.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fzgrep::Request;
+    /// use std::path::PathBuf;
+    /// let args = ["fzgrep", "--recursive", "query"];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert!(request.recursive());
+    /// ```
+    ///
+    pub fn recursive(&self) -> bool {
+        self.recursive
     }
 
     /// A simple getter that just returns formatting options.
@@ -305,7 +344,7 @@ impl Request {
 
     fn targets_from(matches: &ArgMatches) -> Option<Vec<PathBuf>> {
         matches
-            .get_many::<String>("file")
+            .get_many::<String>("target")
             .map(|files| files.map(PathBuf::from).collect())
     }
 
@@ -322,7 +361,7 @@ impl Request {
 
         // no flags specified, but there are multiple input files -> file names *should* be printed
         if matches
-            .get_many("file")
+            .get_many("target")
             .is_some_and(|fs: ValuesRef<'_, String>| fs.len() > 1)
         {
             return true;
@@ -362,10 +401,21 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .help("Pattern to match"),
         )
         .arg(
-            Arg::new("file")
-                .value_name("FILE")
+            Arg::new("target")
+                .value_name("TARGET")
                 .num_args(0..)
-                .help("Files to search in; if none provided uses standard input"),
+                .help(
+                    "Targets (file or directories) to search in;\n\
+                    if none provided uses current working directory with `--recursive`,\n\
+                    and the standard input otherwise"
+                ),
+        )
+        .arg(
+            Arg::new("recursive")
+                .short('r')
+                .long("recursive")
+                .action(ArgAction::SetTrue)
+                .help("Recurse directories")
         )
         .arg(
             Arg::new("line_number")
@@ -422,14 +472,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn constructor_stdin() {
+    fn constructor_no_targets() {
         let args = ["fzgrep", "query"];
         let request = Request::new(args.into_iter().map(String::from)).unwrap();
         assert_eq!(
             request,
             Request {
                 query: String::from("query"),
-                input_files: None,
+                targets: None,
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -438,14 +489,15 @@ mod tests {
     }
 
     #[test]
-    fn constructor_single_file() {
+    fn constructor_single_target() {
         let args = ["fzgrep", "query", "file"];
         let request = Request::new(args.into_iter().map(String::from)).unwrap();
         assert_eq!(
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -454,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    fn constructor_multiple_files() {
+    fn constructor_multiple_targets() {
         let args = ["fzgrep", "query", "file1", "file2", "file3"];
         let request = Request::new(args.into_iter().map(String::from)).unwrap();
 
@@ -462,11 +514,12 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![
+                targets: Some(vec![
                     PathBuf::from("file1"),
                     PathBuf::from("file2"),
                     PathBuf::from("file3")
                 ]),
+                recursive: false,
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 quiet: false,
@@ -484,11 +537,12 @@ mod tests {
             request,
             Request {
                 query: String::from("🐣🦀"),
-                input_files: Some(vec![
+                targets: Some(vec![
                     PathBuf::from("file1"),
                     PathBuf::from("👨‍🔬.txt"),
                     PathBuf::from("file3")
                 ]),
+                recursive: false,
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 quiet: false,
@@ -506,11 +560,12 @@ mod tests {
             request,
             Request {
                 query: String::from("тест"),
-                input_files: Some(vec![
+                targets: Some(vec![
                     PathBuf::from("file1"),
                     PathBuf::from("тест.txt"),
                     PathBuf::from("file3")
                 ]),
+                recursive: false,
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 quiet: false,
@@ -528,13 +583,48 @@ mod tests {
             request,
             Request {
                 query: String::from("打电"),
-                input_files: Some(vec![
+                targets: Some(vec![
                     PathBuf::from("file1"),
                     PathBuf::from("测试.txt"),
                     PathBuf::from("file3")
                 ]),
+                recursive: false,
                 // with multiple files we implicitly enable file names
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_recursive_short() {
+        let args = ["fzgrep", "-r", "query", "dir"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("dir")]),
+                recursive: true,
+                formatting_options: FormattingOptions::default(),
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_recursive_long() {
+        let args = ["fzgrep", "--recursive", "query", "dir"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("dir")]),
+                recursive: true,
+                formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Error
             }
@@ -549,7 +639,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -565,7 +656,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().line_number(true).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -581,7 +673,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -597,7 +690,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().file_name(true).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -613,7 +707,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -629,7 +724,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptionsBuilder::new().file_name(false).build(),
                 quiet: false,
                 verbosity: LevelFilter::Error
@@ -645,7 +741,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: true,
                 verbosity: LevelFilter::Off
@@ -661,7 +758,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: true,
                 verbosity: LevelFilter::Off
@@ -677,7 +775,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: true,
                 verbosity: LevelFilter::Off
@@ -693,7 +792,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Warn
@@ -709,7 +809,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Warn
@@ -725,7 +826,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Info
@@ -741,7 +843,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Info
@@ -757,7 +860,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Debug
@@ -780,7 +884,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Debug
@@ -796,7 +901,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Trace
@@ -820,7 +926,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Trace
@@ -836,7 +943,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Trace
@@ -861,7 +969,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
                 formatting_options: FormattingOptions::default(),
                 quiet: false,
                 verbosity: LevelFilter::Trace
@@ -871,13 +980,14 @@ mod tests {
 
     #[test]
     fn constructor_all_options_short() {
-        let args = ["fzgrep", "-nfv", "query", "file"];
+        let args = ["fzgrep", "-rnfv", "query", "file"];
         let request = Request::new(args.into_iter().map(String::from)).unwrap();
         assert_eq!(
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: true,
                 formatting_options: FormattingOptionsBuilder::new()
                     .line_number(true)
                     .file_name(true)
@@ -892,6 +1002,7 @@ mod tests {
     fn constructor_all_options_long() {
         let args = [
             "fzgrep",
+            "--recursive",
             "--line-number",
             "--with-filename",
             "--verbose",
@@ -903,7 +1014,8 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                input_files: Some(vec![PathBuf::from("file")]),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: true,
                 formatting_options: FormattingOptionsBuilder::new()
                     .line_number(true)
                     .file_name(true)
@@ -918,7 +1030,8 @@ mod tests {
     fn query() {
         let request = Request {
             query: String::from("test"),
-            input_files: None,
+            targets: None,
+            recursive: false,
             formatting_options: FormattingOptions::default(),
             quiet: false,
             verbosity: LevelFilter::Error,
@@ -930,17 +1043,18 @@ mod tests {
     fn targets() {
         let request = Request {
             query: String::from("test"),
-            input_files: Some(vec![
+            targets: Some(vec![
                 PathBuf::from("File1"),
                 PathBuf::from("File2"),
                 PathBuf::from("File3"),
             ]),
+            recursive: false,
             formatting_options: FormattingOptions::default(),
             quiet: false,
             verbosity: LevelFilter::Error,
         };
         assert_eq!(
-            request.input_files(),
+            request.targets(),
             &Some(vec![
                 PathBuf::from("File1"),
                 PathBuf::from("File2"),
@@ -950,10 +1064,24 @@ mod tests {
     }
 
     #[test]
+    fn recursive() {
+        let request = Request {
+            query: String::from("test"),
+            targets: None,
+            recursive: true,
+            formatting_options: FormattingOptions::default(),
+            quiet: false,
+            verbosity: LevelFilter::Error,
+        };
+        assert!(request.recursive());
+    }
+
+    #[test]
     fn formatting_options() {
         let request = Request {
             query: String::from("test"),
-            input_files: None,
+            targets: None,
+            recursive: false,
             formatting_options: FormattingOptionsBuilder::new()
                 .line_number(true)
                 .file_name(true)
@@ -969,7 +1097,8 @@ mod tests {
     fn verbosity() {
         let request = Request {
             query: String::from("test"),
-            input_files: None,
+            targets: None,
+            recursive: false,
             formatting_options: FormattingOptionsBuilder::new()
                 .line_number(true)
                 .file_name(true)

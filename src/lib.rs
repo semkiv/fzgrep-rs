@@ -10,9 +10,12 @@ use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
 use std::{
+    env, error,
     io::{self, BufRead},
-    path::PathBuf,
+    iter,
+    path::{Path, PathBuf},
 };
+use walkdir::WalkDir;
 
 /// This function handles all the application logic.
 ///
@@ -24,10 +27,11 @@ use std::{
 /// # Errors
 ///
 ///   * [`std::io::Error`] if encounters any I/O related issues.
+///   * [`walkdir::error::Error`] if any errors related to recursive processing occur
 ///
-pub fn run(request: &Request) -> Result<Vec<MatchingLine>, io::Error> {
+pub fn run(request: &Request) -> Result<Vec<MatchingLine>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {:?}", request);
-    let matches = find_matches(request.query(), request.input_files())?;
+    let matches = find_matches(request.query(), request.targets(), request.recursive())?;
     if !request.quiet() && !matches.is_empty() {
         println!(
             "{}",
@@ -42,22 +46,17 @@ pub fn run(request: &Request) -> Result<Vec<MatchingLine>, io::Error> {
 ///
 /// # Errors
 ///
-///   * io::Error if encounters any I/O related issues.
+///   * [`io::Error`] if encounters any I/O related issues.
+///   * [`walkdir::error::Error`] if any errors related to recursive processing occur
 ///
 pub fn find_matches(
     query: &str,
     targets: &Option<Vec<PathBuf>>,
-) -> Result<Vec<MatchingLine>, io::Error> {
-    let readers: Box<dyn Iterator<Item = Reader>> = if let Some(targets) = targets {
-        debug!("Using the following input files: {:?}", targets);
-        Box::new(targets.iter().map_while(|f| Reader::file_reader(f).ok()))
-    } else {
-        debug!("No input files specified, using the standard input.");
-        Box::new(std::iter::once(Reader::stdin_reader()))
-    };
-
+    recursive: bool,
+) -> Result<Vec<MatchingLine>, Box<dyn error::Error>> {
     let mut matches = Vec::new();
-    for reader in readers {
+    for reader in make_readers(targets, recursive) {
+        let reader = reader?;
         debug!("Processing {}.", reader.display_name());
         matches.append(&mut process_one_target(query, reader)?);
     }
@@ -117,6 +116,73 @@ pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> 
     }
 
     ret
+}
+
+fn make_readers(
+    targets: &Option<Vec<PathBuf>>,
+    recursive: bool,
+) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + '_> {
+    if !recursive {
+        // In non-recursive mode we simply create a `Reader` for each of the specified targets
+        // (which are expected to be files in this case).
+        // That is if we have any, otherwise we use the standard input
+        if let Some(targets) = targets {
+            debug!(
+                "*Non*-recursive mode; using the following input files: {:?}",
+                targets
+            );
+            Box::new(
+                targets
+                    .iter()
+                    .map(|p| Reader::file_reader(p).map_err(|e| e.into())),
+            )
+        } else {
+            debug!("*Non*-recursive mode; no input files specified => using STDIN.");
+            Box::new(iter::once(Ok(Reader::stdin_reader())))
+        }
+    } else {
+        // In recursive mode on the other hand we have to account for the fact
+        // that targets can potentially be directories, so we have to process each of them recursively.
+        // Again, that is if we have any, otherwise we use the current working directory.
+        if let Some(targets) = targets {
+            debug!(
+                "Recursive mode; using the following input targets: {:?}",
+                targets
+            );
+            make_recursive_reader_iterator(targets.iter())
+        } else {
+            debug!("Recursive mode; no input files specified => using CWD.");
+            make_recursive_cwd_reader_iterator()
+        }
+    }
+}
+
+fn make_recursive_reader_iterator<'item>(
+    targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
+) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
+    Box::new(targets.flat_map(WalkDir::new).filter_map(|item| {
+        item.map_or_else(
+            |e| Some(Err(e.into())),
+            |d| {
+                d.metadata().map_or_else(
+                    |e| Some(Err(e.into())),
+                    |m| {
+                        m.is_file()
+                            .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
+                    },
+                )
+            },
+        )
+    }))
+}
+
+fn make_recursive_cwd_reader_iterator(
+) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>>> {
+    env::current_dir()
+        .map_or_else::<Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>>>, _, _>(
+            |e| Box::new(iter::once(Err(e.into()))),
+            |cwd| make_recursive_reader_iterator(iter::once(cwd)),
+        )
 }
 
 fn process_one_target(query: &str, target: Reader) -> Result<Vec<MatchingLine>, io::Error> {
