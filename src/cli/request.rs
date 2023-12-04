@@ -90,6 +90,16 @@ impl Request {
     ///
     /// ```
     /// use fzgrep::Request;
+    /// use std::path::PathBuf;
+    /// // recursive mode
+    /// let args = ["fzgrep", "--recursive", "query", "."];
+    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from(".")]));
+    /// assert!(request.recursive());
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::Request;
     /// // request line numbers to be printed
     /// let args = ["fzgrep", "--line-number", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
@@ -636,46 +646,6 @@ mod tests {
                 targets: Some(vec![PathBuf::from("dir")]),
                 recursive: true,
                 formatting_options: FormattingOptions::default(),
-                quiet: false,
-                verbosity: LevelFilter::Error
-            }
-        );
-    }
-
-    #[test]
-    fn constructor_line_number_short() {
-        let args = ["fzgrep", "-n", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
-        assert_eq!(
-            request,
-            Request {
-                query: String::from("query"),
-                targets: Some(vec![PathBuf::from("file")]),
-                recursive: false,
-                formatting_options: FormattingOptions {
-                    line_number: true,
-                    ..Default::default()
-                },
-                quiet: false,
-                verbosity: LevelFilter::Error
-            }
-        );
-    }
-
-    #[test]
-    fn constructor_line_number_long() {
-        let args = ["fzgrep", "--line-number", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
-        assert_eq!(
-            request,
-            Request {
-                query: String::from("query"),
-                targets: Some(vec![PathBuf::from("file")]),
-                recursive: false,
-                formatting_options: FormattingOptions {
-                    line_number: true,
-                    ..Default::default()
-                },
                 quiet: false,
                 verbosity: LevelFilter::Error
             }
