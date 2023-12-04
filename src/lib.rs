@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{FormattingOptions, FormattingOptionsBuilder, Request};
+pub use cli::{FormattingOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use colored::Colorize;
@@ -101,10 +101,10 @@ pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> 
             }
         }
 
-        if options.file_name() {
+        if options.file_name {
             ret.push_str(&format!("{file_name}:"));
         }
-        if options.line_number() {
+        if options.line_number {
             ret.push_str(&format!("{line_number}:"));
         }
 
@@ -287,7 +287,10 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptionsBuilder::new().line_number(true).build()
+                &FormattingOptions {
+                    line_number: true,
+                    ..Default::default()
+                }
             ),
             format!(
                 "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
@@ -332,7 +335,10 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptionsBuilder::new().file_name(true).build()
+                &FormattingOptions {
+                    file_name: true,
+                    ..Default::default()
+                }
             ),
             format!(
                 "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
@@ -377,10 +383,10 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptionsBuilder::new()
-                    .line_number(true)
-                    .file_name(true)
-                    .build()
+                &FormattingOptions {
+                    line_number: true,
+                    file_name: true
+                }
             ),
             format!(
                 "First:42:{}{}st\nSecond:100500:tes{}\nThird:13:{}{}s{}",
