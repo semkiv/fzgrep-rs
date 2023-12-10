@@ -7,7 +7,7 @@ fn default_single_file() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
@@ -60,7 +60,7 @@ fn default_multiple_files() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
@@ -144,7 +144,7 @@ fn line_number_short() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "3:{}{}{}{}{}{}u{}{}{}",
@@ -197,7 +197,7 @@ fn line_number_long() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "3:{}{}{}{}{}{}u{}{}{}",
@@ -245,7 +245,7 @@ fn with_filename_short() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
@@ -298,7 +298,7 @@ fn with_filename_long() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
@@ -346,7 +346,7 @@ fn no_filename_short() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
@@ -399,7 +399,7 @@ fn no_filename_long() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
@@ -453,7 +453,7 @@ fn no_filename_multiple_files() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}{}u{}{}{}",
@@ -537,7 +537,7 @@ fn all_options_short() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",
@@ -591,7 +591,7 @@ fn all_options_long() {
     let request = Request::new(args.into_iter().map(String::from)).unwrap();
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.formatting_options());
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",

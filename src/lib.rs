@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{FormattingOptions, Request};
+pub use cli::{OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use colored::Colorize;
@@ -35,7 +35,7 @@ pub fn run(request: &Request) -> Result<Vec<MatchingLine>, Box<dyn error::Error>
     if !request.quiet() && !matches.is_empty() {
         println!(
             "{}",
-            format_results(&matches, &request.formatting_options())
+            format_results(&matches, &request.output_options())
         );
     }
     Ok(matches)
@@ -76,7 +76,7 @@ pub fn find_matches(
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> String {
+pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> String {
     let mut ret = String::new();
     let mut match_itr = matches.iter().peekable();
     while let Some(m) = match_itr.next() {
@@ -215,7 +215,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn results_formatting_default() {
+    fn results_output_options_default() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -243,7 +243,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &FormattingOptions::default()),
+            format_results(&results, &OutputOptions::default()),
             format!(
                 "{}{}st\ntes{}\n{}{}s{}",
                 "t".blue(),
@@ -257,7 +257,7 @@ mod test {
     }
 
     #[test]
-    fn results_formatting_line_number() {
+    fn results_output_options_line_number() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -287,7 +287,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
                     line_number: true,
                     ..Default::default()
                 }
@@ -305,7 +305,7 @@ mod test {
     }
 
     #[test]
-    fn results_formatting_file_name() {
+    fn results_output_options_file_name() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -335,7 +335,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
                     file_name: true,
                     ..Default::default()
                 }
@@ -353,7 +353,7 @@ mod test {
     }
 
     #[test]
-    fn results_formatting_all_options() {
+    fn results_output_options_all_options() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -383,7 +383,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
                     line_number: true,
                     file_name: true
                 }

@@ -1,5 +1,5 @@
-pub mod formatting_options;
+pub mod output_options;
 pub mod request;
 
-pub use formatting_options::FormattingOptions;
+pub use output_options::OutputOptions;
 pub use request::Request;
