@@ -12,6 +12,7 @@ use std::{
     env, error,
     io::{self, BufRead},
     iter,
+    ops::Range,
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
@@ -33,10 +34,7 @@ pub fn run(request: &Request) -> Result<Vec<MatchingLine>, Box<dyn error::Error>
     debug!("Running with the following configuration: {:?}", request);
     let matches = find_matches(request.query(), request.targets(), request.recursive())?;
     if !request.quiet() && !matches.is_empty() {
-        println!(
-            "{}",
-            format_results(&matches, &request.output_options())
-        );
+        println!("{}", format_results(&matches, &request.output_options()));
     }
     Ok(matches)
 }
@@ -91,15 +89,27 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
         } = m;
 
         let mut colored_target = String::new();
-        let mut matches_it = fuzzy_match.positions().iter().peekable();
-        for (index, ch) in content.chars().enumerate() {
-            if matches_it.peek().is_some_and(|pos| **pos == index) {
-                colored_target.push_str(&Paint::blue(ch).to_string());
-                matches_it.next();
-            } else {
-                colored_target.push(ch);
-            }
+        let mut str_itr = content.chars();
+        let mut previous_range_end = 0usize;
+        for range in group_indices(fuzzy_match.positions()) {
+            colored_target.push_str(
+                &str_itr
+                    .by_ref()
+                    .take(range.start - previous_range_end)
+                    .collect::<String>(),
+            );
+            colored_target.push_str(
+                &Paint::blue(
+                    str_itr
+                        .by_ref()
+                        .take(range.end - range.start)
+                        .collect::<String>(),
+                )
+                .to_string(),
+            );
+            previous_range_end = range.end;
         }
+        colored_target.push_str(&str_itr.collect::<String>());
 
         if options.file_name {
             ret.push_str(&format!("{file_name}:"));
@@ -210,6 +220,37 @@ fn process_one_target(query: &str, target: Reader) -> Result<Vec<MatchingLine>, 
     Ok(ret)
 }
 
+fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
+    if indices.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ret = Vec::new();
+    let mut itr = indices.iter();
+    // we've already handled the case of an empty input, it is safe to unwrap
+    let mut start = *itr.next().unwrap();
+
+    for (i, x) in itr.enumerate() {
+        if x - indices[i] != 1 {
+            let end = indices[i];
+            ret.push(Range {
+                start,
+                end: end + 1,
+            });
+            start = *x;
+        }
+    }
+    // again, the case of an empty input is already handled so it is safe to unwrap here too
+    ret.push(Range {
+        start,
+        end: indices.last().unwrap() + 1,
+    });
+
+    debug!("Match indices {:?} -> ranges {:?}", indices, ret);
+
+    ret
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -245,12 +286,10 @@ mod test {
         assert_eq!(
             format_results(&results, &OutputOptions::default()),
             format!(
-                "{}{}st\ntes{}\n{}{}s{}",
+                "{}st\ntes{}\n{}s{}",
+                Paint::blue("te"),
                 Paint::blue('t'),
-                Paint::blue('e'),
-                Paint::blue('t'),
-                Paint::blue('t'),
-                Paint::blue('e'),
+                Paint::blue("te"),
                 Paint::blue('t')
             )
         )
@@ -293,12 +332,10 @@ mod test {
                 }
             ),
             format!(
-                "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
+                "42:{}st\n100500:tes{}\n13:{}s{}",
+                Paint::blue("te"),
                 Paint::blue('t'),
-                Paint::blue('e'),
-                Paint::blue('t'),
-                Paint::blue('t'),
-                Paint::blue('e'),
+                Paint::blue("te"),
                 Paint::blue('t')
             )
         )
@@ -341,12 +378,10 @@ mod test {
                 }
             ),
             format!(
-                "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
+                "First:{}st\nSecond:tes{}\nThird:{}s{}",
+                Paint::blue("te"),
                 Paint::blue('t'),
-                Paint::blue('e'),
-                Paint::blue('t'),
-                Paint::blue('t'),
-                Paint::blue('e'),
+                Paint::blue("te"),
                 Paint::blue('t')
             )
         )
@@ -389,12 +424,10 @@ mod test {
                 }
             ),
             format!(
-                "First:42:{}{}st\nSecond:100500:tes{}\nThird:13:{}{}s{}",
+                "First:42:{}st\nSecond:100500:tes{}\nThird:13:{}s{}",
+                Paint::blue("te"),
                 Paint::blue('t'),
-                Paint::blue('e'),
-                Paint::blue('t'),
-                Paint::blue('t'),
-                Paint::blue('e'),
+                Paint::blue("te"),
                 Paint::blue('t')
             )
         )

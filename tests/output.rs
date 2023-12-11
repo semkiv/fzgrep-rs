@@ -10,35 +10,18 @@ fn default_single_file() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -63,11 +46,28 @@ fn default_multiple_files() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "resources/tests/тест.txt:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "resources/tests/тест.txt:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "resources/tests/test.txt:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -75,59 +75,8 @@ fn default_multiple_files() {
             Paint::blue('s')
         ),
         format!(
-            "resources/tests/тест.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "resources/tests/тест.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "resources/tests/test.txt:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "resources/tests/тест.txt:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/тест.txt:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -147,35 +96,18 @@ fn line_number_short() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "3:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "3:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "4:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "4:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "1:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "1:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -200,35 +132,18 @@ fn line_number_long() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "3:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "3:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "4:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "4:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "1:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "1:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -248,35 +163,18 @@ fn with_filename_short() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/test.txt:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -301,35 +199,18 @@ fn with_filename_long() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/test.txt:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -349,35 +230,18 @@ fn no_filename_short() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -402,35 +266,18 @@ fn no_filename_long() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -456,11 +303,28 @@ fn no_filename_multiple_files() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
+        ),
+        format!(
+            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -468,59 +332,8 @@ fn no_filename_multiple_files() {
             Paint::blue('s')
         ),
         format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
-        ),
-        format!(
-            "Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -540,35 +353,18 @@ fn all_options_short() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:3:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:4:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:4:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:1:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/test.txt:1:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
@@ -594,35 +390,18 @@ fn all_options_long() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "resources/tests/test.txt:3:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:3:{}u{}",
+            Paint::blue("contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:4:{}{}{}{}{}{}u{}{}{}",
-            Paint::blue('C'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
-            Paint::blue('i'),
-            Paint::blue('g'),
-            Paint::blue('o'),
-            Paint::blue('u'),
-            Paint::blue('s')
+            "resources/tests/test.txt:4:{}u{}",
+            Paint::blue("Contig"),
+            Paint::blue("ous")
         ),
         format!(
-            "resources/tests/test.txt:1:Randomly shuffled lines {}{}{}{}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::blue('c'),
-            Paint::blue('o'),
-            Paint::blue('n'),
-            Paint::blue('t'),
+            "resources/tests/test.txt:1:Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
+            Paint::blue("cont"),
             Paint::blue('i'),
             Paint::blue('g'),
             Paint::blue('o'),
