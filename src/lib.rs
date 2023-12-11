@@ -5,7 +5,6 @@ mod matching_results;
 pub use cli::{OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
-use colored::Colorize;
 use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
@@ -16,6 +15,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
+use yansi::Paint;
 
 /// This function handles all the application logic.
 ///
@@ -94,7 +94,7 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
         let mut matches_it = fuzzy_match.positions().iter().peekable();
         for (index, ch) in content.chars().enumerate() {
             if matches_it.peek().is_some_and(|pos| **pos == index) {
-                colored_target.push_str(&ch.to_string().blue().to_string());
+                colored_target.push_str(&Paint::blue(ch).to_string());
                 matches_it.next();
             } else {
                 colored_target.push(ch);
@@ -246,12 +246,12 @@ mod test {
             format_results(&results, &OutputOptions::default()),
             format!(
                 "{}{}st\ntes{}\n{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t'),
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t')
             )
         )
     }
@@ -294,12 +294,12 @@ mod test {
             ),
             format!(
                 "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t'),
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t')
             )
         )
     }
@@ -342,12 +342,12 @@ mod test {
             ),
             format!(
                 "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t'),
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t')
             )
         )
     }
@@ -390,12 +390,12 @@ mod test {
             ),
             format!(
                 "First:42:{}{}st\nSecond:100500:tes{}\nThird:13:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t'),
+                Paint::blue('t'),
+                Paint::blue('e'),
+                Paint::blue('t')
             )
         )
     }
