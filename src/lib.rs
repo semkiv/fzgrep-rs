@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{OutputOptions, Request};
+pub use cli::{FormattingBehavior, FormattingOptions, OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use core::reader::Reader;
@@ -92,30 +92,87 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
         let mut str_itr = content.chars();
         let mut previous_range_end = 0usize;
         for range in group_indices(fuzzy_match.positions()) {
-            colored_target.push_str(
-                &str_itr
+            {
+                let preceding_non_match = str_itr
                     .by_ref()
                     .take(range.start - previous_range_end)
-                    .collect::<String>(),
-            );
-            colored_target.push_str(
-                &Paint::blue(
-                    str_itr
-                        .by_ref()
-                        .take(range.end - range.start)
-                        .collect::<String>(),
-                )
-                .to_string(),
-            );
+                    .collect::<String>();
+                if !preceding_non_match.is_empty() {
+                    match options.formatting {
+                        FormattingBehavior::Never => {
+                            colored_target.push_str(&preceding_non_match);
+                        }
+                        FormattingBehavior::Auto(formatting)
+                        | FormattingBehavior::Always(formatting) => {
+                            colored_target.push_str(
+                                &Paint::new(preceding_non_match)
+                                    .with_style(formatting.selected_line)
+                                    .to_string(),
+                            );
+                        }
+                    }
+                }
+            }
+            {
+                let matching_part = str_itr
+                    .by_ref()
+                    .take(range.end - range.start)
+                    .collect::<String>();
+                match options.formatting {
+                    FormattingBehavior::Never => {
+                        colored_target.push_str(&matching_part);
+                    }
+                    FormattingBehavior::Auto(formatting)
+                    | FormattingBehavior::Always(formatting) => {
+                        colored_target.push_str(
+                            &Paint::new(matching_part)
+                                .with_style(formatting.selected_match)
+                                .to_string(),
+                        );
+                    }
+                }
+            }
             previous_range_end = range.end;
         }
-        colored_target.push_str(&str_itr.collect::<String>());
+        let remaining_non_match = str_itr.collect::<String>();
+        if !remaining_non_match.is_empty() {
+            match options.formatting {
+                FormattingBehavior::Never => colored_target.push_str(&remaining_non_match),
+                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
+                    colored_target.push_str(
+                        &Paint::new(remaining_non_match)
+                            .with_style(formatting.selected_line)
+                            .to_string(),
+                    )
+                }
+            }
+        }
 
         if options.file_name {
-            ret.push_str(&format!("{file_name}:"));
+            match options.formatting {
+                FormattingBehavior::Never => ret.push_str(&format!("{file_name}:")),
+                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
+                    ret.push_str(
+                        &Paint::new(file_name)
+                            .with_style(formatting.file_name)
+                            .to_string(),
+                    );
+                    ret.push_str(&Paint::new(':').with_style(formatting.separator).to_string());
+                }
+            }
         }
         if options.line_number {
-            ret.push_str(&format!("{line_number}:"));
+            match options.formatting {
+                FormattingBehavior::Never => ret.push_str(&format!("{line_number}:")),
+                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
+                    ret.push_str(
+                        &Paint::new(line_number)
+                            .with_style(formatting.line_number)
+                            .to_string(),
+                    );
+                    ret.push_str(&Paint::new(':').with_style(formatting.separator).to_string());
+                }
+            }
         }
 
         ret.push_str(&colored_target);
@@ -253,6 +310,10 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod test {
+    use yansi::{Color, Style};
+
+    use crate::cli::output_options::{FormattingBehavior, FormattingOptions};
+
     use super::*;
 
     #[test]
@@ -287,10 +348,10 @@ mod test {
             format_results(&results, &OutputOptions::default()),
             format!(
                 "{}st\ntes{}\n{}s{}",
-                Paint::blue("te"),
-                Paint::blue('t'),
-                Paint::blue("te"),
-                Paint::blue('t')
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
             )
         )
     }
@@ -332,11 +393,17 @@ mod test {
                 }
             ),
             format!(
-                "42:{}st\n100500:tes{}\n13:{}s{}",
-                Paint::blue("te"),
-                Paint::blue('t'),
-                Paint::blue("te"),
-                Paint::blue('t')
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
             )
         )
     }
@@ -378,11 +445,128 @@ mod test {
                 }
             ),
             format!(
-                "First:{}st\nSecond:tes{}\nThird:{}s{}",
-                Paint::blue("te"),
-                Paint::blue('t'),
-                Paint::blue("te"),
-                Paint::blue('t')
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_options_formatting_custom() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    file_name: true,
+                    line_number: true,
+                    formatting: FormattingBehavior::Always(FormattingOptions::plain())
+                }
+            ),
+            "First:42:test\nSecond:100500:test\nThird:13:test"
+        )
+    }
+
+    #[test]
+    fn results_output_options_formatting_plain() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    file_name: true,
+                    line_number: true,
+                    formatting: FormattingBehavior::Always(FormattingOptions {
+                        selected_match: Style::new(Color::Green),
+                        context_match: Style::new(Color::Green),
+                        line_number: Style::new(Color::Cyan),
+                        file_name: Style::new(Color::Cyan),
+                        separator: Style::new(Color::Fixed(50)),
+                        selected_line: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                        context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                    })
+                }
+            ),
+            format!(
+                "{}{}{}{}{}{}\n{}{}{}{}{}{}\n{}{}{}{}{}{}{}",
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("42"),
+                Paint::fixed(50, ':'),
+                Paint::green("te"),
+                Paint::rgb(127, 127, 127, "st").dimmed(),
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100500"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "tes").dimmed(),
+                Paint::green('t'),
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("13"),
+                Paint::fixed(50, ':'),
+                Paint::green("te"),
+                Paint::rgb(127, 127, 127, 's').dimmed(),
+                Paint::green('t')
             )
         )
     }
@@ -420,15 +604,33 @@ mod test {
                 &results,
                 &OutputOptions {
                     line_number: true,
-                    file_name: true
+                    file_name: true,
+                    formatting: FormattingBehavior::Always(FormattingOptions {
+                        selected_match: Style::new(Color::RGB(100, 150, 200))
+                            .bg(Color::Yellow)
+                            .italic(),
+                        ..Default::default()
+                    })
                 }
             ),
             format!(
-                "First:42:{}st\nSecond:100500:tes{}\nThird:13:{}s{}",
-                Paint::blue("te"),
-                Paint::blue('t'),
-                Paint::blue("te"),
-                Paint::blue('t')
+                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
             )
         )
     }

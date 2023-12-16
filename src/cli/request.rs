@@ -1,7 +1,14 @@
+use crate::cli::error::{
+    ColorOverrideParsingError, ColorSequenceParsingError, StyleSequenceParsingError,
+};
+use crate::cli::output_options::FormattingOptions;
 use crate::cli::output_options::OutputOptions;
 use clap::{parser::ValuesRef, Arg, ArgAction, ArgMatches, Command};
-use log::LevelFilter;
+use log::{warn, LevelFilter};
 use std::path::PathBuf;
+use yansi::{Color, Style};
+
+use super::output_options::FormattingBehavior;
 
 /// Represents a run configuration.
 ///
@@ -154,7 +161,7 @@ impl Request {
     /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
     /// ```
     ///
-    pub fn new(args: impl Iterator<Item = String>) -> Result<Request, String> {
+    pub fn new(args: impl Iterator<Item = String>) -> Result<Self, String> {
         let matches = match_command_line_args(args);
 
         Ok(Request {
@@ -164,6 +171,7 @@ impl Request {
             output_options: OutputOptions {
                 line_number: matches.get_flag("line_number"),
                 file_name: Request::file_name_from(&matches),
+                formatting: Request::formatting_from(&matches),
             },
             quiet: matches.get_flag("quiet"),
             verbosity: Request::verbosity_from(&matches),
@@ -383,6 +391,178 @@ impl Request {
             4.. => LevelFilter::Trace,
         }
     }
+
+    fn formatting_from(matches: &ArgMatches) -> FormattingBehavior {
+        if let Some(behavior) = matches.get_one::<String>("color") {
+            let behavior = behavior.as_str();
+            match behavior {
+                "auto" | "always" => {
+                    let formatting_options = matches
+                        .get_one::<FormattingOptions>("color_overrides")
+                        .cloned()
+                        .unwrap_or_default();
+                    match behavior {
+                        "auto" => FormattingBehavior::Auto(formatting_options),
+                        "always" => FormattingBehavior::Always(formatting_options),
+                        _ => unreachable!(),
+                    }
+                }
+                "never" => FormattingBehavior::Never,
+                _ => unreachable!(),
+            }
+        } else {
+            FormattingBehavior::default()
+        }
+    }
+
+    fn color_overrides_parser(
+        grep_sequence: &str,
+    ) -> Result<FormattingOptions, ColorOverrideParsingError> {
+        let mut options = FormattingOptions::default();
+
+        for token in grep_sequence.split(':') {
+            if let Some((cap, sgr)) = token.split_once('=') {
+                match cap {
+                    "ms" => {
+                        options.selected_match = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "mc" => {
+                        options.context_match = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "ln" => {
+                        options.line_number = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "fn" => {
+                        options.file_name = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "se" => {
+                        options.separator = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "sl" => {
+                        options.selected_line = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "cx" => {
+                        options.context = Request::style_from(sgr)
+                            .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    }
+                    "bn" | "mt" => {
+                        return Err(ColorOverrideParsingError::UnsupportedCapability(
+                            cap.to_string(),
+                        ));
+                    }
+                    _ => {
+                        return Err(ColorOverrideParsingError::BadCapability(cap.to_string()));
+                    }
+                }
+            } else {
+                return Err(ColorOverrideParsingError::NotAnOverride(token.to_string()));
+            }
+        }
+
+        Ok(options)
+    }
+
+    fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
+        let mut style = Style::default();
+        let mut itr = sgr_sequence.split(';');
+        while let Some(token) = itr.next() {
+            if token.is_empty() {
+                continue;
+            }
+
+            let code = token
+                .parse::<u8>()
+                .map_err(|e| StyleSequenceParsingError::NotACode(token.to_string(), e))?;
+            match code {
+                0 => {}
+                1 => style = style.bold(),
+                2 => style = style.dimmed(),
+                3 => style = style.italic(),
+                4 => style = style.underline(),
+                5 | 6 => {
+                    warn!("Slow and rapid blinks are treated the same way");
+                    style = style.blink();
+                }
+                7 => style = style.invert(),
+                8 => style = style.hidden(),
+                9 => style = style.strikethrough(),
+                30..=39 => {
+                    style = style.fg(Request::color_from(code, &mut itr)
+                        .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                }
+                40..=49 => {
+                    style = style.bg(Request::color_from(code, &mut itr)
+                        .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                }
+                10..=29 | 50..=107 => return Err(StyleSequenceParsingError::UnsupportedCode(code)),
+                _ => return Err(StyleSequenceParsingError::BadCode(code)),
+            }
+        }
+
+        Ok(style)
+    }
+
+    fn color_from<'a>(
+        code: u8,
+        itr: &mut impl Iterator<Item = &'a str>,
+    ) -> Result<Color, ColorSequenceParsingError> {
+        let code_suffix = code % 10;
+        match code_suffix {
+            0 => Ok(Color::Black),
+            1 => Ok(Color::Red),
+            2 => Ok(Color::Green),
+            3 => Ok(Color::Yellow),
+            4 => Ok(Color::Blue),
+            5 => Ok(Color::Magenta),
+            6 => Ok(Color::Cyan),
+            7 => Ok(Color::White),
+            8 => {
+                if let Some(differentiator) = itr.next() {
+                    let differentiator = differentiator.parse::<u8>().map_err(|e| {
+                        ColorSequenceParsingError::NotACode(differentiator.to_string(), e)
+                    })?;
+                    match differentiator {
+                        2 => match (itr.next(), itr.next(), itr.next()) {
+                            (Some(r), Some(g), Some(b)) => {
+                                let r = r.parse::<u8>().map_err(|e| {
+                                    ColorSequenceParsingError::NotACode(r.to_string(), e)
+                                })?;
+                                let g = g.parse::<u8>().map_err(|e| {
+                                    ColorSequenceParsingError::NotACode(g.to_string(), e)
+                                })?;
+                                let b = b.parse::<u8>().map_err(|e| {
+                                    ColorSequenceParsingError::NotACode(b.to_string(), e)
+                                })?;
+                                Ok(Color::RGB(r, g, b))
+                            }
+                            _ => Err(ColorSequenceParsingError::BadTrueColor),
+                        },
+                        5 => {
+                            if let Some(n) = itr.next() {
+                                let n = n.parse::<u8>().map_err(|e| {
+                                    ColorSequenceParsingError::NotACode(n.to_string(), e)
+                                })?;
+                                Ok(Color::Fixed(n))
+                            } else {
+                                Err(ColorSequenceParsingError::BadFixedColor)
+                            }
+                        }
+                        _ => Err(ColorSequenceParsingError::BadColorType(differentiator)),
+                    }
+                } else {
+                    Err(ColorSequenceParsingError::IncompleteSequence)
+                }
+            }
+            9 => Ok(Color::Default),
+            _ => unreachable!(),
+        }
+    }
 }
 
 fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
@@ -461,6 +641,39 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                     \t'-vv' additionally enables info messages;\n\
                     \t'-vvv' additionally enables debug messages;\n\
                     \tand '-vvvv' additionally enables trace messages."
+                )
+        )
+        .arg(
+            Arg::new("color")
+                .long("color")
+                .visible_alias("colour")
+                .value_parser(["always", "auto", "never"])
+                .default_value("auto")
+                .help(
+                    "Display matched strings, lines, context, file names, line numbers and separators in color.\n\
+                    With 'auto' the output is colored only when the standard input is connected to a terminal."
+                )
+        )
+        .arg(
+            Arg::new("color_overrides")
+                .long("color-overrides")
+                .visible_alias("colour-overrides")
+                .value_parser(Request::color_overrides_parser)
+                .help(
+                    "Controls how the '--color' option highlights output.\n\
+                    The format follows 'grep' and the value is expected to be a colon-separated list of capabilities\n\
+                    Supported capabilities are as follows:\n\
+                    \t'ms=' color for matching text in a selected line\n\
+                    \t'mc=' color for matching text in a context line\n\
+                    \t'ln=' color for line numbers\n\
+                    \t'fn=' color for file names\n\
+                    \t'se=' color for separators\n\
+                    \t'sl=' color for the whole selected line (including the non-matching part)\n\
+                    \t'cx=' color for the whole context (including the non-matching part)\n\
+                    Note that some of `grep` capabilities (e.g. 'rv', 'ne', 'mt=', 'bn=') are not available\n\
+                    The default behavior is equivalent to '--color-overrides ms=01;31:mc=01;31:sl=:cx=:fn=35:ln=32:se=36'.\n\
+                    For more information see 'grep' documentation: https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT\n\
+                    and/or ASCII escape codes: https://en.wikipedia.org/wiki/ANSI_escape_code."
                 )
         )
         .get_matches_from(args)
@@ -968,6 +1181,97 @@ mod tests {
     }
 
     #[test]
+    fn constructor_color_auto() {
+        let args = ["fzgrep", "--color", "auto", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions::default(),
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_always() {
+        let args = ["fzgrep", "--color", "always", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Always(FormattingOptions::default()),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_never() {
+        let args = ["fzgrep", "--color", "never", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Never,
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=01;34;43:mc=01;34;48;5;177:sl=02;37:cx=02;37:fn=04;38;5;51:ln=03;04;38;2;127;127;127:se=35;48;2;0;192;0",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Blue).bg(Color::Yellow).bold(),
+                        context_match: Style::new(Color::Blue).bg(Color::Fixed(177)).bold(),
+                        selected_line: Style::new(Color::White).dimmed(),
+                        context: Style::new(Color::White).dimmed(),
+                        file_name: Style::new(Color::Fixed(51)).underline(),
+                        line_number: Style::new(Color::RGB(127, 127, 127)).italic().underline(),
+                        separator: Style::new(Color::Magenta).bg(Color::RGB(0, 192, 0))
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
     fn constructor_all_options_short() {
         let args = ["fzgrep", "-rnfv", "query", "file"];
         let request = Request::new(args.into_iter().map(String::from)).unwrap();
@@ -979,7 +1283,8 @@ mod tests {
                 recursive: true,
                 output_options: OutputOptions {
                     line_number: true,
-                    file_name: true
+                    file_name: true,
+                    formatting: FormattingBehavior::default(),
                 },
                 quiet: false,
                 verbosity: LevelFilter::Warn
@@ -995,6 +1300,10 @@ mod tests {
             "--line-number",
             "--with-filename",
             "--verbose",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=05;34",
             "query",
             "file",
         ];
@@ -1007,7 +1316,11 @@ mod tests {
                 recursive: true,
                 output_options: OutputOptions {
                     line_number: true,
-                    file_name: true
+                    file_name: true,
+                    formatting: FormattingBehavior::Always(FormattingOptions {
+                        selected_match: Style::new(Color::Blue).blink(),
+                        ..Default::default()
+                    }),
                 },
                 quiet: false,
                 verbosity: LevelFilter::Warn
@@ -1074,6 +1387,7 @@ mod tests {
             output_options: OutputOptions {
                 line_number: true,
                 file_name: true,
+                formatting: FormattingBehavior::default(),
             },
             quiet: false,
             verbosity: LevelFilter::Error,
@@ -1091,10 +1405,15 @@ mod tests {
             output_options: OutputOptions {
                 line_number: true,
                 file_name: true,
+                formatting: FormattingBehavior::default(),
             },
             quiet: false,
             verbosity: LevelFilter::Debug,
         };
         assert_eq!(request.verbosity(), LevelFilter::Debug);
     }
+
+    todo!(
+        "Add tests that cover error cases, specifically formatting sequence parsing related errors"
+    );
 }
