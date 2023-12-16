@@ -4,7 +4,7 @@ use yansi::Paint;
 #[test]
 fn default_single_file() {
     let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -40,7 +40,7 @@ fn default_multiple_files() {
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -102,7 +102,7 @@ fn default_multiple_files() {
 #[test]
 fn line_number_short() {
     let args = ["fzgrep", "-n", "contigous", "resources/tests/test.txt"];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -144,7 +144,7 @@ fn line_number_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -181,7 +181,7 @@ fn line_number_long() {
 #[test]
 fn with_filename_short() {
     let args = ["fzgrep", "-f", "contigous", "resources/tests/test.txt"];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -223,7 +223,7 @@ fn with_filename_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -260,7 +260,7 @@ fn with_filename_long() {
 #[test]
 fn no_filename_short() {
     let args = ["fzgrep", "-F", "contigous", "resources/tests/test.txt"];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -296,7 +296,7 @@ fn no_filename_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -333,7 +333,7 @@ fn no_filename_multiple_files() {
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -383,7 +383,7 @@ fn no_filename_multiple_files() {
 #[test]
 fn all_options_short() {
     let args = ["fzgrep", "-nf", "contigous", "resources/tests/test.txt"];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());
@@ -436,7 +436,7 @@ fn all_options_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    let request = Request::new(args.into_iter().map(String::from));
     let matches =
         fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
     let formatted = fzgrep::format_results(&matches, &request.output_options());

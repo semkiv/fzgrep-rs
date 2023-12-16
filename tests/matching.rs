@@ -12,7 +12,7 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "contigous");
     assert_eq!(
         request.targets(),
@@ -186,7 +186,7 @@ fn emoji_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "🐣🦀");
     assert_eq!(
         request.targets(),
@@ -249,7 +249,7 @@ fn cyrillic_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/👨‍🔬.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "тест");
     assert_eq!(
         request.targets(),
@@ -345,7 +345,7 @@ fn chinese_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/测试.txt",
         "resources/tests/👨‍🔬.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "打电");
     assert_eq!(
         request.targets(),

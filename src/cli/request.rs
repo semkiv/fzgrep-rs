@@ -47,7 +47,7 @@ impl Request {
     /// use std::path::PathBuf;
     /// // basic usage
     /// let args = ["fzgrep", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file")]));
     /// assert!(!request.recursive());
@@ -61,7 +61,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // no input files - use the standard input
     /// let args = ["fzgrep", "query"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.targets(), &None);
     /// ```
     ///
@@ -69,7 +69,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // no input files and `--recursive` flag - use current directory
     /// let args = ["fzgrep", "--recursive", "query"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.targets(), &None);
     /// assert!(request.recursive());
     /// ```
@@ -79,7 +79,7 @@ impl Request {
     /// use std::path::PathBuf;
     /// // multiple input files
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// // `--with-filename` is assumed in case of multiple input files
     /// assert!(request.output_options().file_name);
@@ -90,7 +90,7 @@ impl Request {
     /// use std::path::PathBuf;
     /// // recursive mode
     /// let args = ["fzgrep", "--recursive", "query", "."];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.targets(), &Some(vec![PathBuf::from(".")]));
     /// assert!(request.recursive());
     /// ```
@@ -99,7 +99,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // request line numbers to be printed
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.output_options().line_number);
     /// ```
     ///
@@ -107,7 +107,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // request file names to be printed
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.output_options().file_name);
     /// ```
     ///
@@ -116,7 +116,7 @@ impl Request {
     /// // with more than one input file `--with-filename` is assumed
     /// // it is possible to override this by specifically opting out like so
     /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(!request.output_options().file_name);
     /// ```
     ///
@@ -124,7 +124,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // silence the output
     /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.quiet(), true);
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
@@ -133,7 +133,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // activate warn log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "--verbose", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Warn);
     /// ```
     ///
@@ -141,7 +141,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // activate warn and info log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Info);
     /// ```
     ///
@@ -149,7 +149,7 @@ impl Request {
     /// use fzgrep::Request;
     /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Debug);
     /// ```
     ///
@@ -157,15 +157,15 @@ impl Request {
     /// use fzgrep::Request;
     /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
     /// let args = ["fzgrep", "-vvvv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
     /// ```
     ///
-    pub fn new(args: impl Iterator<Item = String>) -> Result<Self, String> {
+    pub fn new(args: impl Iterator<Item = String>) -> Self {
         let matches = match_command_line_args(args);
 
-        Ok(Request {
-            query: Request::query_from(&matches)?,
+        Request {
+            query: Request::query_from(&matches),
             targets: Request::targets_from(&matches),
             recursive: matches.get_flag("recursive"),
             output_options: OutputOptions {
@@ -175,7 +175,7 @@ impl Request {
             },
             quiet: matches.get_flag("quiet"),
             verbosity: Request::verbosity_from(&matches),
-        })
+        }
     }
 
     /// A simple getter that just returns the query.
@@ -185,7 +185,7 @@ impl Request {
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "query"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.query(), "query");
     /// ```
     ///
@@ -202,7 +202,7 @@ impl Request {
     /// use fzgrep::Request;
     /// use std::path::PathBuf;
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
     /// ```
     ///
@@ -218,7 +218,7 @@ impl Request {
     /// use fzgrep::Request;
     /// use std::path::PathBuf;
     /// let args = ["fzgrep", "--recursive", "query"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.recursive());
     /// ```
     ///
@@ -233,35 +233,35 @@ impl Request {
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(!request.output_options().line_number);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "-n", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.output_options().line_number);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--line-number", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.output_options().line_number);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.output_options().file_name);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--no-filename", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(!request.output_options().file_name);
     /// ```
     ///
@@ -276,21 +276,21 @@ impl Request {
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(!request.quiet());
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.quiet());
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--silent", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.quiet());
     /// ```
     ///
@@ -305,7 +305,7 @@ impl Request {
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert!(request.quiet());
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
@@ -313,28 +313,28 @@ impl Request {
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "--verbose", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Warn);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Info);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vvv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Debug);
     /// ```
     ///
     /// ```
     /// use fzgrep::Request;
     /// let args = ["fzgrep", "-vvvv", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from)).unwrap();
+    /// let request = Request::new(args.into_iter().map(String::from));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Trace);
     /// ```
     ///
@@ -342,11 +342,11 @@ impl Request {
         self.verbosity
     }
 
-    fn query_from(matches: &ArgMatches) -> Result<String, String> {
+    fn query_from(matches: &ArgMatches) -> String {
         let query = matches
             .get_one::<String>("pattern")
-            .ok_or(String::from("Missing QUERY argument (required)"))?;
-        Ok(query.clone())
+            .expect("QUERY argument is required, it cannot be empty");
+        query.clone()
     }
 
     fn targets_from(matches: &ArgMatches) -> Option<Vec<PathBuf>> {
@@ -686,7 +686,7 @@ mod tests {
     #[test]
     fn constructor_no_targets() {
         let args = ["fzgrep", "query"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -703,7 +703,7 @@ mod tests {
     #[test]
     fn constructor_single_target() {
         let args = ["fzgrep", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -720,7 +720,7 @@ mod tests {
     #[test]
     fn constructor_multiple_targets() {
         let args = ["fzgrep", "query", "file1", "file2", "file3"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
 
         assert_eq!(
             request,
@@ -746,7 +746,7 @@ mod tests {
     #[test]
     fn constructor_non_ascii_emoji() {
         let args = ["fzgrep", "🐣🦀", "file1", "👨‍🔬.txt", "file3"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
 
         assert_eq!(
             request,
@@ -772,7 +772,7 @@ mod tests {
     #[test]
     fn constructor_non_ascii_cyrillic() {
         let args = ["fzgrep", "тест", "file1", "тест.txt", "file3"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
 
         assert_eq!(
             request,
@@ -798,7 +798,7 @@ mod tests {
     #[test]
     fn constructor_non_ascii_chinese() {
         let args = ["fzgrep", "打电", "file1", "测试.txt", "file3"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
 
         assert_eq!(
             request,
@@ -824,7 +824,7 @@ mod tests {
     #[test]
     fn constructor_recursive_short() {
         let args = ["fzgrep", "-r", "query", "dir"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -841,7 +841,7 @@ mod tests {
     #[test]
     fn constructor_recursive_long() {
         let args = ["fzgrep", "--recursive", "query", "dir"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -858,7 +858,7 @@ mod tests {
     #[test]
     fn constructor_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -878,7 +878,7 @@ mod tests {
     #[test]
     fn constructor_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -898,7 +898,7 @@ mod tests {
     #[test]
     fn constructor_no_file_name_short() {
         let args = ["fzgrep", "-F", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -918,7 +918,7 @@ mod tests {
     #[test]
     fn constructor_no_file_name_long() {
         let args = ["fzgrep", "--no-filename", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -938,7 +938,7 @@ mod tests {
     #[test]
     fn constructor_quiet_short() {
         let args = ["fzgrep", "-q", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -955,7 +955,7 @@ mod tests {
     #[test]
     fn constructor_quiet_long() {
         let args = ["fzgrep", "--quiet", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -972,7 +972,7 @@ mod tests {
     #[test]
     fn constructor_silent_long() {
         let args = ["fzgrep", "--silent", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -989,7 +989,7 @@ mod tests {
     #[test]
     fn constructor_verbose_short() {
         let args = ["fzgrep", "-v", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1006,7 +1006,7 @@ mod tests {
     #[test]
     fn constructor_verbose_long() {
         let args = ["fzgrep", "--verbose", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1023,7 +1023,7 @@ mod tests {
     #[test]
     fn constructor_verbose_info_short() {
         let args = ["fzgrep", "-vv", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1040,7 +1040,7 @@ mod tests {
     #[test]
     fn constructor_verbose_info_long() {
         let args = ["fzgrep", "--verbose", "--verbose", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1057,7 +1057,7 @@ mod tests {
     #[test]
     fn constructor_verbose_debug_short() {
         let args = ["fzgrep", "-vvv", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1081,7 +1081,7 @@ mod tests {
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1098,7 +1098,7 @@ mod tests {
     #[test]
     fn constructor_verbose_trace_short() {
         let args = ["fzgrep", "-vvvv", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1123,7 +1123,7 @@ mod tests {
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1140,7 +1140,7 @@ mod tests {
     #[test]
     fn constructor_verbose_extra_short() {
         let args = ["fzgrep", "-vvvvv", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1166,7 +1166,7 @@ mod tests {
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1183,7 +1183,7 @@ mod tests {
     #[test]
     fn constructor_color_auto() {
         let args = ["fzgrep", "--color", "auto", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1200,7 +1200,7 @@ mod tests {
     #[test]
     fn constructor_color_always() {
         let args = ["fzgrep", "--color", "always", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1220,7 +1220,7 @@ mod tests {
     #[test]
     fn constructor_color_never() {
         let args = ["fzgrep", "--color", "never", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1246,7 +1246,7 @@ mod tests {
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1274,7 +1274,7 @@ mod tests {
     #[test]
     fn constructor_all_options_short() {
         let args = ["fzgrep", "-rnfv", "query", "file"];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1307,7 +1307,7 @@ mod tests {
             "query",
             "file",
         ];
-        let request = Request::new(args.into_iter().map(String::from)).unwrap();
+        let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
             Request {
@@ -1412,8 +1412,4 @@ mod tests {
         };
         assert_eq!(request.verbosity(), LevelFilter::Debug);
     }
-
-    todo!(
-        "Add tests that cover error cases, specifically formatting sequence parsing related errors"
-    );
 }
