@@ -1,4 +1,3 @@
-Randomly shuffled lines containing ASCII (upper- and lowercase), Cyrillic (upper- and lowercase), Chinese and emoji symbols
 Текст
 Contiguous
 打电动

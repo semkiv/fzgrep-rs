@@ -1238,7 +1238,994 @@ mod tests {
     }
 
     #[test]
-    fn constructor_color_overrides() {
+    fn constructor_color_never_with_color_overrides() {
+        let args = [
+            "fzgrep",
+            "--color",
+            "never",
+            "--color-overrides",
+            "ms=1;33",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Never,
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_reset() {
+        let args = ["fzgrep", "--color-overrides", "ms=0", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bold() {
+        let args = ["fzgrep", "--color-overrides", "ms=1", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bold(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_dim() {
+        let args = ["fzgrep", "--color-overrides", "ms=2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().dimmed(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_italic() {
+        let args = ["fzgrep", "--color-overrides", "ms=3", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().italic(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_underline() {
+        let args = ["fzgrep", "--color-overrides", "ms=4", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().underline(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_slow_blink() {
+        let args = ["fzgrep", "--color-overrides", "ms=5", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().blink(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_rapid_blink() {
+        let args = ["fzgrep", "--color-overrides", "ms=6", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().blink(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_invert() {
+        let args = ["fzgrep", "--color-overrides", "ms=7", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().invert(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_hide() {
+        let args = ["fzgrep", "--color-overrides", "ms=8", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().hidden(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_strike() {
+        let args = ["fzgrep", "--color-overrides", "ms=9", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().strikethrough(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_black() {
+        let args = ["fzgrep", "--color-overrides", "ms=30", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Black),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_red() {
+        let args = ["fzgrep", "--color-overrides", "ms=31", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Red),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_green() {
+        let args = ["fzgrep", "--color-overrides", "ms=32", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Green),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_yellow() {
+        let args = ["fzgrep", "--color-overrides", "ms=33", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_blue() {
+        let args = ["fzgrep", "--color-overrides", "ms=34", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Blue),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_magenta() {
+        let args = ["fzgrep", "--color-overrides", "ms=35", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Magenta),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_cyan() {
+        let args = ["fzgrep", "--color-overrides", "ms=36", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Cyan),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_white() {
+        let args = ["fzgrep", "--color-overrides", "ms=37", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::White),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_8bit() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=38;5;120",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Fixed(120)),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_24bit() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=38;2;192;255;238",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::RGB(192, 255, 238)),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_fg_color_default() {
+        let args = ["fzgrep", "--color-overrides", "ms=39", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Default),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_black() {
+        let args = ["fzgrep", "--color-overrides", "ms=40", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Black),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_red() {
+        let args = ["fzgrep", "--color-overrides", "ms=41", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Red),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_green() {
+        let args = ["fzgrep", "--color-overrides", "ms=42", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Green),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_yellow() {
+        let args = ["fzgrep", "--color-overrides", "ms=43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_blue() {
+        let args = ["fzgrep", "--color-overrides", "ms=44", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Blue),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_magenta() {
+        let args = ["fzgrep", "--color-overrides", "ms=45", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Magenta),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_cyan() {
+        let args = ["fzgrep", "--color-overrides", "ms=46", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Cyan),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_white() {
+        let args = ["fzgrep", "--color-overrides", "ms=47", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::White),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_8bit() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=48;5;120",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Fixed(120)),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_24bit() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=48;2;192;255;238",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::RGB(192, 255, 238)),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_bg_color_default() {
+        let args = ["fzgrep", "--color-overrides", "ms=49", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::default().bg(Color::Default),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_match_multiple_styles() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=33;3;4;48;2;192;255;238",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Yellow)
+                            .italic()
+                            .underline()
+                            .bg(Color::RGB(192, 255, 238)),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_context_match() {
+        let args = ["fzgrep", "--color-overrides", "mc=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        context_match: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_line_number() {
+        let args = ["fzgrep", "--color-overrides", "ln=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        line_number: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_file_name() {
+        let args = ["fzgrep", "--color-overrides", "fn=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        file_name: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_separator() {
+        let args = ["fzgrep", "--color-overrides", "se=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        separator: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_selected_line() {
+        let args = ["fzgrep", "--color-overrides", "sl=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_line: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_context() {
+        let args = ["fzgrep", "--color-overrides", "cx=1;32;43", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        context: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_multiple_capabilities() {
+        let args = [
+            "fzgrep",
+            "--color-overrides",
+            "ms=1;32;43:ln=2;33;44:fn=3;34;45",
+            "query",
+            "file",
+        ];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_options: OutputOptions {
+                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                        selected_match: Style::new(Color::Green).bold().bg(Color::Yellow),
+                        line_number: Style::new(Color::Yellow).dimmed().bg(Color::Blue),
+                        file_name: Style::new(Color::Blue).italic().bg(Color::Magenta),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                quiet: false,
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_color_overrides_all() {
         let args = [
             "fzgrep",
             "--color-overrides",

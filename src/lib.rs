@@ -97,6 +97,9 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
                     .by_ref()
                     .take(range.start - previous_range_end)
                     .collect::<String>();
+                // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
+                // Visually it makes no difference, but there are extra characters in the output,
+                // making it harder to validate and compare results.
                 if !preceding_non_match.is_empty() {
                     match options.formatting {
                         FormattingBehavior::Never => {
@@ -135,6 +138,9 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
             previous_range_end = range.end;
         }
         let remaining_non_match = str_itr.collect::<String>();
+        // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
+        // Visually it makes no difference, but there are extra characters in the output,
+        // making it harder to validate and compare results.
         if !remaining_non_match.is_empty() {
             match options.formatting {
                 FormattingBehavior::Never => colored_target.push_str(&remaining_non_match),

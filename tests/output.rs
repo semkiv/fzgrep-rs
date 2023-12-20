@@ -1,5 +1,5 @@
 use fzgrep::Request;
-use yansi::Paint;
+use yansi::{Color, Paint};
 
 #[test]
 fn default_single_file() {
@@ -19,16 +19,8 @@ fn default_single_file() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -73,29 +65,8 @@ fn default_multiple_files() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/тест.txt"),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -109,30 +80,20 @@ fn line_number_short() {
     let expected = [
         format!(
             "{}{}{}u{}",
-            Paint::green('3'),
+            Paint::green('2'),
             Paint::cyan(':'),
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
             "{}{}{}u{}",
-            Paint::green('4'),
+            Paint::green('3'),
             Paint::cyan(':'),
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::green('1'),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -151,30 +112,20 @@ fn line_number_long() {
     let expected = [
         format!(
             "{}{}{}u{}",
-            Paint::green('3'),
+            Paint::green('2'),
             Paint::cyan(':'),
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
             "{}{}{}u{}",
-            Paint::green('4'),
+            Paint::green('3'),
             Paint::cyan(':'),
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::green('1'),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -200,18 +151,8 @@ fn with_filename_short() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -242,18 +183,8 @@ fn with_filename_long() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -275,16 +206,8 @@ fn no_filename_short() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -311,16 +234,8 @@ fn no_filename_long() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -358,25 +273,8 @@ fn no_filename_multiple_files() {
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-        format!(
-            "Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -392,7 +290,7 @@ fn all_options_short() {
             "{}{}{}{}{}u{}",
             Paint::magenta("resources/tests/test.txt"),
             Paint::cyan(':'),
-            Paint::green('3'),
+            Paint::green('2'),
             Paint::cyan(':'),
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
@@ -401,25 +299,13 @@ fn all_options_short() {
             "{}{}{}{}{}u{}",
             Paint::magenta("resources/tests/test.txt"),
             Paint::cyan(':'),
-            Paint::green('4'),
+            Paint::green('3'),
             Paint::cyan(':'),
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
-        format!(
-            "{}{}{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::green('1'),
-            Paint::cyan(':'),
-            Paint::red("cont").bold(),
-            Paint::red('i').bold(),
-            Paint::red('g').bold(),
-            Paint::red('o').bold(),
-            Paint::red('u').bold(),
-            Paint::red('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -432,7 +318,7 @@ fn all_options_long() {
         "--color",
         "always",
         "--color-overrides",
-        "ms=01;33",
+        "ms=43:mc=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
         "contigous",
         "resources/tests/test.txt",
     ];
@@ -442,37 +328,27 @@ fn all_options_long() {
     let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
-            "{}{}{}{}{}u{}",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::green('3'),
-            Paint::cyan(':'),
-            Paint::yellow("contig").bold(),
-            Paint::yellow("ous").bold()
+            "{}{}{}{}{}{}{}",
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '2').italic(),
+            Paint::magenta(':'),
+            Paint::new("contig").bg(Color::Yellow),
+            Paint::fixed(245, 'u').dimmed(),
+            Paint::new("ous").bg(Color::Yellow)
         ),
         format!(
-            "{}{}{}{}{}u{}",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::green('4'),
-            Paint::cyan(':'),
-            Paint::yellow("Contig").bold(),
-            Paint::yellow("ous").bold()
+            "{}{}{}{}{}{}{}",
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '3').italic(),
+            Paint::magenta(':'),
+            Paint::new("Contig").bg(Color::Yellow),
+            Paint::fixed(245, 'u').dimmed(),
+            Paint::new("ous").bg(Color::Yellow)
         ),
-        format!(
-            "{}{}{}{}Randomly shuffled lines {}ain{}n{} ASCII (upper- and l{}wercase), Cyrillic ({}pper- and lowercase), Chinese and emoji {}ymbols",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::green('1'),
-            Paint::cyan(':'),
-            Paint::yellow("cont").bold(),
-            Paint::yellow('i').bold(),
-            Paint::yellow('g').bold(),
-            Paint::yellow('o').bold(),
-            Paint::yellow('u').bold(),
-            Paint::yellow('s').bold()
-        ),
-    ].join("\n");
+    ]
+    .join("\n");
     assert_eq!(formatted, expected);
 }
 
@@ -483,4 +359,7 @@ todo!("File name color test");
 todo!("Separator color test");
 todo!("Selected line color test");
 todo!("Context color test");
-todo!("Plain formatting test");
+todo!("`color=auto` test");
+todo!("`color=always` test");
+todo!("`color=never` test");
+todo!("`color=auto` with formatting test");
