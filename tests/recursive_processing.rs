@@ -4,7 +4,7 @@ use std::{error::Error, path::PathBuf};
 #[test]
 fn basic_usage() -> Result<(), Box<dyn Error>> {
     let args = ["fzgrep", "--recursive", "recursive", "resources/tests/"];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "recursive");
     assert_eq!(
         request.targets(),
@@ -32,7 +32,7 @@ fn basic_usage() -> Result<(), Box<dyn Error>> {
 #[test]
 fn basic_usage_no_trailing_slash() -> Result<(), Box<dyn Error>> {
     let args = ["fzgrep", "--recursive", "recursive", "resources/tests"];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "recursive");
     assert_eq!(
         request.targets(),
@@ -66,7 +66,7 @@ fn only_files() -> Result<(), Box<dyn Error>> {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "recursive");
     assert_eq!(
         request.targets(),
@@ -103,7 +103,7 @@ fn files_and_dirs_mixed() -> Result<(), Box<dyn Error>> {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from))?;
+    let request = Request::new(args.into_iter().map(String::from));
     assert_eq!(request.query(), "recursive");
     assert_eq!(
         request.targets(),

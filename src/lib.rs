@@ -2,10 +2,9 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{FormattingOptions, Request};
+pub use cli::{FormattingOptions, OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
-use colored::Colorize;
 use core::reader::Reader;
 use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
@@ -13,9 +12,11 @@ use std::{
     env, error,
     io::{self, BufRead},
     iter,
+    ops::Range,
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
+use yansi::Paint;
 
 /// This function handles all the application logic.
 ///
@@ -33,10 +34,7 @@ pub fn run(request: &Request) -> Result<Vec<MatchingLine>, Box<dyn error::Error>
     debug!("Running with the following configuration: {:?}", request);
     let matches = find_matches(request.query(), request.targets(), request.recursive())?;
     if !request.quiet() && !matches.is_empty() {
-        println!(
-            "{}",
-            format_results(&matches, &request.formatting_options())
-        );
+        println!("{}", format_results(&matches, &request.output_options()));
     }
     Ok(matches)
 }
@@ -76,7 +74,7 @@ pub fn find_matches(
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> String {
+pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> String {
     let mut ret = String::new();
     let mut match_itr = matches.iter().peekable();
     while let Some(m) = match_itr.next() {
@@ -91,21 +89,92 @@ pub fn format_results(matches: &[MatchingLine], options: &FormattingOptions) -> 
         } = m;
 
         let mut colored_target = String::new();
-        let mut matches_it = fuzzy_match.positions().iter().peekable();
-        for (index, ch) in content.chars().enumerate() {
-            if matches_it.peek().is_some_and(|pos| **pos == index) {
-                colored_target.push_str(&ch.to_string().blue().to_string());
-                matches_it.next();
-            } else {
-                colored_target.push(ch);
+        let mut str_itr = content.chars();
+        let mut previous_range_end = 0usize;
+        for range in group_indices(fuzzy_match.positions()) {
+            {
+                let preceding_non_match = str_itr
+                    .by_ref()
+                    .take(range.start - previous_range_end)
+                    .collect::<String>();
+                // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
+                // Visually it makes no difference, but there are extra characters in the output,
+                // making it harder to validate and compare results.
+                if !preceding_non_match.is_empty() {
+                    match options.formatting {
+                        None => {
+                            colored_target.push_str(&preceding_non_match);
+                        }
+                        Some(formatting) => {
+                            colored_target.push_str(
+                                &Paint::new(preceding_non_match)
+                                    .with_style(formatting.selected_line)
+                                    .to_string(),
+                            );
+                        }
+                    }
+                }
+            }
+            {
+                let matching_part = str_itr
+                    .by_ref()
+                    .take(range.end - range.start)
+                    .collect::<String>();
+                match options.formatting {
+                    None => {
+                        colored_target.push_str(&matching_part);
+                    }
+                    Some(formatting) => {
+                        colored_target.push_str(
+                            &Paint::new(matching_part)
+                                .with_style(formatting.selected_match)
+                                .to_string(),
+                        );
+                    }
+                }
+            }
+            previous_range_end = range.end;
+        }
+        let remaining_non_match = str_itr.collect::<String>();
+        // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
+        // Visually it makes no difference, but there are extra characters in the output,
+        // making it harder to validate and compare results.
+        if !remaining_non_match.is_empty() {
+            match options.formatting {
+                None => colored_target.push_str(&remaining_non_match),
+                Some(formatting) => colored_target.push_str(
+                    &Paint::new(remaining_non_match)
+                        .with_style(formatting.selected_line)
+                        .to_string(),
+                ),
             }
         }
 
         if options.file_name {
-            ret.push_str(&format!("{file_name}:"));
+            match options.formatting {
+                None => ret.push_str(&format!("{file_name}:")),
+                Some(formatting) => {
+                    ret.push_str(
+                        &Paint::new(file_name)
+                            .with_style(formatting.file_name)
+                            .to_string(),
+                    );
+                    ret.push_str(&Paint::new(':').with_style(formatting.separator).to_string());
+                }
+            }
         }
         if options.line_number {
-            ret.push_str(&format!("{line_number}:"));
+            match options.formatting {
+                None => ret.push_str(&format!("{line_number}:")),
+                Some(formatting) => {
+                    ret.push_str(
+                        &Paint::new(line_number)
+                            .with_style(formatting.line_number)
+                            .to_string(),
+                    );
+                    ret.push_str(&Paint::new(':').with_style(formatting.separator).to_string());
+                }
+            }
         }
 
         ret.push_str(&colored_target);
@@ -210,12 +279,46 @@ fn process_one_target(query: &str, target: Reader) -> Result<Vec<MatchingLine>, 
     Ok(ret)
 }
 
+fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
+    if indices.is_empty() {
+        return Vec::new();
+    }
+
+    let mut ret = Vec::new();
+    let mut itr = indices.iter();
+    // we've already handled the case of an empty input, it is safe to unwrap
+    let mut start = *itr.next().unwrap();
+
+    for (i, x) in itr.enumerate() {
+        if x - indices[i] != 1 {
+            let end = indices[i];
+            ret.push(Range {
+                start,
+                end: end + 1,
+            });
+            start = *x;
+        }
+    }
+    // again, the case of an empty input is already handled so it is safe to unwrap here too
+    ret.push(Range {
+        start,
+        end: indices.last().unwrap() + 1,
+    });
+
+    debug!("Match indices {:?} -> ranges {:?}", indices, ret);
+
+    ret
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cli::output_options::FormattingOptions;
+    use atty::Stream;
+    use yansi::{Color, Style};
 
     #[test]
-    fn results_formatting_default() {
+    fn results_output_options_default() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -243,21 +346,35 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &FormattingOptions::default()),
+            format_results(&results, &OutputOptions::default()),
             format!(
-                "{}{}st\ntes{}\n{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                "{}st\ntes{}\n{}s{}",
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
             )
         )
     }
 
     #[test]
-    fn results_formatting_line_number() {
+    fn results_output_options_line_number() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -287,25 +404,30 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
                     line_number: true,
+                    formatting: Some(FormattingOptions::default()),
                     ..Default::default()
                 }
             ),
             format!(
-                "42:{}{}st\n100500:tes{}\n13:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
             )
         )
     }
 
     #[test]
-    fn results_formatting_file_name() {
+    fn results_output_options_file_name() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -335,25 +457,30 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
                     file_name: true,
+                    formatting: Some(FormattingOptions::default()),
                     ..Default::default()
                 }
             ),
             format!(
-                "First:{}{}st\nSecond:tes{}\nThird:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
             )
         )
     }
 
     #[test]
-    fn results_formatting_all_options() {
+    fn results_output_options_formatting_plain() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -383,19 +510,146 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &FormattingOptions {
+                &OutputOptions {
+                    file_name: true,
                     line_number: true,
-                    file_name: true
+                    formatting: Some(FormattingOptions::plain())
+                }
+            ),
+            "First:42:test\nSecond:100500:test\nThird:13:test"
+        )
+    }
+
+    #[test]
+    fn results_output_options_formatting_custom() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    file_name: true,
+                    line_number: true,
+                    formatting: Some(FormattingOptions {
+                        selected_match: Style::new(Color::Green),
+                        context_match: Style::new(Color::Green),
+                        line_number: Style::new(Color::Cyan),
+                        file_name: Style::new(Color::Cyan),
+                        separator: Style::new(Color::Fixed(50)),
+                        selected_line: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                        context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                    })
                 }
             ),
             format!(
-                "First:42:{}{}st\nSecond:100500:tes{}\nThird:13:{}{}s{}",
-                "t".blue(),
-                "e".blue(),
-                "t".blue(),
-                "t".blue(),
-                "e".blue(),
-                "t".blue()
+                "{}{}{}{}{}{}\n{}{}{}{}{}{}\n{}{}{}{}{}{}{}",
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("42"),
+                Paint::fixed(50, ':'),
+                Paint::green("te"),
+                Paint::rgb(127, 127, 127, "st").dimmed(),
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100500"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "tes").dimmed(),
+                Paint::green('t'),
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("13"),
+                Paint::fixed(50, ':'),
+                Paint::green("te"),
+                Paint::rgb(127, 127, 127, 's').dimmed(),
+                Paint::green('t')
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_options_all_options() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    line_number: true,
+                    file_name: true,
+                    formatting: Some(FormattingOptions {
+                        selected_match: Style::new(Color::RGB(100, 150, 200))
+                            .bg(Color::Yellow)
+                            .italic(),
+                        ..Default::default()
+                    })
+                }
+            ),
+            format!(
+                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
             )
         )
     }
