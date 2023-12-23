@@ -314,6 +314,7 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 mod test {
     use super::*;
     use crate::cli::output_options::FormattingOptions;
+    use atty::Stream;
     use yansi::{Color, Style};
 
     #[test]
@@ -348,10 +349,26 @@ mod test {
             format_results(&results, &OutputOptions::default()),
             format!(
                 "{}st\ntes{}\n{}s{}",
-                Paint::red("te").bold(),
-                Paint::red('t').bold(),
-                Paint::red("te").bold(),
-                Paint::red('t').bold(),
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
             )
         )
     }
@@ -389,6 +406,7 @@ mod test {
                 &results,
                 &OutputOptions {
                     line_number: true,
+                    formatting: Some(FormattingOptions::default()),
                     ..Default::default()
                 }
             ),
@@ -441,6 +459,7 @@ mod test {
                 &results,
                 &OutputOptions {
                     file_name: true,
+                    formatting: Some(FormattingOptions::default()),
                     ..Default::default()
                 }
             ),
@@ -461,7 +480,7 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_formatting_custom() {
+    fn results_output_options_formatting_plain() {
         let results = vec![
             MatchingLine {
                 location: Location {
@@ -502,7 +521,7 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_formatting_plain() {
+    fn results_output_options_formatting_custom() {
         let results = vec![
             MatchingLine {
                 location: Location {

@@ -109,7 +109,14 @@ mod test {
         let default = OutputOptions::default();
         assert!(!default.line_number);
         assert!(!default.file_name);
-        assert_eq!(default.formatting, Some(FormattingOptions::default()));
+        assert_eq!(
+            default.formatting,
+            if atty::is(Stream::Stdout) {
+                Some(FormattingOptions::default())
+            } else {
+                None
+            }
+        );
     }
 
     #[test]

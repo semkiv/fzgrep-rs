@@ -1271,7 +1271,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_reset() {
-        let args = ["fzgrep", "--color-overrides", "ms=0", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=0",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1294,7 +1302,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bold() {
-        let args = ["fzgrep", "--color-overrides", "ms=1", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=1",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1317,7 +1333,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_dim() {
-        let args = ["fzgrep", "--color-overrides", "ms=2", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=2",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1340,7 +1364,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_italic() {
-        let args = ["fzgrep", "--color-overrides", "ms=3", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=3",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1363,7 +1395,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_underline() {
-        let args = ["fzgrep", "--color-overrides", "ms=4", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=4",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1386,7 +1426,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_slow_blink() {
-        let args = ["fzgrep", "--color-overrides", "ms=5", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=5",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1409,7 +1457,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_rapid_blink() {
-        let args = ["fzgrep", "--color-overrides", "ms=6", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=6",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1432,7 +1488,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_invert() {
-        let args = ["fzgrep", "--color-overrides", "ms=7", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=7",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1455,7 +1519,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_hide() {
-        let args = ["fzgrep", "--color-overrides", "ms=8", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=8",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1478,7 +1550,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_strike() {
-        let args = ["fzgrep", "--color-overrides", "ms=9", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=9",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1501,7 +1581,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_black() {
-        let args = ["fzgrep", "--color-overrides", "ms=30", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=30",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1524,7 +1612,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_red() {
-        let args = ["fzgrep", "--color-overrides", "ms=31", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=31",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1547,7 +1643,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_green() {
-        let args = ["fzgrep", "--color-overrides", "ms=32", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=32",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1570,7 +1674,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_yellow() {
-        let args = ["fzgrep", "--color-overrides", "ms=33", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=33",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1592,7 +1704,15 @@ mod tests {
     }
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_blue() {
-        let args = ["fzgrep", "--color-overrides", "ms=34", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=34",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1615,7 +1735,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_magenta() {
-        let args = ["fzgrep", "--color-overrides", "ms=35", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=35",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1638,7 +1766,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_cyan() {
-        let args = ["fzgrep", "--color-overrides", "ms=36", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=36",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1661,7 +1797,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_white() {
-        let args = ["fzgrep", "--color-overrides", "ms=37", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=37",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1686,6 +1830,8 @@ mod tests {
     fn constructor_color_overrides_selected_match_fg_color_8bit() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=38;5;120",
             "query",
@@ -1715,6 +1861,8 @@ mod tests {
     fn constructor_color_overrides_selected_match_fg_color_24bit() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=38;2;192;255;238",
             "query",
@@ -1742,7 +1890,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_fg_color_default() {
-        let args = ["fzgrep", "--color-overrides", "ms=39", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=39",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1765,7 +1921,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_black() {
-        let args = ["fzgrep", "--color-overrides", "ms=40", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=40",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1788,7 +1952,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_red() {
-        let args = ["fzgrep", "--color-overrides", "ms=41", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=41",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1811,7 +1983,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_green() {
-        let args = ["fzgrep", "--color-overrides", "ms=42", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=42",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1834,7 +2014,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_yellow() {
-        let args = ["fzgrep", "--color-overrides", "ms=43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1856,7 +2044,15 @@ mod tests {
     }
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_blue() {
-        let args = ["fzgrep", "--color-overrides", "ms=44", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=44",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1879,7 +2075,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_magenta() {
-        let args = ["fzgrep", "--color-overrides", "ms=45", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=45",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1902,7 +2106,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_cyan() {
-        let args = ["fzgrep", "--color-overrides", "ms=46", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=46",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1925,7 +2137,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_white() {
-        let args = ["fzgrep", "--color-overrides", "ms=47", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=47",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -1950,6 +2170,8 @@ mod tests {
     fn constructor_color_overrides_selected_match_bg_color_8bit() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=48;5;120",
             "query",
@@ -1979,6 +2201,8 @@ mod tests {
     fn constructor_color_overrides_selected_match_bg_color_24bit() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=48;2;192;255;238",
             "query",
@@ -2006,7 +2230,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_match_bg_color_default() {
-        let args = ["fzgrep", "--color-overrides", "ms=49", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ms=49",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2031,6 +2263,8 @@ mod tests {
     fn constructor_color_overrides_selected_match_multiple_styles() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=33;3;4;48;2;192;255;238",
             "query",
@@ -2061,7 +2295,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_context_match() {
-        let args = ["fzgrep", "--color-overrides", "mc=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "mc=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2084,7 +2326,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_line_number() {
-        let args = ["fzgrep", "--color-overrides", "ln=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "ln=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2107,7 +2357,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_file_name() {
-        let args = ["fzgrep", "--color-overrides", "fn=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "fn=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2130,7 +2388,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_separator() {
-        let args = ["fzgrep", "--color-overrides", "se=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "se=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2153,7 +2419,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_selected_line() {
-        let args = ["fzgrep", "--color-overrides", "sl=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "sl=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2176,7 +2450,15 @@ mod tests {
 
     #[test]
     fn constructor_color_overrides_context() {
-        let args = ["fzgrep", "--color-overrides", "cx=1;32;43", "query", "file"];
+        let args = [
+            "fzgrep",
+            "--color",
+            "always",
+            "--color-overrides",
+            "cx=1;32;43",
+            "query",
+            "file",
+        ];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2201,6 +2483,8 @@ mod tests {
     fn constructor_color_overrides_multiple_capabilities() {
         let args = [
             "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=1;32;43:ln=2;33;44:fn=3;34;45",
             "query",
@@ -2231,7 +2515,7 @@ mod tests {
     #[test]
     fn constructor_color_overrides_all() {
         let args = [
-            "fzgrep",
+            "fzgrep", "--color", "always",
             "--color-overrides",
             "ms=01;34;43:mc=01;34;48;5;177:sl=02;37:cx=02;37:fn=04;38;5;51:ln=03;04;38;2;127;127;127:se=35;48;2;0;192;0",
             "query",
