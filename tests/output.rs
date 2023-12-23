@@ -279,6 +279,248 @@ fn no_filename_multiple_files() {
 }
 
 #[test]
+fn formatting_color_always() {
+    let args = [
+        "fzgrep",
+        "--color",
+        "always",
+        "--color-overrides",
+        "ms=34",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!("{}u{}", Paint::blue("contig"), Paint::blue("ous")),
+        format!("{}u{}", Paint::blue("Contig"), Paint::blue("ous")),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_color_auto() {
+    let args = [
+        "fzgrep",
+        "--color",
+        "auto",
+        "--color-overrides",
+        "ms=34",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!("{}u{}", Paint::blue("contig"), Paint::blue("ous")),
+        format!("{}u{}", Paint::blue("Contig"), Paint::blue("ous")),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_color_never() {
+    let args = [
+        "fzgrep",
+        "--color",
+        "never",
+        "--color-overrides",
+        "ms=34",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = ["contiguous", "Contiguous"].join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_override_selected_match() {
+    let args = [
+        "fzgrep",
+        "--color",
+        "always",
+        "--color-overrides",
+        "ms=4;43",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!(
+            "{}u{}",
+            Paint::new("contig").underline().bg(Color::Yellow),
+            Paint::new("ous").underline().bg(Color::Yellow)
+        ),
+        format!(
+            "{}u{}",
+            Paint::new("Contig").underline().bg(Color::Yellow),
+            Paint::new("ous").underline().bg(Color::Yellow)
+        ),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_override_line_number() {
+    let args = [
+        "fzgrep",
+        "--line-number",
+        "--color",
+        "always",
+        "--color-overrides",
+        "ln=3;4",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!(
+            "{}{}{}u{}",
+            Paint::new('2').italic().underline(),
+            Paint::cyan(':'),
+            Paint::red("contig").bold(),
+            Paint::red("ous").bold()
+        ),
+        format!(
+            "{}{}{}u{}",
+            Paint::new('3').italic().underline(),
+            Paint::cyan(':'),
+            Paint::red("Contig").bold(),
+            Paint::red("ous").bold()
+        ),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_override_file_name() {
+    let args = [
+        "fzgrep",
+        "--with-filename",
+        "--color",
+        "always",
+        "--color-overrides",
+        "fn=3;2",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!(
+            "{}{}{}u{}",
+            Paint::new("resources/tests/test.txt").italic().dimmed(),
+            Paint::cyan(':'),
+            Paint::red("contig").bold(),
+            Paint::red("ous").bold()
+        ),
+        format!(
+            "{}{}{}u{}",
+            Paint::new("resources/tests/test.txt").italic().dimmed(),
+            Paint::cyan(':'),
+            Paint::red("Contig").bold(),
+            Paint::red("ous").bold()
+        ),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_override_separator() {
+    let args = [
+        "fzgrep",
+        "--line-number",
+        "--with-filename",
+        "--color",
+        "always",
+        "--color-overrides",
+        "se=2;38;5;245",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!(
+            "{}{}{}{}{}u{}",
+            Paint::magenta("resources/tests/test.txt"),
+            Paint::fixed(245, ':').dimmed(),
+            Paint::green('2'),
+            Paint::fixed(245, ':').dimmed(),
+            Paint::red("contig").bold(),
+            Paint::red("ous").bold()
+        ),
+        format!(
+            "{}{}{}{}{}u{}",
+            Paint::magenta("resources/tests/test.txt"),
+            Paint::fixed(245, ':').dimmed(),
+            Paint::green('3'),
+            Paint::fixed(245, ':').dimmed(),
+            Paint::red("Contig").bold(),
+            Paint::red("ous").bold()
+        ),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
+fn formatting_override_selected_line() {
+    let args = [
+        "fzgrep",
+        "--color",
+        "always",
+        "--color-overrides",
+        "sl=2;38;2;192;255;238",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let matches =
+        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
+    let formatted = fzgrep::format_results(&matches, &request.output_options());
+    let expected = [
+        format!(
+            "{}{}{}",
+            Paint::red("contig").bold(),
+            Paint::rgb(192, 255, 238, 'u').dimmed(),
+            Paint::red("ous").bold()
+        ),
+        format!(
+            "{}{}{}",
+            Paint::red("Contig").bold(),
+            Paint::rgb(192, 255, 238, 'u').dimmed(),
+            Paint::red("ous").bold()
+        ),
+    ]
+    .join("\n");
+    assert_eq!(formatted, expected);
+}
+
+#[test]
 fn all_options_short() {
     let args = ["fzgrep", "-nf", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from));
@@ -351,15 +593,3 @@ fn all_options_long() {
     .join("\n");
     assert_eq!(formatted, expected);
 }
-
-todo!("Selected match color test");
-todo!("Context match color test");
-todo!("Line number color test");
-todo!("File name color test");
-todo!("Separator color test");
-todo!("Selected line color test");
-todo!("Context color test");
-todo!("`color=auto` test");
-todo!("`color=always` test");
-todo!("`color=never` test");
-todo!("`color=auto` with formatting test");
