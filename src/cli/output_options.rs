@@ -1,3 +1,4 @@
+use atty::Stream;
 use yansi::{Color, Style};
 
 /// Holds various output options.
@@ -90,7 +91,11 @@ impl Default for OutputOptions {
         Self {
             line_number: false,
             file_name: false,
-            formatting: Some(FormattingOptions::default())
+            formatting: if atty::is(Stream::Stdout) {
+                Some(FormattingOptions::default())
+            } else {
+                None
+            },
         }
     }
 }
