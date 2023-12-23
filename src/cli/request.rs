@@ -1,14 +1,12 @@
-use crate::cli::error::{
-    ColorOverrideParsingError, ColorSequenceParsingError, StyleSequenceParsingError,
+use crate::cli::{
+    error::{ColorOverrideParsingError, ColorSequenceParsingError, StyleSequenceParsingError},
+    output_options::{FormattingOptions, OutputOptions},
 };
-use crate::cli::output_options::FormattingOptions;
-use crate::cli::output_options::OutputOptions;
+use atty::Stream;
 use clap::{parser::ValuesRef, Arg, ArgAction, ArgMatches, Command};
 use log::{warn, LevelFilter};
 use std::path::PathBuf;
 use yansi::{Color, Style};
-
-use super::output_options::FormattingBehavior;
 
 /// Represents a run configuration.
 ///
@@ -392,7 +390,7 @@ impl Request {
         }
     }
 
-    fn formatting_from(matches: &ArgMatches) -> FormattingBehavior {
+    fn formatting_from(matches: &ArgMatches) -> Option<FormattingOptions> {
         if let Some(behavior) = matches.get_one::<String>("color") {
             let behavior = behavior.as_str();
             match behavior {
@@ -402,16 +400,22 @@ impl Request {
                         .cloned()
                         .unwrap_or_default();
                     match behavior {
-                        "auto" => FormattingBehavior::Auto(formatting_options),
-                        "always" => FormattingBehavior::Always(formatting_options),
+                        "auto" => {
+                            if atty::is(Stream::Stdout) {
+                                Some(formatting_options)
+                            } else {
+                                None
+                            }
+                        }
+                        "always" => Some(formatting_options),
                         _ => unreachable!(),
                     }
                 }
-                "never" => FormattingBehavior::Never,
+                "never" => None,
                 _ => unreachable!(),
             }
         } else {
-            FormattingBehavior::default()
+            Some(FormattingOptions::default())
         }
     }
 
@@ -1208,7 +1212,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Always(FormattingOptions::default()),
+                    formatting: Some(FormattingOptions::default()),
                     ..Default::default()
                 },
                 quiet: false,
@@ -1228,7 +1232,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Never,
+                    formatting: None,
                     ..Default::default()
                 },
                 quiet: false,
@@ -1256,7 +1260,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Never,
+                    formatting: None,
                     ..Default::default()
                 },
                 quiet: false,
@@ -1276,7 +1280,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default(),
                         ..Default::default()
                     }),
@@ -1299,7 +1303,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bold(),
                         ..Default::default()
                     }),
@@ -1322,7 +1326,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().dimmed(),
                         ..Default::default()
                     }),
@@ -1345,7 +1349,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().italic(),
                         ..Default::default()
                     }),
@@ -1368,7 +1372,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().underline(),
                         ..Default::default()
                     }),
@@ -1391,7 +1395,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().blink(),
                         ..Default::default()
                     }),
@@ -1414,7 +1418,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().blink(),
                         ..Default::default()
                     }),
@@ -1437,7 +1441,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().invert(),
                         ..Default::default()
                     }),
@@ -1460,7 +1464,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().hidden(),
                         ..Default::default()
                     }),
@@ -1483,7 +1487,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().strikethrough(),
                         ..Default::default()
                     }),
@@ -1506,7 +1510,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Black),
                         ..Default::default()
                     }),
@@ -1529,7 +1533,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Red),
                         ..Default::default()
                     }),
@@ -1552,7 +1556,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Green),
                         ..Default::default()
                     }),
@@ -1575,7 +1579,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Yellow),
                         ..Default::default()
                     }),
@@ -1597,7 +1601,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue),
                         ..Default::default()
                     }),
@@ -1620,7 +1624,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Magenta),
                         ..Default::default()
                     }),
@@ -1643,7 +1647,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Cyan),
                         ..Default::default()
                     }),
@@ -1666,7 +1670,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::White),
                         ..Default::default()
                     }),
@@ -1695,7 +1699,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Fixed(120)),
                         ..Default::default()
                     }),
@@ -1724,7 +1728,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::RGB(192, 255, 238)),
                         ..Default::default()
                     }),
@@ -1747,7 +1751,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Default),
                         ..Default::default()
                     }),
@@ -1770,7 +1774,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Black),
                         ..Default::default()
                     }),
@@ -1793,7 +1797,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Red),
                         ..Default::default()
                     }),
@@ -1816,7 +1820,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Green),
                         ..Default::default()
                     }),
@@ -1839,7 +1843,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -1861,7 +1865,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Blue),
                         ..Default::default()
                     }),
@@ -1884,7 +1888,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Magenta),
                         ..Default::default()
                     }),
@@ -1907,7 +1911,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Cyan),
                         ..Default::default()
                     }),
@@ -1930,7 +1934,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::White),
                         ..Default::default()
                     }),
@@ -1959,7 +1963,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Fixed(120)),
                         ..Default::default()
                     }),
@@ -1988,7 +1992,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::RGB(192, 255, 238)),
                         ..Default::default()
                     }),
@@ -2011,7 +2015,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Default),
                         ..Default::default()
                     }),
@@ -2040,7 +2044,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Yellow)
                             .italic()
                             .underline()
@@ -2066,7 +2070,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         context_match: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2089,7 +2093,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         line_number: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2112,7 +2116,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         file_name: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2135,7 +2139,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         separator: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2158,7 +2162,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_line: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2181,7 +2185,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         context: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
@@ -2210,7 +2214,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Green).bold().bg(Color::Yellow),
                         line_number: Style::new(Color::Yellow).dimmed().bg(Color::Blue),
                         file_name: Style::new(Color::Blue).italic().bg(Color::Magenta),
@@ -2241,7 +2245,7 @@ mod tests {
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
                 output_options: OutputOptions {
-                    formatting: FormattingBehavior::Auto(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue).bg(Color::Yellow).bold(),
                         context_match: Style::new(Color::Blue).bg(Color::Fixed(177)).bold(),
                         selected_line: Style::new(Color::White).dimmed(),
@@ -2271,7 +2275,7 @@ mod tests {
                 output_options: OutputOptions {
                     line_number: true,
                     file_name: true,
-                    formatting: FormattingBehavior::default(),
+                    ..Default::default()
                 },
                 quiet: false,
                 verbosity: LevelFilter::Warn
@@ -2304,7 +2308,7 @@ mod tests {
                 output_options: OutputOptions {
                     line_number: true,
                     file_name: true,
-                    formatting: FormattingBehavior::Always(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue).blink(),
                         ..Default::default()
                     }),
@@ -2374,7 +2378,7 @@ mod tests {
             output_options: OutputOptions {
                 line_number: true,
                 file_name: true,
-                formatting: FormattingBehavior::default(),
+                ..Default::default()
             },
             quiet: false,
             verbosity: LevelFilter::Error,
@@ -2392,7 +2396,7 @@ mod tests {
             output_options: OutputOptions {
                 line_number: true,
                 file_name: true,
-                formatting: FormattingBehavior::default(),
+                ..Default::default()
             },
             quiet: false,
             verbosity: LevelFilter::Debug,

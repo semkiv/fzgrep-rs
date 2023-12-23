@@ -7,6 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+atty = "0.2.14"
 clap = "4.4.7"
 env_logger = "0.10.0"
 log = "0.4.20"

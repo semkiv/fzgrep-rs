@@ -7,11 +7,11 @@ use yansi::{Color, Style};
 ///   * whether file names should be printed.
 ///   * formatting options.
 ///
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OutputOptions {
     pub line_number: bool,
     pub file_name: bool,
-    pub formatting: FormattingBehavior,
+    pub formatting: Option<FormattingOptions>,
 }
 
 /// Holds formatting options for:
@@ -30,18 +30,6 @@ pub struct FormattingOptions {
     pub separator: Style,
     pub selected_line: Style,
     pub context: Style,
-}
-
-/// Defines rich text output formatting behavior.
-///
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum FormattingBehavior {
-    /// The formatting should be applied regardless of the output sink type.
-    Always(FormattingOptions),
-    /// The text should only be formatted if the output is connected to a terminal.
-    Auto(FormattingOptions),
-    /// The formatting should not be applied at all.
-    Never,
 }
 
 impl FormattingOptions {
@@ -97,9 +85,13 @@ impl Default for FormattingOptions {
     }
 }
 
-impl Default for FormattingBehavior {
+impl Default for OutputOptions {
     fn default() -> Self {
-        FormattingBehavior::Auto(FormattingOptions::default())
+        Self {
+            line_number: false,
+            file_name: false,
+            formatting: Some(FormattingOptions::default())
+        }
     }
 }
 
@@ -112,7 +104,7 @@ mod test {
         let default = OutputOptions::default();
         assert!(!default.line_number);
         assert!(!default.file_name);
-        assert_eq!(default.formatting, FormattingBehavior::default());
+        assert_eq!(default.formatting, Some(FormattingOptions::default()));
     }
 
     #[test]

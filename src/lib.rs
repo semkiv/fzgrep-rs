@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{FormattingBehavior, FormattingOptions, OutputOptions, Request};
+pub use cli::{FormattingOptions, OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use core::reader::Reader;
@@ -102,11 +102,10 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
                 // making it harder to validate and compare results.
                 if !preceding_non_match.is_empty() {
                     match options.formatting {
-                        FormattingBehavior::Never => {
+                        None => {
                             colored_target.push_str(&preceding_non_match);
                         }
-                        FormattingBehavior::Auto(formatting)
-                        | FormattingBehavior::Always(formatting) => {
+                        Some(formatting) => {
                             colored_target.push_str(
                                 &Paint::new(preceding_non_match)
                                     .with_style(formatting.selected_line)
@@ -122,11 +121,10 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
                     .take(range.end - range.start)
                     .collect::<String>();
                 match options.formatting {
-                    FormattingBehavior::Never => {
+                    None => {
                         colored_target.push_str(&matching_part);
                     }
-                    FormattingBehavior::Auto(formatting)
-                    | FormattingBehavior::Always(formatting) => {
+                    Some(formatting) => {
                         colored_target.push_str(
                             &Paint::new(matching_part)
                                 .with_style(formatting.selected_match)
@@ -143,21 +141,19 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
         // making it harder to validate and compare results.
         if !remaining_non_match.is_empty() {
             match options.formatting {
-                FormattingBehavior::Never => colored_target.push_str(&remaining_non_match),
-                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
-                    colored_target.push_str(
-                        &Paint::new(remaining_non_match)
-                            .with_style(formatting.selected_line)
-                            .to_string(),
-                    )
-                }
+                None => colored_target.push_str(&remaining_non_match),
+                Some(formatting) => colored_target.push_str(
+                    &Paint::new(remaining_non_match)
+                        .with_style(formatting.selected_line)
+                        .to_string(),
+                ),
             }
         }
 
         if options.file_name {
             match options.formatting {
-                FormattingBehavior::Never => ret.push_str(&format!("{file_name}:")),
-                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
+                None => ret.push_str(&format!("{file_name}:")),
+                Some(formatting) => {
                     ret.push_str(
                         &Paint::new(file_name)
                             .with_style(formatting.file_name)
@@ -169,8 +165,8 @@ pub fn format_results(matches: &[MatchingLine], options: &OutputOptions) -> Stri
         }
         if options.line_number {
             match options.formatting {
-                FormattingBehavior::Never => ret.push_str(&format!("{line_number}:")),
-                FormattingBehavior::Auto(formatting) | FormattingBehavior::Always(formatting) => {
+                None => ret.push_str(&format!("{line_number}:")),
+                Some(formatting) => {
                     ret.push_str(
                         &Paint::new(line_number)
                             .with_style(formatting.line_number)
@@ -316,11 +312,9 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod test {
-    use yansi::{Color, Style};
-
-    use crate::cli::output_options::{FormattingBehavior, FormattingOptions};
-
     use super::*;
+    use crate::cli::output_options::FormattingOptions;
+    use yansi::{Color, Style};
 
     #[test]
     fn results_output_options_default() {
@@ -500,7 +494,7 @@ mod test {
                 &OutputOptions {
                     file_name: true,
                     line_number: true,
-                    formatting: FormattingBehavior::Always(FormattingOptions::plain())
+                    formatting: Some(FormattingOptions::plain())
                 }
             ),
             "First:42:test\nSecond:100500:test\nThird:13:test"
@@ -541,7 +535,7 @@ mod test {
                 &OutputOptions {
                     file_name: true,
                     line_number: true,
-                    formatting: FormattingBehavior::Always(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Green),
                         context_match: Style::new(Color::Green),
                         line_number: Style::new(Color::Cyan),
@@ -611,7 +605,7 @@ mod test {
                 &OutputOptions {
                     line_number: true,
                     file_name: true,
-                    formatting: FormattingBehavior::Always(FormattingOptions {
+                    formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::RGB(100, 150, 200))
                             .bg(Color::Yellow)
                             .italic(),
