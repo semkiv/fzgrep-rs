@@ -17,9 +17,14 @@ pub struct Request {
     query: String,
     targets: Option<Vec<PathBuf>>,
     recursive: bool,
-    output_options: OutputOptions,
-    quiet: bool,
+    output_behavior: OutputBehavior,
     verbosity: LevelFilter,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum OutputBehavior {
+    Full(OutputOptions),
+    Quiet,
 }
 
 impl Request {
@@ -29,10 +34,6 @@ impl Request {
     /// but in practice it is used just with [`std::env::args`].
     ///
     /// # Errors:
-    ///
-    ///   * [`Err<String>`] if parsing `args` fails. This can happen in theory fail,
-    ///     but it practice it can be caused only by a violation of the constraints imposed by the parser,
-    /// in which case it should exit using other mechanism (see below).
     ///   * If `args` do not satisfy internal invariant (e.g. there are too few arguments),
     ///     the parser will cause the program to exit fast using [`std::process::exit`].
     ///
@@ -41,7 +42,7 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
     /// use std::path::PathBuf;
     /// // basic usage
     /// let args = ["fzgrep", "query", "file"];
@@ -49,9 +50,7 @@ impl Request {
     /// assert_eq!(request.query(), "query");
     /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file")]));
     /// assert!(!request.recursive());
-    /// assert!(!request.output_options().line_number);
-    /// assert!(!request.output_options().file_name);
-    /// assert!(!request.quiet());
+    /// assert_eq!(request.output_behavior(), &OutputBehavior::Full(OutputOptions::default()));
     /// assert_eq!(request.verbosity(), log::LevelFilter::Error);
     /// ```
     ///
@@ -73,14 +72,25 @@ impl Request {
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
     /// use std::path::PathBuf;
     /// // multiple input files
     /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert_eq!(request.targets(), &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
-    /// // `--with-filename` is assumed in case of multiple input files
-    /// assert!(request.output_options().file_name);
+    /// assert_eq!(
+    ///     request.targets(),
+    ///     &Some(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")])
+    /// );
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             // `--with-filename` is assumed in case of multiple input files
+    ///             file_name: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
@@ -94,36 +104,60 @@ impl Request {
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
     /// // request line numbers to be printed
     /// let args = ["fzgrep", "--line-number", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.output_options().line_number);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             line_number: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
     /// // request file names to be printed
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.output_options().file_name);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             file_name: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
     /// // with more than one input file `--with-filename` is assumed
     /// // it is possible to override this by specifically opting out like so
     /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(!request.output_options().file_name);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             file_name: false,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, Request};
     /// // silence the output
     /// let args = ["fzgrep", "--quiet", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert_eq!(request.quiet(), true);
+    /// assert_eq!(request.output_behavior(), &OutputBehavior::Quiet);
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
     ///
@@ -166,12 +200,7 @@ impl Request {
             query: Request::query_from(&matches),
             targets: Request::targets_from(&matches),
             recursive: matches.get_flag("recursive"),
-            output_options: OutputOptions {
-                line_number: matches.get_flag("line_number"),
-                file_name: Request::file_name_from(&matches),
-                formatting: Request::formatting_from(&matches),
-            },
-            quiet: matches.get_flag("quiet"),
+            output_behavior: Request::output_behavior_from(&matches),
             verbosity: Request::verbosity_from(&matches),
         }
     }
@@ -224,76 +253,101 @@ impl Request {
         self.recursive
     }
 
-    /// A simple getter that just returns output options.
+    /// A simple getter that just returns output behavior.
     ///
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, OutputOptions, Request};
     /// let args = ["fzgrep", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(!request.output_options().line_number);
+    /// assert_eq!(request.output_behavior(), &OutputBehavior::Full(OutputOptions::default()));
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, OutputOptions, Request};
     /// let args = ["fzgrep", "-n", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.output_options().line_number);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions{
+    ///             line_number: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, OutputOptions, Request};
     /// let args = ["fzgrep", "--line-number", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.output_options().line_number);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions{
+    ///             line_number: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, OutputOptions, Request};
     /// let args = ["fzgrep", "--with-filename", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.output_options().file_name);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions{
+    ///             file_name: true,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, OutputOptions, Request};
     /// let args = ["fzgrep", "--no-filename", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(!request.output_options().file_name);
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions{
+    ///             line_number: false,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
-    pub fn output_options(&self) -> OutputOptions {
-        self.output_options
-    }
-
-    /// A simple getter that returns whether it has been requested to silence the output
-    ///
-    /// # Examples
-    ///
     /// ```
-    /// use fzgrep::Request;
-    /// let args = ["fzgrep", "query", "file"];
+    /// use fzgrep::{FormattingOptions, OutputBehavior, OutputOptions, Request};
+    /// use yansi::{Color, Style};
+    /// let args = ["fzgrep", "-f", "--color", "always", "--color-overrides", "fn=3;4;33", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(!request.quiet());
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions{
+    ///             file_name: true,
+    ///             formatting: Some(
+    ///                 FormattingOptions {
+    ///                     file_name: Style::new(Color::Yellow).italic().underline(),
+    ///                     ..Default::default()
+    ///                 }
+    ///             ),
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
     /// ```
     ///
-    /// ```
-    /// use fzgrep::Request;
-    /// let args = ["fzgrep", "--quiet", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.quiet());
-    /// ```
-    ///
-    /// ```
-    /// use fzgrep::Request;
-    /// let args = ["fzgrep", "--silent", "query", "file"];
-    /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.quiet());
-    /// ```
-    ///
-    pub fn quiet(&self) -> bool {
-        self.quiet
+    pub fn output_behavior(&self) -> &OutputBehavior {
+        &self.output_behavior
     }
 
     /// A simple getter that just returns the verbosity level.
@@ -301,10 +355,10 @@ impl Request {
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::Request;
+    /// use fzgrep::{OutputBehavior, Request};
     /// let args = ["fzgrep", "--quiet", "query", "file"];
     /// let request = Request::new(args.into_iter().map(String::from));
-    /// assert!(request.quiet());
+    /// assert_eq!(request.output_behavior(), &OutputBehavior::Quiet);
     /// assert_eq!(request.verbosity(), log::LevelFilter::Off);
     /// ```
     ///
@@ -374,6 +428,18 @@ impl Request {
 
         // default case -> file names *will not* be printed
         false
+    }
+
+    fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
+        if matches.get_flag("quiet") {
+            return OutputBehavior::Quiet;
+        }
+
+        OutputBehavior::Full(OutputOptions {
+            line_number: matches.get_flag("line_number"),
+            file_name: Request::file_name_from(matches),
+            formatting: Request::formatting_from(matches),
+        })
     }
 
     fn verbosity_from(matches: &ArgMatches) -> LevelFilter {
@@ -700,8 +766,7 @@ mod tests {
                 query: String::from("query"),
                 targets: None,
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Error
             }
         );
@@ -717,8 +782,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Error
             }
         );
@@ -740,11 +804,10 @@ mod tests {
                 ]),
                 recursive: false,
                 // with multiple files we implicitly enable file names
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -766,11 +829,10 @@ mod tests {
                 ]),
                 recursive: false,
                 // with multiple files we implicitly enable file names
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -792,11 +854,10 @@ mod tests {
                 ]),
                 recursive: false,
                 // with multiple files we implicitly enable file names
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -818,11 +879,10 @@ mod tests {
                 ]),
                 recursive: false,
                 // with multiple files we implicitly enable file names
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -838,8 +898,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("dir")]),
                 recursive: true,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Error
             }
         );
@@ -855,8 +914,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("dir")]),
                 recursive: true,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Error
             }
         );
@@ -872,11 +930,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -892,11 +949,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -912,11 +968,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: false,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -932,11 +987,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: false,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -952,8 +1006,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: true,
+                output_behavior: OutputBehavior::Quiet,
                 verbosity: LevelFilter::Off
             }
         );
@@ -969,8 +1022,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: true,
+                output_behavior: OutputBehavior::Quiet,
                 verbosity: LevelFilter::Off
             }
         );
@@ -986,8 +1038,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: true,
+                output_behavior: OutputBehavior::Quiet,
                 verbosity: LevelFilter::Off
             }
         );
@@ -1003,8 +1054,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Warn
             }
         );
@@ -1020,8 +1070,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Warn
             }
         );
@@ -1037,8 +1086,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Info
             }
         );
@@ -1054,8 +1102,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Info
             }
         );
@@ -1071,8 +1118,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Debug
             }
         );
@@ -1095,8 +1141,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Debug
             }
         );
@@ -1112,8 +1157,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Trace
             }
         );
@@ -1137,8 +1181,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Trace
             }
         );
@@ -1154,8 +1197,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Trace
             }
         );
@@ -1180,8 +1222,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Trace
             }
         );
@@ -1197,8 +1238,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions::default(),
-                quiet: false,
+                output_behavior: OutputBehavior::Full(OutputOptions::default()),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1214,11 +1254,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions::default()),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1234,11 +1273,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: None,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1262,11 +1300,10 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: None,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1290,14 +1327,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1321,14 +1357,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bold(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1352,14 +1387,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().dimmed(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1383,14 +1417,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().italic(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1414,14 +1447,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().underline(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1445,14 +1477,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().blink(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1476,14 +1507,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().blink(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1507,14 +1537,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().invert(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1538,14 +1567,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().hidden(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1569,14 +1597,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().strikethrough(),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1600,14 +1627,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Black),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1631,14 +1657,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Red),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1662,14 +1687,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Green),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1693,14 +1717,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1723,14 +1746,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1754,14 +1776,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Magenta),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1785,14 +1806,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Cyan),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1816,14 +1836,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::White),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1847,14 +1866,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Fixed(120)),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1878,14 +1896,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::RGB(192, 255, 238)),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1909,14 +1926,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Default),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1940,14 +1956,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Black),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -1971,14 +1986,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Red),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2002,14 +2016,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Green),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2033,14 +2046,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2063,14 +2075,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Blue),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2094,14 +2105,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Magenta),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2125,14 +2135,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Cyan),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2156,14 +2165,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::White),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2187,14 +2195,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Fixed(120)),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2218,14 +2225,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::RGB(192, 255, 238)),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2249,14 +2255,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::default().bg(Color::Default),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2280,7 +2285,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Yellow)
                             .italic()
@@ -2289,8 +2294,7 @@ mod tests {
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2314,14 +2318,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         context_match: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2345,14 +2348,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         line_number: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2376,14 +2378,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         file_name: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2407,14 +2408,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         separator: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2438,14 +2438,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_line: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2469,14 +2468,13 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         context: Style::new(Color::Green).bold().bg(Color::Yellow),
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2500,7 +2498,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Green).bold().bg(Color::Yellow),
                         line_number: Style::new(Color::Yellow).dimmed().bg(Color::Blue),
@@ -2508,8 +2506,7 @@ mod tests {
                         ..Default::default()
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2531,7 +2528,7 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: false,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue).bg(Color::Yellow).bold(),
                         context_match: Style::new(Color::Blue).bg(Color::Fixed(177)).bold(),
@@ -2542,8 +2539,7 @@ mod tests {
                         separator: Style::new(Color::Magenta).bg(Color::RGB(0, 192, 0))
                     }),
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Error
             }
         );
@@ -2559,12 +2555,11 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: true,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     line_number: true,
                     file_name: true,
                     ..Default::default()
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Warn
             }
         );
@@ -2592,15 +2587,14 @@ mod tests {
                 query: String::from("query"),
                 targets: Some(vec![PathBuf::from("file")]),
                 recursive: true,
-                output_options: OutputOptions {
+                output_behavior: OutputBehavior::Full(OutputOptions {
                     line_number: true,
                     file_name: true,
                     formatting: Some(FormattingOptions {
                         selected_match: Style::new(Color::Blue).blink(),
                         ..Default::default()
                     }),
-                },
-                quiet: false,
+                }),
                 verbosity: LevelFilter::Warn
             }
         );
@@ -2612,8 +2606,7 @@ mod tests {
             query: String::from("test"),
             targets: None,
             recursive: false,
-            output_options: OutputOptions::default(),
-            quiet: false,
+            output_behavior: OutputBehavior::Full(OutputOptions::default()),
             verbosity: LevelFilter::Error,
         };
         assert_eq!(request.query(), "test");
@@ -2629,8 +2622,7 @@ mod tests {
                 PathBuf::from("File3"),
             ]),
             recursive: false,
-            output_options: OutputOptions::default(),
-            quiet: false,
+            output_behavior: OutputBehavior::Full(OutputOptions::default()),
             verbosity: LevelFilter::Error,
         };
         assert_eq!(
@@ -2649,29 +2641,40 @@ mod tests {
             query: String::from("test"),
             targets: None,
             recursive: true,
-            output_options: OutputOptions::default(),
-            quiet: false,
+            output_behavior: OutputBehavior::Full(OutputOptions::default()),
             verbosity: LevelFilter::Error,
         };
         assert!(request.recursive());
     }
 
     #[test]
-    fn output_options() {
+    fn output_behavior() {
         let request = Request {
             query: String::from("test"),
             targets: None,
             recursive: false,
-            output_options: OutputOptions {
+            output_behavior: OutputBehavior::Full(OutputOptions {
                 line_number: true,
                 file_name: true,
-                ..Default::default()
-            },
-            quiet: false,
+                formatting: Some(FormattingOptions {
+                    selected_match: Style::new(Color::Blue),
+                    ..Default::default()
+                }),
+            }),
             verbosity: LevelFilter::Error,
         };
-        assert!(request.output_options().line_number);
-        assert!(request.output_options().file_name);
+
+        match request.output_behavior() {
+            OutputBehavior::Full(options) => {
+                assert!(options.line_number);
+                assert!(options.file_name);
+                assert_eq!(
+                    options.formatting.unwrap().selected_match,
+                    Style::new(Color::Blue)
+                );
+            }
+            OutputBehavior::Quiet => unreachable!(),
+        }
     }
 
     #[test]
@@ -2680,12 +2683,11 @@ mod tests {
             query: String::from("test"),
             targets: None,
             recursive: false,
-            output_options: OutputOptions {
+            output_behavior: OutputBehavior::Full(OutputOptions {
                 line_number: true,
                 file_name: true,
                 ..Default::default()
-            },
-            quiet: false,
+            }),
             verbosity: LevelFilter::Debug,
         };
         assert_eq!(request.verbosity(), LevelFilter::Debug);

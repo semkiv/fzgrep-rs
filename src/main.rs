@@ -1,6 +1,6 @@
 use fzgrep::Request;
 use log::error;
-use std::{env, process};
+use std::{env, io, process};
 
 fn main() -> process::ExitCode {
     let request = Request::new(env::args());
@@ -9,7 +9,7 @@ fn main() -> process::ExitCode {
         .filter_level(request.verbosity())
         .init();
 
-    match fzgrep::run(&request) {
+    match fzgrep::run(&request, &mut io::stdout()) {
         Ok(matches) => {
             if !matches.is_empty() {
                 process::ExitCode::from(fzgrep::ExitCode::SUCCESS)

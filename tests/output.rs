@@ -6,9 +6,6 @@ use yansi::{Color, Paint};
 fn default_single_file() {
     let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -38,7 +35,9 @@ fn default_single_file() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -50,9 +49,6 @@ fn default_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -148,7 +144,9 @@ fn default_multiple_files() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -162,9 +160,6 @@ fn line_number_short() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -182,7 +177,9 @@ fn line_number_short() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -196,9 +193,6 @@ fn line_number_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -216,7 +210,9 @@ fn line_number_long() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -230,9 +226,6 @@ fn with_filename_short() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -250,7 +243,9 @@ fn with_filename_short() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -264,9 +259,6 @@ fn with_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -284,7 +276,9 @@ fn with_filename_long() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -298,9 +292,6 @@ fn no_filename_short() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -314,7 +305,9 @@ fn no_filename_short() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -328,9 +321,6 @@ fn no_filename_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -344,7 +334,9 @@ fn no_filename_long() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -359,9 +351,6 @@ fn no_filename_multiple_files() {
         "resources/tests/тест.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -385,7 +374,9 @@ fn no_filename_multiple_files() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -400,15 +391,14 @@ fn formatting_color_always() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!("{}u{}", Paint::blue("contig"), Paint::blue("ous")),
         format!("{}u{}", Paint::blue("Contig"), Paint::blue("ous")),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -423,9 +413,6 @@ fn formatting_color_auto() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -455,7 +442,9 @@ fn formatting_color_auto() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -470,11 +459,10 @@ fn formatting_color_never() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = ["contiguous", "Contiguous"].join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -489,9 +477,6 @@ fn formatting_override_selected_match() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}u{}",
@@ -505,7 +490,9 @@ fn formatting_override_selected_match() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -521,9 +508,6 @@ fn formatting_override_line_number() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -541,7 +525,9 @@ fn formatting_override_line_number() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -557,9 +543,6 @@ fn formatting_override_file_name() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}u{}",
@@ -577,7 +560,9 @@ fn formatting_override_file_name() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -594,9 +579,6 @@ fn formatting_override_separator() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}u{}",
@@ -618,7 +600,9 @@ fn formatting_override_separator() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -633,9 +617,6 @@ fn formatting_override_selected_line() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}",
@@ -651,16 +632,15 @@ fn formatting_override_selected_line() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
 fn all_options_short() {
     let args = ["fzgrep", "-nf", "contigous", "resources/tests/test.txt"];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}u{}",
@@ -730,7 +710,9 @@ fn all_options_short() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
 }
 
 #[test]
@@ -747,9 +729,6 @@ fn all_options_long() {
         "resources/tests/test.txt",
     ];
     let request = Request::new(args.into_iter().map(String::from));
-    let matches =
-        fzgrep::find_matches(request.query(), request.targets(), request.recursive()).unwrap();
-    let formatted = fzgrep::format_results(&matches, &request.output_options());
     let expected = [
         format!(
             "{}{}{}{}{}{}{}",
@@ -773,5 +752,35 @@ fn all_options_long() {
         ),
     ]
     .join("\n");
-    assert_eq!(formatted, expected);
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, expected.as_bytes());
+}
+
+#[test]
+fn no_matches_default_single_file() {
+    let args = ["fzgrep", "nomatch", "resources/tests/test.txt"];
+    let request = Request::new(args.into_iter().map(String::from));
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, b"");
+}
+
+#[test]
+fn no_matches_all_options_long() {
+    let args = [
+        "fzgrep",
+        "--line-number",
+        "--with-filename",
+        "--color",
+        "always",
+        "--color-overrides",
+        "ms=43:mc=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
+        "nomatch",
+        "resources/tests/test.txt",
+    ];
+    let request = Request::new(args.into_iter().map(String::from));
+    let mut buf = Vec::new();
+    fzgrep::run(&request, &mut buf).unwrap();
+    assert_eq!(buf, b"");
 }
