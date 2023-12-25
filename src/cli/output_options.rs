@@ -21,6 +21,7 @@ pub enum Formatting {
 pub struct OutputOptions {
     pub line_number: bool,
     pub file_name: bool,
+    pub context: Context,
     pub formatting: Formatting,
 }
 
@@ -39,6 +40,15 @@ pub struct FormattingOptions {
     pub selected_line: Style,
     /// Style of the surrounding context
     pub context: Style,
+}
+
+/// Holds the number of surrounding context lines that should be printed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Context {
+    /// (Maximum) number of lines preceding the matching line.
+    pub before: usize,
+    /// (Maximum) number of lines following the matching line.
+    pub after: usize,
 }
 
 impl Formatting {
@@ -124,6 +134,10 @@ impl Default for OutputOptions {
         Self {
             line_number: false,
             file_name: false,
+            context: Context {
+                before: 0,
+                after: 0,
+            },
             formatting: if atty::is(Stream::Stdout) {
                 Formatting::On(FormattingOptions::default())
             } else {
@@ -142,6 +156,8 @@ mod test {
         let default = OutputOptions::default();
         assert!(!default.line_number);
         assert!(!default.file_name);
+        assert_eq!(default.context.before, 0);
+        assert_eq!(default.context.after, 0);
         assert_eq!(
             default.formatting,
             if atty::is(Stream::Stdout) {
@@ -150,6 +166,24 @@ mod test {
                 Formatting::Off
             }
         );
+    }
+
+    #[test]
+    fn formatting_on_options() {
+        let formatting = Formatting::On(FormattingOptions {
+            selected_match: Style::new(Color::Blue).bold(),
+            ..Default::default()
+        });
+        assert_eq!(
+            formatting.options().unwrap().selected_match,
+            Style::new(Color::Blue).bold()
+        );
+    }
+
+    #[test]
+    fn formatting_off_options() {
+        let formatting = Formatting::Off;
+        assert_eq!(formatting.options(), None);
     }
 
     #[test]

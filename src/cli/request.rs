@@ -1,6 +1,6 @@
 use crate::cli::{
     error::{ColorOverrideParsingError, ColorSequenceParsingError, StyleSequenceParsingError},
-    output_options::{Formatting, FormattingOptions, OutputOptions},
+    output_options::{Context, Formatting, FormattingOptions, OutputOptions},
 };
 use atty::Stream;
 use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
@@ -149,6 +149,44 @@ impl Request {
     ///     &OutputBehavior::Full(
     ///         OutputOptions {
     ///             file_name: false,
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::{Context, FormattingOptions, OutputBehavior, OutputOptions, Request};
+    /// // symmetric context
+    /// let args = ["fzgrep", "--context", "2", "query", "file1", "file2"];
+    /// let request = Request::new(args.into_iter().map(String::from));
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             context: Context {
+    ///                 before: 2,
+    ///                 after: 2,
+    ///             },
+    ///             ..Default::default()
+    ///         }
+    ///     )
+    /// );
+    /// ```
+    ///
+    /// ```
+    /// use fzgrep::{Context, FormattingOptions, OutputBehavior, OutputOptions, Request};
+    /// // asymmetric context
+    /// let args = ["fzgrep", "--before-context", "1", "--after-context", "2", "query", "file1", "file2"];
+    /// let request = Request::new(args.into_iter().map(String::from));
+    /// assert_eq!(
+    ///     request.output_behavior(),
+    ///     &OutputBehavior::Full(
+    ///         OutputOptions {
+    ///             context: Context {
+    ///                 before: 1,
+    ///                 after: 2,
+    ///             },
     ///             ..Default::default()
     ///         }
     ///     )
@@ -433,6 +471,26 @@ impl Request {
         false
     }
 
+    fn context_from(matches: &ArgMatches) -> Context {
+        if let Some(num) = matches.get_one::<usize>("context").copied() {
+            Context {
+                before: num,
+                after: num,
+            }
+        } else {
+            Context {
+                before: matches
+                    .get_one::<usize>("before_context")
+                    .copied()
+                    .unwrap_or(0),
+                after: matches
+                    .get_one::<usize>("after_context")
+                    .copied()
+                    .unwrap_or(0),
+            }
+        }
+    }
+
     fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
         if matches.get_flag("quiet") {
             return OutputBehavior::Quiet;
@@ -441,6 +499,7 @@ impl Request {
         OutputBehavior::Full(OutputOptions {
             line_number: matches.get_flag("line_number"),
             file_name: Request::file_name_from(matches),
+            context: Request::context_from(matches),
             formatting: Request::formatting_from(matches),
         })
     }
@@ -694,11 +753,11 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .long("context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with_all(["before", "after"])
+                .conflicts_with_all(["before_context", "after_context"])
                 .help("Print NUM lines of surrounding context")
         )
         .arg(
-            Arg::new("before")
+            Arg::new("before_context")
                 .short('B')
                 .long("before-context")
                 .value_name("NUM")
@@ -707,7 +766,7 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .help("Print NUM lines of leading context")
         )
         .arg(
-            Arg::new("after")
+            Arg::new("after_context")
                 .short('A')
                 .long("after-context")
                 .value_name("NUM")
@@ -1014,6 +1073,138 @@ mod tests {
                 recursive: false,
                 output_behavior: OutputBehavior::Full(OutputOptions {
                     file_name: false,
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_short() {
+        let args = ["fzgrep", "-C", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 2,
+                        after: 2,
+                    },
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_long() {
+        let args = ["fzgrep", "--context", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 2,
+                        after: 2,
+                    },
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_before_short() {
+        let args = ["fzgrep", "-B", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 2,
+                        after: 0,
+                    },
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_before_long() {
+        let args = ["fzgrep", "--before-context", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 2,
+                        after: 0,
+                    },
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_after_short() {
+        let args = ["fzgrep", "-A", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 0,
+                        after: 2,
+                    },
+                    ..Default::default()
+                }),
+                verbosity: LevelFilter::Error
+            }
+        );
+    }
+
+    #[test]
+    fn constructor_context_after_long() {
+        let args = ["fzgrep", "--after-context", "2", "query", "file"];
+        let request = Request::new(args.into_iter().map(String::from));
+        assert_eq!(
+            request,
+            Request {
+                query: String::from("query"),
+                targets: Some(vec![PathBuf::from("file")]),
+                recursive: false,
+                output_behavior: OutputBehavior::Full(OutputOptions {
+                    context: Context {
+                        before: 0,
+                        after: 2,
+                    },
                     ..Default::default()
                 }),
                 verbosity: LevelFilter::Error
@@ -2541,7 +2732,7 @@ mod tests {
 
     #[test]
     fn constructor_all_options_short() {
-        let args = ["fzgrep", "-rnfv", "query", "file"];
+        let args = ["fzgrep", "-rnfv", "-B1", "-A2", "query", "file"];
         let request = Request::new(args.into_iter().map(String::from));
         assert_eq!(
             request,
@@ -2552,7 +2743,11 @@ mod tests {
                 output_behavior: OutputBehavior::Full(OutputOptions {
                     line_number: true,
                     file_name: true,
-                    ..Default::default()
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
+                    formatting: Formatting::On(FormattingOptions::default()),
                 }),
                 verbosity: LevelFilter::Warn
             }
@@ -2566,6 +2761,10 @@ mod tests {
             "--recursive",
             "--line-number",
             "--with-filename",
+            "--before-context",
+            "1",
+            "--after-context",
+            "2",
             "--verbose",
             "--color",
             "always",
@@ -2584,6 +2783,10 @@ mod tests {
                 output_behavior: OutputBehavior::Full(OutputOptions {
                     line_number: true,
                     file_name: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::On(FormattingOptions {
                         selected_match: Style::new(Color::Blue).blink(),
                         ..Default::default()
@@ -2650,6 +2853,10 @@ mod tests {
             output_behavior: OutputBehavior::Full(OutputOptions {
                 line_number: true,
                 file_name: true,
+                context: Context {
+                    before: 1,
+                    after: 2,
+                },
                 formatting: Formatting::On(FormattingOptions {
                     selected_match: Style::new(Color::Blue),
                     ..Default::default()
@@ -2662,6 +2869,8 @@ mod tests {
             OutputBehavior::Full(options) => {
                 assert!(options.line_number);
                 assert!(options.file_name);
+                assert_eq!(options.context.before, 1);
+                assert_eq!(options.context.after, 2);
                 assert_eq!(
                     options.formatting.options().unwrap().selected_match,
                     Style::new(Color::Blue)

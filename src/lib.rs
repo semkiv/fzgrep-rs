@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{Formatting, FormattingOptions, OutputBehavior, OutputOptions, Request};
+pub use cli::{Context, Formatting, FormattingOptions, OutputBehavior, OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use core::reader::Reader;
@@ -415,7 +415,6 @@ mod test {
                 &results,
                 &OutputOptions {
                     line_number: true,
-                    formatting: Formatting::On(FormattingOptions::default()),
                     ..Default::default()
                 }
             ),
@@ -468,7 +467,61 @@ mod test {
                 &results,
                 &OutputOptions {
                     file_name: true,
-                    formatting: Formatting::On(FormattingOptions::default()),
+                    ..Default::default()
+                }
+            ),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_options_context() {
+        let results = vec![
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("First"),
+                    line_number: 42,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Second"),
+                    line_number: 100500,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+            },
+            MatchingLine {
+                location: Location {
+                    file_name: String::from("Third"),
+                    line_number: 13,
+                },
+                content: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    context: Context {
+                        before: 1,
+                        after: 2,
+                    },
                     ..Default::default()
                 }
             ),
@@ -522,6 +575,10 @@ mod test {
                 &OutputOptions {
                     file_name: true,
                     line_number: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::Off
                 }
             ),
@@ -563,6 +620,10 @@ mod test {
                 &OutputOptions {
                     file_name: true,
                     line_number: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::On(FormattingOptions::plain())
                 }
             ),
@@ -604,6 +665,10 @@ mod test {
                 &OutputOptions {
                     file_name: true,
                     line_number: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::On(FormattingOptions {
                         selected_match: Style::new(Color::Green),
                         line_number: Style::new(Color::Cyan),
@@ -673,6 +738,10 @@ mod test {
                 &OutputOptions {
                     line_number: true,
                     file_name: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::On(FormattingOptions {
                         selected_match: Style::new(Color::RGB(100, 150, 200))
                             .bg(Color::Yellow)
@@ -718,6 +787,10 @@ mod test {
                 &OutputOptions {
                     line_number: true,
                     file_name: true,
+                    context: Context {
+                        before: 1,
+                        after: 2
+                    },
                     formatting: Formatting::On(FormattingOptions {
                         selected_match: Style::new(Color::RGB(100, 150, 200))
                             .bg(Color::Yellow)
