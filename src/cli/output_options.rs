@@ -1,6 +1,15 @@
 use atty::Stream;
 use yansi::{Color, Style};
 
+/// Controls output formatting.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Formatting {
+    /// Request the output text to be formatted according to the supplied options.
+    On(FormattingOptions),
+    /// Request formatting to be disabled and the output to be just plain text.
+    Off,
+}
+
 /// Holds various output options.
 ///
 /// Specifically:
@@ -12,25 +21,51 @@ use yansi::{Color, Style};
 pub struct OutputOptions {
     pub line_number: bool,
     pub file_name: bool,
-    pub formatting: Option<FormattingOptions>,
+    pub formatting: Formatting,
 }
 
-/// Holds formatting options for:
-///   * the selected match and the selected line itself.
-///   * the context match and the context itself.
-///   * the line number.
-///   * the file name.
-///   * the separator between file name/line number/line itself/etc.
-///
+/// Holds formatting options
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FormattingOptions {
+    /// Style of the selected match (the matching portion of the line)
     pub selected_match: Style,
-    pub context_match: Style,
+    /// Style of the line number.
     pub line_number: Style,
+    /// Style of the file name.
     pub file_name: Style,
+    /// Style of the separator between file name/line number/line itself/etc.
     pub separator: Style,
+    /// Style of the selected line (non-matching part)
     pub selected_line: Style,
+    /// Style of the surrounding context
     pub context: Style,
+}
+
+impl Formatting {
+    /// Converts [`Formatting`] to [`Option<FormattingOptions>`].
+    /// If `self` is [`Formatting::On`] returns [`Some`] with the inner options, otherwise [`None`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fzgrep::{Formatting, FormattingOptions};
+    /// use yansi::{Color, Style};
+    /// let formatting = Formatting::On(
+    ///     FormattingOptions {
+    ///         selected_match: Style::new(Color::Blue).bold(),
+    ///         ..Default::default()
+    ///     }
+    /// );
+    /// assert_eq!(formatting.options().unwrap().selected_match, Style::new(Color::Blue).bold());
+    /// assert_eq!(Formatting::Off.options(), None);
+    /// ```
+    ///
+    pub fn options(&self) -> Option<FormattingOptions> {
+        match self {
+            Formatting::On(options) => Some(*options),
+            Formatting::Off => None,
+        }
+    }
 }
 
 impl FormattingOptions {
@@ -49,7 +84,6 @@ impl FormattingOptions {
     pub fn plain() -> Self {
         Self {
             selected_match: Style::default(),
-            context_match: Style::default(),
             line_number: Style::default(),
             file_name: Style::default(),
             separator: Style::default(),
@@ -76,7 +110,6 @@ impl Default for FormattingOptions {
     fn default() -> Self {
         Self {
             selected_match: Style::new(Color::Red).bold(),
-            context_match: Style::new(Color::Red).bold(),
             line_number: Style::new(Color::Green),
             file_name: Style::new(Color::Magenta),
             separator: Style::new(Color::Cyan),
@@ -92,9 +125,9 @@ impl Default for OutputOptions {
             line_number: false,
             file_name: false,
             formatting: if atty::is(Stream::Stdout) {
-                Some(FormattingOptions::default())
+                Formatting::On(FormattingOptions::default())
             } else {
-                None
+                Formatting::Off
             },
         }
     }
@@ -112,9 +145,9 @@ mod test {
         assert_eq!(
             default.formatting,
             if atty::is(Stream::Stdout) {
-                Some(FormattingOptions::default())
+                Formatting::On(FormattingOptions::default())
             } else {
-                None
+                Formatting::Off
             }
         );
     }
@@ -123,7 +156,6 @@ mod test {
     fn formatting_options_plain() {
         let plain = FormattingOptions::plain();
         assert_eq!(plain.selected_match, Style::default());
-        assert_eq!(plain.context_match, Style::default());
         assert_eq!(plain.line_number, Style::default());
         assert_eq!(plain.file_name, Style::default());
         assert_eq!(plain.separator, Style::default());
@@ -135,7 +167,6 @@ mod test {
     fn formatting_options_default() {
         let default = FormattingOptions::default();
         assert_eq!(default.selected_match, Style::new(Color::Red).bold());
-        assert_eq!(default.context_match, Style::new(Color::Red).bold());
         assert_eq!(default.line_number, Style::new(Color::Green));
         assert_eq!(default.file_name, Style::new(Color::Magenta));
         assert_eq!(default.separator, Style::new(Color::Cyan));

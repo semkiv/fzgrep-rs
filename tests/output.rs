@@ -724,7 +724,7 @@ fn all_options_long() {
         "--color",
         "always",
         "--color-overrides",
-        "ms=43:mc=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
+        "ms=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
         "contigous",
         "resources/tests/test.txt",
     ];
@@ -775,7 +775,7 @@ fn no_matches_all_options_long() {
         "--color",
         "always",
         "--color-overrides",
-        "ms=43:mc=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
+        "ms=43:ln=3;38;2;192;255;238:fn=3;38;2;192;255;238:sl=2;38;5;245:cx=2;38;5;245:se=35",
         "nomatch",
         "resources/tests/test.txt",
     ];
