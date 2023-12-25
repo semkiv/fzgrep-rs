@@ -2,7 +2,7 @@ mod cli;
 mod core;
 mod matching_results;
 
-pub use cli::{FormattingOptions, OutputOptions, Request};
+pub use cli::{FormattingOptions, OutputBehavior, OutputOptions, Request};
 pub use core::exit_code::ExitCode;
 
 use core::reader::Reader;
@@ -10,7 +10,7 @@ use log::debug;
 use matching_results::matching_line::{Location, MatchingLine};
 use std::{
     env, error,
-    io::{self, BufRead},
+    io::{self, BufRead, Write},
     iter,
     ops::Range,
     path::{Path, PathBuf},
@@ -27,14 +27,23 @@ use yansi::Paint;
 ///
 /// # Errors
 ///
+///   * [`std::fmt::Error`] if encounters any formatting related issues.
 ///   * [`std::io::Error`] if encounters any I/O related issues.
 ///   * [`walkdir::error::Error`] if any errors related to recursive processing occur
 ///
-pub fn run(request: &Request) -> Result<Vec<MatchingLine>, Box<dyn error::Error>> {
+pub fn run(
+    request: &Request,
+    dest: &mut impl Write,
+) -> Result<Vec<MatchingLine>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {:?}", request);
     let matches = find_matches(request.query(), request.targets(), request.recursive())?;
-    if !request.quiet() && !matches.is_empty() {
-        println!("{}", format_results(&matches, &request.output_options()));
+    match request.output_behavior() {
+        OutputBehavior::Full(options) => {
+            if !matches.is_empty() {
+                write!(dest, "{}", format_results(&matches, options))?;
+            }
+        }
+        OutputBehavior::Quiet => {}
     }
     Ok(matches)
 }
@@ -651,6 +660,33 @@ mod test {
                 Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
                 Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
             )
+        )
+    }
+
+    #[test]
+    fn no_results_output_options_default() {
+        let results = vec![];
+        assert_eq!(format_results(&results, &OutputOptions::default()), "")
+    }
+
+    #[test]
+    fn no_results_output_options_all_options() {
+        let results = vec![];
+        assert_eq!(
+            format_results(
+                &results,
+                &OutputOptions {
+                    line_number: true,
+                    file_name: true,
+                    formatting: Some(FormattingOptions {
+                        selected_match: Style::new(Color::RGB(100, 150, 200))
+                            .bg(Color::Yellow)
+                            .italic(),
+                        ..Default::default()
+                    })
+                }
+            ),
+            ""
         )
     }
 
