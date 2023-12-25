@@ -3,7 +3,7 @@ use crate::cli::{
     output_options::{FormattingOptions, OutputOptions},
 };
 use atty::Stream;
-use clap::{parser::ValuesRef, Arg, ArgAction, ArgMatches, Command};
+use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
 use log::{warn, LevelFilter};
 use std::path::PathBuf;
 use yansi::{Color, Style};
@@ -691,6 +691,33 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                 .action(ArgAction::SetTrue)
                 .conflicts_with("with_filename")
                 .help("Suppress the file name prefix on output"),
+        )
+        .arg(
+            Arg::new("context")
+                .short('C')
+                .long("context")
+                .value_name("NUM")
+                .value_parser(value_parser!(usize))
+                .conflicts_with_all(["before", "after"])
+                .help("Print NUM lines of surrounding context")
+        )
+        .arg(
+            Arg::new("before")
+                .short('B')
+                .long("before-context")
+                .value_name("NUM")
+                .value_parser(value_parser!(usize))
+                .conflicts_with("context")
+                .help("Print NUM lines of leading context")
+        )
+        .arg(
+            Arg::new("after")
+                .short('A')
+                .long("after-context")
+                .value_name("NUM")
+                .value_parser(value_parser!(usize))
+                .conflicts_with("context")
+                .help("Print NUM lines of trailing context")
         )
         .arg(
             Arg::new("quiet")
