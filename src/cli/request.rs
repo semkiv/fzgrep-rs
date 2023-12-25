@@ -717,6 +717,7 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
             Arg::new("color")
                 .long("color")
                 .visible_alias("colour")
+                .value_name("WHEN")
                 .value_parser(["always", "auto", "never"])
                 .default_value("auto")
                 .help(
@@ -728,6 +729,7 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
             Arg::new("color_overrides")
                 .long("color-overrides")
                 .visible_alias("colour-overrides")
+                .value_name("CAPS")
                 .value_parser(Request::color_overrides_parser)
                 .help(
                     "Controls how the '--color' option highlights output.\n\
@@ -746,6 +748,7 @@ fn match_command_line_args(args: impl Iterator<Item = String>) -> ArgMatches {
                     and/or ASCII escape codes: https://en.wikipedia.org/wiki/ANSI_escape_code."
                 )
         )
+        .next_line_help(true)
         .get_matches_from(args)
 }
 
