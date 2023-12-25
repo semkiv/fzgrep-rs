@@ -21,9 +21,12 @@ pub struct Request {
     verbosity: LevelFilter,
 }
 
+/// Controls the program output
 #[derive(Debug, PartialEq)]
 pub enum OutputBehavior {
+    /// Output according to the supplied options.
     Full(OutputOptions),
+    /// Output is suppressed, return code can be used to categorize the run results.
     Quiet,
 }
 

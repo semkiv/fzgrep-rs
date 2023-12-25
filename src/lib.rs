@@ -29,7 +29,7 @@ use yansi::Paint;
 ///
 ///   * [`std::fmt::Error`] if encounters any formatting related issues.
 ///   * [`std::io::Error`] if encounters any I/O related issues.
-///   * [`walkdir::error::Error`] if any errors related to recursive processing occur
+///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
 pub fn run(
     request: &Request,
@@ -54,7 +54,7 @@ pub fn run(
 /// # Errors
 ///
 ///   * [`io::Error`] if encounters any I/O related issues.
-///   * [`walkdir::error::Error`] if any errors related to recursive processing occur
+///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
 pub fn find_matches(
     query: &str,
