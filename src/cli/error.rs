@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display, num::ParseIntError};
 /// Errors that can occur when parsing `grep` formatting sequences.
 /// (see [`grep` documentation](https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT) for more information)
 #[derive(Debug)]
-pub enum ColorOverrideParsingError {
+pub(crate) enum ColorOverrideParsingError {
     /// Raised if the given string is not a valid override (i.e. a '<capability>=<formatting>' pair).
     ///
     /// # Fields
@@ -33,7 +33,7 @@ pub enum ColorOverrideParsingError {
 
 /// Errors that might occur when parsing ASCII SGR style sequences.
 #[derive(Debug)]
-pub enum StyleSequenceParsingError {
+pub(crate) enum StyleSequenceParsingError {
     /// Given token is not a code. Codes are expected to be 8-bit unsigned integers (see ASCII SGR sequence).
     /// When a token cannot be parsed as such, this error is raised.
     ///
@@ -66,7 +66,7 @@ pub enum StyleSequenceParsingError {
 
 /// Errors that might occur when parsing ASCII SGR color sequences.
 #[derive(Debug)]
-pub enum ColorSequenceParsingError {
+pub(crate) enum ColorSequenceParsingError {
     /// Given token is not a code. Codes are expected to be 8-bit unsigned integers (see ASCII SGR sequence).
     /// When a token cannot be parsed as such, this error is raised.
     ///

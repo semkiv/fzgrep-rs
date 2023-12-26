@@ -2,7 +2,7 @@ use fzgrep::Request;
 use log::error;
 use std::{env, io, process};
 
-fn main() -> process::ExitCode {
+const fn main() -> process::ExitCode {
     let request = Request::new(env::args());
     // initialize logger
     env_logger::Builder::new()

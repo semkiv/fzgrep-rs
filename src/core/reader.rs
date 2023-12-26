@@ -4,13 +4,13 @@ use std::{
     path::Path,
 };
 
-pub struct Reader {
+pub(crate) struct Reader {
     displayed_name: String,
     source: Box<dyn BufRead>,
 }
 
 impl Reader {
-    pub fn file_reader(path: impl AsRef<Path>) -> Result<Self, io::Error> {
+    pub(crate) fn file_reader(path: impl AsRef<Path>) -> Result<Self, io::Error> {
         let file = fs::File::open(&path)?;
         let reader = Box::new(BufReader::new(file));
         Ok(Self {
@@ -19,19 +19,19 @@ impl Reader {
         })
     }
 
-    pub fn stdin_reader() -> Self {
+    pub(crate) const fn stdin_reader() -> Self {
         Self {
             displayed_name: String::from("(standard input)"),
             source: Box::new(BufReader::new(io::stdin())),
         }
     }
 
-    pub fn display_name(&self) -> &String {
+    pub(crate) const fn display_name(&self) -> &String {
         &self.displayed_name
     }
 
     /// Just a getter that returns the underlying source.
-    pub fn source(self) -> Box<dyn BufRead> {
+    pub(crate) const fn source(self) -> Box<dyn BufRead> {
         self.source
     }
 }

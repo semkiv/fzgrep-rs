@@ -1,2 +1,3 @@
-pub mod exit_code;
-pub mod reader;
+pub(crate) mod exit_code;
+pub(crate) mod reader;
+pub mod request;
