@@ -4,26 +4,26 @@ mod matching_results;
 
 pub use core::request::Request;
 
-use cli::output;
-use core::{
-    reader::Reader,
-    request::{MatchOptions, OutputBehavior, Targets},
+use crate::{
+    cli::output,
+    core::{
+        reader::Reader,
+        request::{ContextSize, Lines, MatchOptions, OutputBehavior, Targets},
+    },
+    matching_results::{
+        context_accumulators::SlidingAccumulator,
+        result::{MatchingResult, MatchingResultState, PartialMatchingResult},
+    },
 };
 use log::debug;
-use matching_results::result::MatchingResult;
 use std::{
+    collections::VecDeque,
     error,
     io::{self, BufRead, Write},
-    iter,
+    iter, mem,
     path::Path,
 };
 use walkdir::WalkDir;
-
-// use std::{
-//     env
-//     io::BufRead},
-//     path::PathBuf,
-// };
 
 /// This function handles all the application logic.
 ///
@@ -137,27 +137,58 @@ fn process_one_target(
     options: &MatchOptions,
 ) -> Result<Vec<MatchingResult>, io::Error> {
     let display_name = target.display_name().clone();
-    let mut ret = Vec::new();
+    let mut result = Vec::new();
+
+    let ContextSize {
+        before: Lines(lines_before),
+        after: Lines(lines_after),
+    } = options.context_size;
+    let mut context_before = SlidingAccumulator::new(lines_before);
+    let mut pending_results: VecDeque<PartialMatchingResult> = VecDeque::new();
     for (index, line) in target.source().lines().enumerate() {
         let line = line?;
+        context_before.feed(line);
+
+        // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
+        for partial_result in mem::take(&mut pending_results) {
+            match partial_result.feed(line) {
+                MatchingResultState::Complete(matching_result) => result.push(matching_result),
+                MatchingResultState::Incomplete(partial_matching_result) => {
+                    pending_results.push_back(partial_matching_result)
+                }
+            }
+        }
+
         if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
             let line_number = index + 1;
             debug!(
                 "Found a match in {display_name}, line {line_number}, positions {:?}",
                 m.positions()
             );
-            ret.push(MatchingResult {
-                location: Location {
-                    file_name: display_name.clone(),
-                    line_number,
-                },
-                content: line,
-                fuzzy_match: m,
-            });
+
+            match MatchingResultState::new(
+                line,
+                m,
+                options.track_file_names.then_some(display_name),
+                options.track_line_numbers.then_some(line_number),
+                context_before.snapshot(),
+                lines_after,
+            ) {
+                MatchingResultState::Complete(matching_result) => result.push(matching_result),
+                MatchingResultState::Incomplete(partial_matching_result) => {
+                    pending_results.push_back(partial_matching_result)
+                }
+            }
         }
     }
 
-    Ok(ret)
+    // It is possible that the end of the file was reached when some matches were still waiting
+    // for their post-context to fill up. In such case we just add what we have to `result`.
+    for partial_result in pending_results {
+        result.push(partial_result.complete());
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]

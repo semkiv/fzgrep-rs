@@ -1,6 +1,9 @@
-use crate::{cli::formatting::Formatting, matching_results::result::MatchingResult};
+use crate::{
+    cli::formatting::Formatting,
+    matching_results::result::{Context, MatchingResult},
+};
 use log::debug;
-use std::{ops::Range, path::PathBuf};
+use std::ops::Range;
 use vscode_fuzzy_score_rs::FuzzyMatch;
 use yansi::{Paint, Style};
 
@@ -17,28 +20,29 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
     let mut ret = String::new();
     for m in matches.iter() {
         let MatchingResult {
-            location:
-                Location {
-                    file_name,
-                    line_number,
-                },
-            content,
-            context,
+            matching_line,
             fuzzy_match,
+            file_name,
+            line_number,
+            context:
+                Context {
+                    before: context_before,
+                    after: context_after,
+                },
         } = m;
 
-        for (index, context_line) in context.before.iter().enumerate() {
+        for (index, context_line) in context_before.iter().enumerate() {
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                line_number - matches.len() + index,
+                &line_number.and_then(|l| Some(l - matches.len() + index)),
                 formatting,
             ));
             ret.push('\n');
         }
 
         ret.push_str(&format_selected_line(
-            content,
+            &matching_line,
             fuzzy_match,
             file_name,
             line_number,
@@ -46,11 +50,11 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
         ));
         ret.push('\n');
 
-        for (index, context_line) in context.after.iter().enumerate() {
+        for (index, context_line) in context_after.iter().enumerate() {
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                line_number + index,
+                &line_number.and_then(|l| Some(l + index)),
                 formatting,
             ));
             ret.push('\n');
@@ -62,7 +66,7 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
 
 const fn format_context_line(
     content: &str,
-    file_name: &Option<PathBuf>,
+    file_name: &Option<String>,
     line_number: &Option<usize>,
     formatting: &Formatting,
 ) -> String {
@@ -83,7 +87,7 @@ const fn format_context_line(
 fn format_selected_line(
     content: &str,
     fuzzy_match: &FuzzyMatch,
-    file_name: &Option<PathBuf>,
+    file_name: &Option<String>,
     line_number: &Option<usize>,
     formatting: &Formatting,
 ) -> String {
@@ -138,7 +142,7 @@ fn format_selected_line(
 }
 
 const fn format_line_prefix(
-    file_name: &Option<PathBuf>,
+    file_name: &Option<String>,
     line_number: &Option<usize>,
     formatting: &Formatting,
 ) -> Option<String> {
@@ -147,10 +151,7 @@ const fn format_line_prefix(
 
     if let Some(file_name) = file_name {
         let result = result.get_or_insert(String::new());
-        result.push_str(&format_one_piece(
-            &file_name.to_string_lossy(),
-            options.map(|o| o.file_name),
-        ));
+        result.push_str(&format_one_piece(&file_name, options.map(|o| o.file_name)));
         result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
     }
 
@@ -210,13 +211,13 @@ mod test {
     #[test]
     fn results_output_options_default() {
         let results = vec![
-            MatchingLine {
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 location: Location {
                     file_name: String::from("First"),
                     line_number: 42,
                 },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
             },
             MatchingLine {
                 location: Location {
