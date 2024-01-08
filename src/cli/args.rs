@@ -191,7 +191,7 @@ use std::{env, path::PathBuf};
 /// assert_eq!(request.log_verbosity, LevelFilter::Trace);
 /// ```
 ///
-pub(crate) const fn make_request(args: impl Iterator<Item = String>) -> Request {
+pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     let matches = match_command_line(args);
 
     Request {
@@ -203,7 +203,7 @@ pub(crate) const fn make_request(args: impl Iterator<Item = String>) -> Request 
     }
 }
 
-const fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
+fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
@@ -395,17 +395,17 @@ fn color_overrides_parser(
     Ok(options)
 }
 
-const fn query_from(matches: &ArgMatches) -> String {
+fn query_from(matches: &ArgMatches) -> String {
     let query = matches
         .get_one::<String>("pattern")
         .expect("QUERY argument is required, it cannot be empty");
     query.clone()
 }
 
-const fn targets_from(matches: &ArgMatches) -> Targets {
-    match matches.get_many::<PathBuf>("target") {
+fn targets_from(matches: &ArgMatches) -> Targets {
+    match matches.get_many::<String>("target") {
         Some(targets) => {
-            let targets = targets.cloned().collect::<Vec<_>>();
+            let targets = targets.map(PathBuf::from).collect::<Vec<_>>();
             if matches.get_flag("recursive") {
                 Targets::RecursiveEntries(targets)
             } else {
@@ -422,15 +422,15 @@ const fn targets_from(matches: &ArgMatches) -> Targets {
     }
 }
 
-const fn match_options_from(matches: &ArgMatches) -> MatchOptions {
+fn match_options_from(matches: &ArgMatches) -> MatchOptions {
     MatchOptions {
         track_line_numbers: matches.get_flag("line_number"),
-        track_file_names: track_file_name_from(&matches),
-        context_size: context_size_from(&matches),
+        track_file_names: track_file_name_from(matches),
+        context_size: context_size_from(matches),
     }
 }
 
-const fn track_file_name_from(matches: &ArgMatches) -> bool {
+fn track_file_name_from(matches: &ArgMatches) -> bool {
     // `--with-filename` flag has been specified -> file names *should* be tracked
     if matches.get_flag("with_filename") {
         return true;
@@ -450,7 +450,7 @@ const fn track_file_name_from(matches: &ArgMatches) -> bool {
     false
 }
 
-const fn context_size_from(matches: &ArgMatches) -> ContextSize {
+fn context_size_from(matches: &ArgMatches) -> ContextSize {
     if let Some(num) = matches.get_one::<usize>("context").copied() {
         ContextSize {
             before: Lines(num),
@@ -474,7 +474,7 @@ const fn context_size_from(matches: &ArgMatches) -> ContextSize {
     }
 }
 
-const fn formatting_from(matches: &ArgMatches) -> Formatting {
+fn formatting_from(matches: &ArgMatches) -> Formatting {
     if let Some(behavior) = matches.get_one::<String>("color") {
         let behavior = behavior.as_str();
         match behavior {
@@ -493,15 +493,15 @@ const fn formatting_from(matches: &ArgMatches) -> Formatting {
     }
 }
 
-const fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
+fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
     if matches.get_flag("quiet") {
         return OutputBehavior::Quiet;
     }
 
-    OutputBehavior::Normal(formatting_from(&matches))
+    OutputBehavior::Normal(formatting_from(matches))
 }
 
-const fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
+fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
     if matches.get_flag("quiet") {
         return LevelFilter::Off;
     }

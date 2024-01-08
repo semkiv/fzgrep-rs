@@ -19,7 +19,7 @@ impl Reader {
         })
     }
 
-    pub(crate) const fn stdin_reader() -> Self {
+    pub(crate) fn stdin_reader() -> Self {
         Self {
             displayed_name: String::from("(standard input)"),
             source: Box::new(BufReader::new(io::stdin())),
@@ -31,7 +31,7 @@ impl Reader {
     }
 
     /// Just a getter that returns the underlying source.
-    pub(crate) const fn source(self) -> Box<dyn BufRead> {
+    pub(crate) fn into_source(self) -> Box<dyn BufRead> {
         self.source
     }
 }

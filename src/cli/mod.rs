@@ -1,4 +1,4 @@
-pub(crate) mod args;
+pub mod args;
 pub(crate) mod error;
 pub mod formatting;
 pub(crate) mod output;

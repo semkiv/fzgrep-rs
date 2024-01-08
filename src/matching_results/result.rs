@@ -1,7 +1,8 @@
+use crate::matching_results::context_accumulators::SaturatingAccumulator;
+use std::cmp::Ordering;
 use vscode_fuzzy_score_rs::FuzzyMatch;
 
-use crate::matching_results::context_accumulators::SaturatingAccumulator;
-
+#[derive(Debug)]
 pub struct MatchingResult {
     pub matching_line: String,
     pub fuzzy_match: FuzzyMatch,
@@ -10,6 +11,7 @@ pub struct MatchingResult {
     pub context: Context,
 }
 
+#[derive(Debug)]
 pub struct Context {
     pub before: Vec<String>,
     pub after: Vec<String>,
@@ -38,8 +40,28 @@ struct PartialContext {
     after_accumulator: SaturatingAccumulator,
 }
 
+impl PartialEq for MatchingResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.fuzzy_match.eq(&other.fuzzy_match)
+    }
+}
+
+impl PartialOrd for MatchingResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for MatchingResult {}
+
+impl Ord for MatchingResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.fuzzy_match.cmp(&other.fuzzy_match)
+    }
+}
+
 impl MatchingResultState {
-    pub(crate) const fn new(
+    pub(crate) fn new(
         matching_line: String,
         fuzzy_match: FuzzyMatch,
         file_name: Option<String>,
@@ -64,17 +86,10 @@ impl MatchingResultState {
             }),
         }
     }
-
-    pub(crate) const fn feed(self, line: String) -> Self {
-        match self {
-            Self::Complete(_) => panic!("Attempted to feed a line to a complete matching result!"),
-            Self::Incomplete(partial_matching_result) => partial_matching_result.feed(line),
-        }
-    }
 }
 
 impl PartialMatchingResult {
-    pub(crate) const fn feed(self, line: String) -> MatchingResultState {
+    pub(crate) fn feed(self, line: String) -> MatchingResultState {
         match self.partial_context.feed(line) {
             ContextState::Complete(context) => MatchingResultState::Complete(MatchingResult {
                 matching_line: self.matching_line,
@@ -95,7 +110,7 @@ impl PartialMatchingResult {
         }
     }
 
-    pub(crate) const fn complete(self) -> MatchingResult {
+    pub(crate) fn complete(self) -> MatchingResult {
         MatchingResult {
             matching_line: self.matching_line,
             fuzzy_match: self.fuzzy_match,
@@ -107,7 +122,7 @@ impl PartialMatchingResult {
 }
 
 impl ContextState {
-    const fn new(before: Vec<String>, after_size: usize) -> ContextState {
+    fn new(before: Vec<String>, after_size: usize) -> ContextState {
         let accumulator = SaturatingAccumulator::new(after_size);
         if accumulator.is_full() {
             Self::Complete(Context {
@@ -124,7 +139,7 @@ impl ContextState {
 }
 
 impl PartialContext {
-    const fn feed(mut self, line: String) -> ContextState {
+    fn feed(mut self, line: String) -> ContextState {
         self.after_accumulator.feed(line);
         if self.after_accumulator.is_full() {
             ContextState::Complete(Context {
@@ -136,7 +151,7 @@ impl PartialContext {
         }
     }
 
-    const fn complete(self) -> Context {
+    fn complete(self) -> Context {
         Context {
             before: self.before,
             after: self.after_accumulator.consume(),
@@ -148,5 +163,157 @@ todo!("documentation!");
 
 #[cfg(test)]
 mod test {
-    todo!("tests!");
+    use super::*;
+
+    #[test]
+    fn matching_line_comparisons_ne() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
+            file_name: None,
+            line_number: Some(42),
+            context: Context {
+                before: vec![String::from("before")],
+                after: vec![String::from("after")],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tes", "test").unwrap(),
+            file_name: None,
+            line_number: Some(42),
+            context: Context {
+                before: vec![String::from("before")],
+                after: vec![String::from("after")],
+            },
+        };
+        assert_ne!(m1, m2);
+    }
+
+    #[test]
+    fn matching_line_comparisons_eq() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            file_name: Some(String::from("test.txt")),
+            line_number: None,
+            context: Context {
+                before: vec![String::from("before1")],
+                after: vec![String::from("after1")],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            file_name: None,
+            line_number: Some(42),
+            context: Context {
+                before: vec![String::from("before2")],
+                after: vec![String::from("after2")],
+            },
+        };
+        assert_eq!(m1, m2);
+    }
+
+    #[test]
+    fn matching_line_comparisons_lt() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
+            file_name: Some(String::from("test.txt")),
+            line_number: None,
+            context: Context {
+                before: vec![String::from("before1")],
+                after: vec![String::from("after1")],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            file_name: None,
+            line_number: Some(42),
+            context: Context {
+                before: vec![String::from("before2")],
+                after: vec![String::from("after2")],
+            },
+        };
+        assert!(m1 < m2);
+    }
+
+    #[test]
+    fn matching_line_comparisons_gt() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            file_name: Some(String::from("test1.txt")),
+            line_number: Some(41),
+            context: Context {
+                before: vec![String::from("before1")],
+                after: vec![String::from("after1")],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
+            file_name: Some(String::from("test2.txt")),
+            line_number: Some(42),
+            context: Context {
+                before: vec![String::from("before2")],
+                after: vec![String::from("after2")],
+            },
+        };
+        assert!(m1 > m2);
+    }
+
+    #[test]
+    fn matching_line_comparisons_le() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            file_name: None,
+            line_number: None,
+            context: Context {
+                before: vec![],
+                after: vec![],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            file_name: None,
+            line_number: None,
+            context: Context {
+                before: vec![],
+                after: vec![],
+            },
+        };
+        assert!(m1 <= m2);
+    }
+
+    #[test]
+    fn matching_line_comparisons_ge() {
+        let m1 = MatchingResult {
+            matching_line: String::from("test1"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
+            file_name: None,
+            line_number: None,
+            context: Context {
+                before: vec![],
+                after: vec![],
+            },
+        };
+        let m2 = MatchingResult {
+            matching_line: String::from("test2"),
+            fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
+            file_name: None,
+            line_number: None,
+            context: Context {
+                before: vec![],
+                after: vec![],
+            },
+        };
+        assert!(m1 >= m2);
+    }
+
+    todo!("more tests!");
 }

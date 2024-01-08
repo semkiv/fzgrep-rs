@@ -114,10 +114,28 @@ impl OutputBehavior {
     /// assert_eq!(behavior.formatting(), None);
     /// ```
     ///
+    #[cfg(test)]
     pub(crate) const fn formatting(&self) -> Option<Formatting> {
         match self {
             OutputBehavior::Normal(formatting) => Some(*formatting),
             OutputBehavior::Quiet => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::cli::formatting::FormattingOptions;
+
+    #[test]
+    fn output_behavior_to_formatting() {
+        let behavior = OutputBehavior::Normal(Formatting::On(FormattingOptions::default()));
+        assert_eq!(
+            behavior.formatting(),
+            Some(Formatting::On(FormattingOptions::default()))
+        );
+        let behavior = OutputBehavior::Quiet;
+        assert_eq!(behavior.formatting(), None);
     }
 }

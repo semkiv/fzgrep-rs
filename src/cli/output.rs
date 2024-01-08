@@ -35,14 +35,14 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number.and_then(|l| Some(l - matches.len() + index)),
+                &line_number.and_then(|l| Some(l - matches.len() + index + 1)),
                 formatting,
             ));
             ret.push('\n');
         }
 
         ret.push_str(&format_selected_line(
-            &matching_line,
+            matching_line,
             fuzzy_match,
             file_name,
             line_number,
@@ -54,7 +54,7 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number.and_then(|l| Some(l + index)),
+                &line_number.and_then(|l| Some(l + index + 1)),
                 formatting,
             ));
             ret.push('\n');
@@ -64,7 +64,7 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
     ret
 }
 
-const fn format_context_line(
+fn format_context_line(
     content: &str,
     file_name: &Option<String>,
     line_number: &Option<usize>,
@@ -141,7 +141,7 @@ fn format_selected_line(
     result
 }
 
-const fn format_line_prefix(
+fn format_line_prefix(
     file_name: &Option<String>,
     line_number: &Option<usize>,
     formatting: &Formatting,
@@ -151,7 +151,7 @@ const fn format_line_prefix(
 
     if let Some(file_name) = file_name {
         let result = result.get_or_insert(String::new());
-        result.push_str(&format_one_piece(&file_name, options.map(|o| o.file_name)));
+        result.push_str(&format_one_piece(file_name, options.map(|o| o.file_name)));
         result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
     }
 
@@ -167,7 +167,7 @@ const fn format_line_prefix(
     result
 }
 
-const fn format_one_piece(s: &str, style: Option<Style>) -> String {
+fn format_one_piece(s: &str, style: Option<Style>) -> String {
     match style {
         Some(style) => Paint::new(s).with_style(style).to_string(),
         None => s.to_string(),
@@ -205,6 +205,7 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     ret
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 

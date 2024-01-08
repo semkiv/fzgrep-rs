@@ -1,8 +1,8 @@
-mod cli;
+pub mod cli;
 mod core;
 mod matching_results;
 
-pub use core::request::Request;
+pub use core::{exit_code::ExitCode, request::Request};
 
 use crate::{
     cli::output,
@@ -83,7 +83,7 @@ pub(crate) fn find_matches(
     Ok(matches)
 }
 
-const fn make_readers(
+fn make_readers(
     targets: &Targets,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + '_> {
     match targets {
@@ -112,7 +112,7 @@ const fn make_readers(
     }
 }
 
-const fn make_recursive_reader_iterator<'item>(
+fn make_recursive_reader_iterator<'item>(
     targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
     Box::new(targets.flat_map(WalkDir::new).filter_map(|item| {
@@ -145,13 +145,12 @@ fn process_one_target(
     } = options.context_size;
     let mut context_before = SlidingAccumulator::new(lines_before);
     let mut pending_results: VecDeque<PartialMatchingResult> = VecDeque::new();
-    for (index, line) in target.source().lines().enumerate() {
+    for (index, line) in target.into_source().lines().enumerate() {
         let line = line?;
-        context_before.feed(line);
 
         // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
         for partial_result in mem::take(&mut pending_results) {
-            match partial_result.feed(line) {
+            match partial_result.feed(line.clone()) {
                 MatchingResultState::Complete(matching_result) => result.push(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
                     pending_results.push_back(partial_matching_result)
@@ -167,9 +166,9 @@ fn process_one_target(
             );
 
             match MatchingResultState::new(
-                line,
+                line.clone(),
                 m,
-                options.track_file_names.then_some(display_name),
+                options.track_file_names.then_some(display_name.clone()),
                 options.track_line_numbers.then_some(line_number),
                 context_before.snapshot(),
                 lines_after,
@@ -180,6 +179,8 @@ fn process_one_target(
                 }
             }
         }
+
+        context_before.feed(line);
     }
 
     // It is possible that the end of the file was reached when some matches were still waiting
