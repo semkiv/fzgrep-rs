@@ -32,10 +32,11 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
         } = m;
 
         for (index, context_line) in context_before.iter().enumerate() {
+            let line_number = line_number.and_then(|l| Some(l - matches.len() + index + 1));
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number.and_then(|l| Some(l - matches.len() + index + 1)),
+                &line_number,
                 formatting,
             ));
             ret.push('\n');
@@ -51,10 +52,11 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
         ret.push('\n');
 
         for (index, context_line) in context_after.iter().enumerate() {
+            let line_number = line_number.and_then(|l| Some(l + index + 1));
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number.and_then(|l| Some(l + index + 1)),
+                &line_number,
                 formatting,
             ));
             ret.push('\n');
