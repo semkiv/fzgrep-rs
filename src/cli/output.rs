@@ -210,37 +210,46 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::cli::formatting::FormattingOptions;
+    use atty::Stream;
+    use yansi::Color;
 
     #[test]
-    fn results_output_options_default() {
+    fn results_output_minimal_default() {
         let results = vec![
             MatchingResult {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
             },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
             },
         ];
         assert_eq!(
-            format_results(&results, &OutputOptions::default()),
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
                 "{}st\ntes{}\n{}s{}",
                 if atty::is(Stream::Stdout) {
@@ -268,40 +277,212 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_line_number() {
+    fn results_output_minimal_off() {
         let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}st\ntes{}\n{}s{}",
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red("te").bold().to_string()
+                } else {
+                    String::from("te")
+                },
+                if atty::is(Stream::Stdout) {
+                    Paint::red('t').bold().to_string()
+                } else {
+                    String::from("t")
+                },
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_selected_line_default() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_selected_line_off() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_selected_line_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &OutputOptions {
-                    line_number: true,
+                &Formatting::On(FormattingOptions {
+                    selected_line: Style::new(Color::Green),
                     ..Default::default()
-                }
+                })
             ),
             format!(
                 "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
@@ -320,40 +501,312 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_file_name() {
+    fn results_output_line_number_default() {
         let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
+                file_name: None,
+                line_number: Some(42),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: None,
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: Some(13),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_line_number_off() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: Some(42),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: Some(13),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_line_number_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: Some(42),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: Some(13),
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &OutputOptions {
-                    file_name: true,
+                &Formatting::On(FormattingOptions {
+                    line_number: Style::new(Color::Cyan),
                     ..Default::default()
-                }
+                })
+            ),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold()
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_file_name_default() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: Some(String::from("First")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: Some(String::from("Second")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_file_name_off() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: Some(String::from("First")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: Some(String::from("Second")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_file_name_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: Some(String::from("First")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: Some(String::from("Second")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &Formatting::On(FormattingOptions {
+                    file_name: Style::new(Color::Cyan),
+                    ..Default::default()
+                })
             ),
             format!(
                 "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
@@ -372,43 +825,204 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_context() {
+    fn results_output_context_default() {
         let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_context_off() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::red('t').bold(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_context_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &OutputOptions {
-                    context: Context {
-                        before: 1,
-                        after: 2,
-                    },
+                &Formatting::On(FormattingOptions {
+                    context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
                     ..Default::default()
-                }
+                })
             ),
             format!(
                 "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
@@ -427,213 +1041,220 @@ mod test {
     }
 
     #[test]
-    fn results_output_options_formatting_off() {
+    fn results_output_all_default() {
         let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
+                file_name: Some(String::from("First")),
+                line_number: Some(42),
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: Some(String::from("Second")),
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: Some(13),
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
             },
         ];
         assert_eq!(
-            format_results(
-                &results,
-                &OutputOptions {
-                    file_name: true,
-                    line_number: true,
-                    context: Context {
-                        before: 1,
-                        after: 2
-                    },
-                    formatting: Formatting::Off
-                }
-            ),
-            "First:42:test\nSecond:100500:test\nThird:13:test"
-        )
-    }
-
-    #[test]
-    fn results_output_options_formatting_plain() {
-        let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-            },
-        ];
-        assert_eq!(
-            format_results(
-                &results,
-                &OutputOptions {
-                    file_name: true,
-                    line_number: true,
-                    context: Context {
-                        before: 1,
-                        after: 2
-                    },
-                    formatting: Formatting::On(FormattingOptions::plain())
-                }
-            ),
-            "First:42:test\nSecond:100500:test\nThird:13:test"
-        )
-    }
-
-    #[test]
-    fn results_output_options_formatting_custom() {
-        let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
-                },
-                content: String::from("test"),
-                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-            },
-        ];
-        assert_eq!(
-            format_results(
-                &results,
-                &OutputOptions {
-                    file_name: true,
-                    line_number: true,
-                    context: Context {
-                        before: 1,
-                        after: 2
-                    },
-                    formatting: Formatting::On(FormattingOptions {
-                        selected_match: Style::new(Color::Green),
-                        line_number: Style::new(Color::Cyan),
-                        file_name: Style::new(Color::Cyan),
-                        separator: Style::new(Color::Fixed(50)),
-                        selected_line: Style::new(Color::RGB(127, 127, 127)).dimmed(),
-                        context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
-                    })
-                }
-            ),
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}{}{}{}\n{}{}{}{}{}{}\n{}{}{}{}{}{}{}",
-                Paint::cyan("First"),
-                Paint::fixed(50, ':'),
-                Paint::cyan("42"),
-                Paint::fixed(50, ':'),
-                Paint::green("te"),
-                Paint::rgb(127, 127, 127, "st").dimmed(),
-                Paint::cyan("Second"),
-                Paint::fixed(50, ':'),
-                Paint::cyan("100500"),
-                Paint::fixed(50, ':'),
-                Paint::rgb(127, 127, 127, "tes").dimmed(),
-                Paint::green('t'),
-                Paint::cyan("Third"),
-                Paint::fixed(50, ':'),
-                Paint::cyan("13"),
-                Paint::fixed(50, ':'),
-                Paint::green("te"),
-                Paint::rgb(127, 127, 127, 's').dimmed(),
-                Paint::green('t')
+                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
             )
         )
     }
 
     #[test]
-    fn results_output_options_all_options() {
+    fn results_output_all_off() {
         let results = vec![
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("First"),
-                    line_number: 42,
-                },
-                content: String::from("test"),
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Second"),
-                    line_number: 100500,
+                file_name: Some(String::from("First")),
+                line_number: Some(42),
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-            },
-            MatchingLine {
-                location: Location {
-                    file_name: String::from("Third"),
-                    line_number: 13,
+                file_name: Some(String::from("Second")),
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
                 },
-                content: String::from("test"),
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: Some(13),
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(&results, &Formatting::Off),
+            format!(
+                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("42"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100500"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("13"),
+                Paint::cyan(':'),
+                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+            )
+        )
+    }
+
+    #[test]
+    fn results_output_all_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: Some(String::from("First")),
+                line_number: Some(42),
+                context: Context {
+                    before: vec![
+                        String::from("first_before_one"),
+                        String::from("first_before_two"),
+                    ],
+                    after: vec![
+                        String::from("first_after_one"),
+                        String::from("first_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: Some(String::from("Second")),
+                line_number: Some(100500),
+                context: Context {
+                    before: vec![
+                        String::from("second_before_one"),
+                        String::from("second_before_two"),
+                    ],
+                    after: vec![
+                        String::from("second_after_one"),
+                        String::from("second_after_two"),
+                    ],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: Some(String::from("Third")),
+                line_number: Some(13),
+                context: Context {
+                    before: vec![
+                        String::from("third_before_one"),
+                        String::from("third_before_two"),
+                    ],
+                    after: vec![
+                        String::from("third_after_one"),
+                        String::from("third_after_two"),
+                    ],
+                },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &OutputOptions {
-                    line_number: true,
-                    file_name: true,
-                    context: Context {
-                        before: 1,
-                        after: 2
-                    },
-                    formatting: Formatting::On(FormattingOptions {
-                        selected_match: Style::new(Color::RGB(100, 150, 200))
-                            .bg(Color::Yellow)
-                            .italic(),
-                        ..Default::default()
-                    })
-                }
+                &Formatting::On(FormattingOptions {
+                    selected_match: Style::new(Color::Green),
+                    line_number: Style::new(Color::Cyan),
+                    file_name: Style::new(Color::Cyan),
+                    separator: Style::new(Color::Fixed(50)),
+                    selected_line: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                    context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                })
             ),
             format!(
                 "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
@@ -658,31 +1279,34 @@ mod test {
     }
 
     #[test]
-    fn no_results_output_options_default() {
+    fn no_results_output_default() {
         let results = vec![];
-        assert_eq!(format_results(&results, &OutputOptions::default()), "")
+        assert_eq!(
+            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            ""
+        );
     }
 
     #[test]
-    fn no_results_output_options_all_options() {
+    fn no_results_output_off() {
+        let results = vec![];
+        assert_eq!(format_results(&results, &Formatting::Off), "");
+    }
+
+    #[test]
+    fn no_results_output_custom() {
         let results = vec![];
         assert_eq!(
             format_results(
                 &results,
-                &OutputOptions {
-                    line_number: true,
-                    file_name: true,
-                    context: Context {
-                        before: 1,
-                        after: 2
-                    },
-                    formatting: Formatting::On(FormattingOptions {
-                        selected_match: Style::new(Color::RGB(100, 150, 200))
-                            .bg(Color::Yellow)
-                            .italic(),
-                        ..Default::default()
-                    })
-                }
+                &Formatting::On(FormattingOptions {
+                    selected_match: Style::new(Color::Green),
+                    line_number: Style::new(Color::Cyan),
+                    file_name: Style::new(Color::Cyan),
+                    separator: Style::new(Color::Fixed(50)),
+                    selected_line: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                    context: Style::new(Color::RGB(127, 127, 127)).dimmed(),
+                })
             ),
             ""
         )

@@ -164,7 +164,7 @@ mod test {
 
     #[test]
     fn sliding_accumulator_constructor() {
-        let mut acc = SlidingAccumulator::new(3);
+        let acc = SlidingAccumulator::new(3);
         assert_eq!(
             acc,
             SlidingAccumulator {
@@ -229,7 +229,7 @@ mod test {
 
     #[test]
     fn saturating_accumulator_constructor() {
-        let mut acc = SaturatingAccumulator::new(3);
+        let acc = SaturatingAccumulator::new(3);
         assert_eq!(
             acc,
             SaturatingAccumulator {
