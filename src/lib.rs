@@ -2,14 +2,14 @@ pub mod cli;
 mod core;
 mod matching_results;
 
-pub use core::{exit_code::ExitCode, request::Request};
+pub use core::{
+    exit_code::ExitCode,
+    request::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets},
+};
 
 use crate::{
     cli::output,
-    core::{
-        reader::Reader,
-        request::{ContextSize, Lines, MatchOptions, OutputBehavior, Targets},
-    },
+    core::reader::Reader,
     matching_results::{
         context_accumulators::SlidingAccumulator,
         result::{MatchingResult, MatchingResultState, PartialMatchingResult},
@@ -43,7 +43,9 @@ pub fn run(
     output_dest: &mut impl Write,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {:?}", request);
-    let matches = find_matches(&request.query, &request.targets, &request.match_options)?;
+    let mut matches = find_matches(&request.query, &request.targets, &request.match_options)?;
+    // sort in descending order
+    matches.sort_by(|a, b| b.cmp(a));
     match request.output_behavior {
         OutputBehavior::Normal(formatting) => {
             write!(
@@ -57,15 +59,14 @@ pub fn run(
     Ok(matches)
 }
 
-/// Find fuzzy matches using the configuration supplied `request`.
-/// If there are no input files in the request, the standard input will be used.
+/// Find fuzzy matches of `query` in `targets` using the configuration supplied `options`.
 ///
 /// # Errors
 ///
 ///   * [`io::Error`] if encounters any I/O related issues.
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
-pub(crate) fn find_matches(
+pub fn find_matches(
     query: &str,
     targets: &Targets,
     options: &MatchOptions,
@@ -76,9 +77,6 @@ pub(crate) fn find_matches(
         debug!("Processing {}.", reader.display_name());
         matches.append(&mut process_one_target(query, reader, options)?);
     }
-
-    // sort in descending order
-    matches.sort_by(|a, b| b.cmp(a));
 
     Ok(matches)
 }
