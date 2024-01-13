@@ -1,10 +1,12 @@
-use fzgrep::Request;
-use std::{error::Error, path::PathBuf};
+use fzgrep::{cli::args, MatchingResult, Targets};
+use std::path::PathBuf;
 
 #[test]
-fn ascii_query() -> Result<(), Box<dyn Error>> {
+fn ascii_query() {
     let args = [
         "fzgrep",
+        "--with-filename",
+        "--line-number",
         "contigous",
         "resources/tests/👨‍🔬.txt",
         "resources/tests/name with spaces.txt",
@@ -12,11 +14,11 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from));
-    assert_eq!(request.query(), "contigous");
+    let request = args::make_request(args.into_iter().map(String::from));
+    assert_eq!(request.query, "contigous");
     assert_eq!(
-        request.targets(),
-        &Some(vec![
+        request.targets,
+        Targets::Files(vec![
             PathBuf::from("resources/tests/👨‍🔬.txt"),
             PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
@@ -25,12 +27,17 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
+    let results = sorted(
+        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+    );
     assert_eq!(results.len(), 10);
 
-    assert_eq!(results[0].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[0].location.line_number, 6);
-    assert_eq!(results[0].content, String::from("contiguous"));
+    assert_eq!(
+        results[0].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[0].line_number.unwrap(), 6);
+    assert_eq!(results[0].matching_line, String::from("contiguous"));
     assert_eq!(results[0].fuzzy_match.score(), 116);
     assert_eq!(
         results[0].fuzzy_match.positions(),
@@ -38,47 +45,59 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
     );
 
     assert_eq!(
-        results[1].location.file_name,
+        results[1].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[1].location.line_number, 5);
-    assert_eq!(results[1].content, String::from("contiguous"));
+    assert_eq!(results[1].line_number.unwrap(), 5);
+    assert_eq!(results[1].matching_line, String::from("contiguous"));
     assert_eq!(results[1].fuzzy_match.score(), 116);
     assert_eq!(
         results[1].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[2].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[2].location.line_number, 2);
-    assert_eq!(results[2].content, String::from("contiguous"));
+    assert_eq!(
+        results[2].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[2].line_number.unwrap(), 2);
+    assert_eq!(results[2].matching_line, String::from("contiguous"));
     assert_eq!(results[2].fuzzy_match.score(), 116);
     assert_eq!(
         results[2].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[3].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[3].location.line_number, 5);
-    assert_eq!(results[3].content, String::from("contiguous"));
+    assert_eq!(
+        results[3].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[3].line_number.unwrap(), 5);
+    assert_eq!(results[3].matching_line, String::from("contiguous"));
     assert_eq!(results[3].fuzzy_match.score(), 116);
     assert_eq!(
         results[3].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[4].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[4].location.line_number, 3);
-    assert_eq!(results[4].content, String::from("contiguous"));
+    assert_eq!(
+        results[4].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[4].line_number.unwrap(), 3);
+    assert_eq!(results[4].matching_line, String::from("contiguous"));
     assert_eq!(results[4].fuzzy_match.score(), 116);
     assert_eq!(
         results[4].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[5].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[5].location.line_number, 2);
-    assert_eq!(results[5].content, String::from("Contiguous"));
+    assert_eq!(
+        results[5].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[5].line_number.unwrap(), 2);
+    assert_eq!(results[5].matching_line, String::from("Contiguous"));
     assert_eq!(results[5].fuzzy_match.score(), 115);
     assert_eq!(
         results[5].fuzzy_match.positions(),
@@ -86,51 +105,60 @@ fn ascii_query() -> Result<(), Box<dyn Error>> {
     );
 
     assert_eq!(
-        results[6].location.file_name,
+        results[6].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[6].location.line_number, 3);
-    assert_eq!(results[6].content, String::from("Contiguous"));
+    assert_eq!(results[6].line_number.unwrap(), 3);
+    assert_eq!(results[6].matching_line, String::from("Contiguous"));
     assert_eq!(results[6].fuzzy_match.score(), 115);
     assert_eq!(
         results[6].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[7].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[7].location.line_number, 3);
-    assert_eq!(results[7].content, String::from("Contiguous"));
+    assert_eq!(
+        results[7].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[7].line_number.unwrap(), 3);
+    assert_eq!(results[7].matching_line, String::from("Contiguous"));
     assert_eq!(results[7].fuzzy_match.score(), 115);
     assert_eq!(
         results[7].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[8].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[8].location.line_number, 6);
-    assert_eq!(results[8].content, String::from("Contiguous"));
+    assert_eq!(
+        results[8].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[8].line_number.unwrap(), 6);
+    assert_eq!(results[8].matching_line, String::from("Contiguous"));
     assert_eq!(results[8].fuzzy_match.score(), 115);
     assert_eq!(
         results[8].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
 
-    assert_eq!(results[9].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[9].location.line_number, 2);
-    assert_eq!(results[9].content, String::from("Contiguous"));
+    assert_eq!(
+        results[9].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[9].line_number.unwrap(), 2);
+    assert_eq!(results[9].matching_line, String::from("Contiguous"));
     assert_eq!(results[9].fuzzy_match.score(), 115);
     assert_eq!(
         results[9].fuzzy_match.positions(),
         &vec![0, 1, 2, 3, 4, 5, 7, 8, 9]
     );
-
-    Ok(())
 }
 
 #[test]
-fn emoji_query() -> Result<(), Box<dyn Error>> {
+fn emoji_query() {
     let args = [
         "fzgrep",
+        "--with-filename",
+        "--line-number",
         "🐣🦀",
         "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
@@ -138,11 +166,11 @@ fn emoji_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from));
-    assert_eq!(request.query(), "🐣🦀");
+    let request = args::make_request(args.into_iter().map(String::from));
+    assert_eq!(request.query, "🐣🦀");
     assert_eq!(
-        request.targets(),
-        &Some(vec![
+        request.targets,
+        Targets::Files(vec![
             PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/👨‍🔬.txt"),
@@ -151,49 +179,63 @@ fn emoji_query() -> Result<(), Box<dyn Error>> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
+    let results = sorted(
+        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+    );
     assert_eq!(results.len(), 5);
 
     assert_eq!(
-        results[0].location.file_name,
+        results[0].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[0].location.line_number, 1);
-    assert_eq!(results[0].content, String::from("🐲🐣🐼🦀🦞🦠"));
+    assert_eq!(results[0].line_number.unwrap(), 1);
+    assert_eq!(results[0].matching_line, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[0].fuzzy_match.score(), 4);
     assert_eq!(results[0].fuzzy_match.positions(), &vec![1, 3]);
 
-    assert_eq!(results[1].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[1].location.line_number, 6);
-    assert_eq!(results[1].content, String::from("🐲🐣🐼🦀🦞🦠"));
+    assert_eq!(
+        results[1].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[1].line_number.unwrap(), 6);
+    assert_eq!(results[1].matching_line, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[1].fuzzy_match.score(), 4);
     assert_eq!(results[1].fuzzy_match.positions(), &vec![1, 3]);
 
-    assert_eq!(results[2].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[2].location.line_number, 5);
-    assert_eq!(results[2].content, String::from("🐲🐣🐼🦀🦞🦠"));
+    assert_eq!(
+        results[2].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[2].line_number.unwrap(), 5);
+    assert_eq!(results[2].matching_line, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[2].fuzzy_match.score(), 4);
     assert_eq!(results[2].fuzzy_match.positions(), &vec![1, 3]);
 
-    assert_eq!(results[3].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[3].location.line_number, 1);
-    assert_eq!(results[3].content, String::from("🐲🐣🐼🦀🦞🦠"));
+    assert_eq!(
+        results[3].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[3].line_number.unwrap(), 1);
+    assert_eq!(results[3].matching_line, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[3].fuzzy_match.score(), 4);
     assert_eq!(results[3].fuzzy_match.positions(), &vec![1, 3]);
 
-    assert_eq!(results[4].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[4].location.line_number, 4);
-    assert_eq!(results[4].content, String::from("🐲🐣🐼🦀🦞🦠"));
+    assert_eq!(
+        results[4].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[4].line_number.unwrap(), 4);
+    assert_eq!(results[4].matching_line, String::from("🐲🐣🐼🦀🦞🦠"));
     assert_eq!(results[4].fuzzy_match.score(), 4);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![1, 3]);
-
-    Ok(())
 }
 
 #[test]
-fn cyrillic_query() -> Result<(), Box<dyn Error>> {
+fn cyrillic_query() {
     let args = [
         "fzgrep",
+        "--with-filename",
+        "--line-number",
         "тест",
         "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
@@ -201,11 +243,11 @@ fn cyrillic_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/👨‍🔬.txt",
         "resources/tests/测试.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from));
-    assert_eq!(request.query(), "тест");
+    let request = args::make_request(args.into_iter().map(String::from));
+    assert_eq!(request.query, "тест");
     assert_eq!(
-        request.targets(),
-        &Some(vec![
+        request.targets,
+        Targets::Files(vec![
             PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/тест.txt"),
@@ -214,82 +256,108 @@ fn cyrillic_query() -> Result<(), Box<dyn Error>> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
+    let results = sorted(
+        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+    );
     assert_eq!(results.len(), 10);
 
     assert_eq!(
-        results[0].location.file_name,
+        results[0].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[0].location.line_number, 2);
-    assert_eq!(results[0].content, String::from("тестування"));
+    assert_eq!(results[0].line_number.unwrap(), 2);
+    assert_eq!(results[0].matching_line, String::from("тестування"));
     assert_eq!(results[0].fuzzy_match.score(), 46);
     assert_eq!(results[0].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
-    assert_eq!(results[1].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[1].location.line_number, 5);
-    assert_eq!(results[1].content, String::from("тестування"));
+    assert_eq!(
+        results[1].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[1].line_number.unwrap(), 5);
+    assert_eq!(results[1].matching_line, String::from("тестування"));
     assert_eq!(results[1].fuzzy_match.score(), 46);
     assert_eq!(results[1].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
-    assert_eq!(results[2].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[2].location.line_number, 4);
-    assert_eq!(results[2].content, String::from("тестування"));
+    assert_eq!(
+        results[2].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[2].line_number.unwrap(), 4);
+    assert_eq!(results[2].matching_line, String::from("тестування"));
     assert_eq!(results[2].fuzzy_match.score(), 46);
     assert_eq!(results[2].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
-    assert_eq!(results[3].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[3].location.line_number, 4);
-    assert_eq!(results[3].content, String::from("тестування"));
+    assert_eq!(
+        results[3].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[3].line_number.unwrap(), 4);
+    assert_eq!(results[3].matching_line, String::from("тестування"));
     assert_eq!(results[3].fuzzy_match.score(), 46);
     assert_eq!(results[3].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
-    assert_eq!(results[4].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[4].location.line_number, 5);
-    assert_eq!(results[4].content, String::from("тестування"));
+    assert_eq!(
+        results[4].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[4].line_number.unwrap(), 5);
+    assert_eq!(results[4].matching_line, String::from("тестування"));
     assert_eq!(results[4].fuzzy_match.score(), 46);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![0, 1, 2, 3]);
 
     assert_eq!(
-        results[5].location.file_name,
+        results[5].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[5].location.line_number, 4);
-    assert_eq!(results[5].content, String::from("Текст"));
+    assert_eq!(results[5].line_number.unwrap(), 4);
+    assert_eq!(results[5].matching_line, String::from("Текст"));
     assert_eq!(results[5].fuzzy_match.score(), 25);
     assert_eq!(results[5].fuzzy_match.positions(), &vec![0, 1, 3, 4]);
 
-    assert_eq!(results[6].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[6].location.line_number, 4);
-    assert_eq!(results[6].content, String::from("Текст"));
+    assert_eq!(
+        results[6].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[6].line_number.unwrap(), 4);
+    assert_eq!(results[6].matching_line, String::from("Текст"));
     assert_eq!(results[6].fuzzy_match.score(), 25);
     assert_eq!(results[6].fuzzy_match.positions(), &vec![0, 1, 3, 4]);
 
-    assert_eq!(results[7].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[7].location.line_number, 2);
-    assert_eq!(results[7].content, String::from("Текст"));
+    assert_eq!(
+        results[7].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[7].line_number.unwrap(), 2);
+    assert_eq!(results[7].matching_line, String::from("Текст"));
     assert_eq!(results[7].fuzzy_match.score(), 25);
     assert_eq!(results[7].fuzzy_match.positions(), &vec![0, 1, 3, 4]);
 
-    assert_eq!(results[8].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[8].location.line_number, 1);
-    assert_eq!(results[8].content, String::from("Текст"));
+    assert_eq!(
+        results[8].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[8].line_number.unwrap(), 1);
+    assert_eq!(results[8].matching_line, String::from("Текст"));
     assert_eq!(results[8].fuzzy_match.score(), 25);
     assert_eq!(results[8].fuzzy_match.positions(), &vec![0, 1, 3, 4]);
 
-    assert_eq!(results[9].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[9].location.line_number, 6);
-    assert_eq!(results[9].content, String::from("Текст"));
+    assert_eq!(
+        results[9].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[9].line_number.unwrap(), 6);
+    assert_eq!(results[9].matching_line, String::from("Текст"));
     assert_eq!(results[9].fuzzy_match.score(), 25);
     assert_eq!(results[9].fuzzy_match.positions(), &vec![0, 1, 3, 4]);
-
-    Ok(())
 }
 
 #[test]
-fn chinese_query() -> Result<(), Box<dyn Error>> {
+fn chinese_query() {
     let args = [
         "fzgrep",
+        "--with-filename",
+        "--line-number",
         "打电",
         "resources/tests/name with spaces.txt",
         "resources/tests/test.txt",
@@ -297,11 +365,11 @@ fn chinese_query() -> Result<(), Box<dyn Error>> {
         "resources/tests/测试.txt",
         "resources/tests/👨‍🔬.txt",
     ];
-    let request = Request::new(args.into_iter().map(String::from));
-    assert_eq!(request.query(), "打电");
+    let request = args::make_request(args.into_iter().map(String::from));
+    assert_eq!(request.query, "打电");
     assert_eq!(
-        request.targets(),
-        &Some(vec![
+        request.targets,
+        Targets::Files(vec![
             PathBuf::from("resources/tests/name with spaces.txt"),
             PathBuf::from("resources/tests/test.txt"),
             PathBuf::from("resources/tests/тест.txt"),
@@ -310,41 +378,59 @@ fn chinese_query() -> Result<(), Box<dyn Error>> {
         ])
     );
 
-    let results = fzgrep::find_matches(request.query(), request.targets(), request.recursive())?;
+    let results = sorted(
+        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+    );
     assert_eq!(results.len(), 5);
 
     assert_eq!(
-        results[0].location.file_name,
+        results[0].file_name.as_ref().unwrap(),
         "resources/tests/name with spaces.txt"
     );
-    assert_eq!(results[0].location.line_number, 6);
-    assert_eq!(results[0].content, String::from("打电动"));
+    assert_eq!(results[0].line_number.unwrap(), 6);
+    assert_eq!(results[0].matching_line, String::from("打电动"));
     assert_eq!(results[0].fuzzy_match.score(), 17);
     assert_eq!(results[0].fuzzy_match.positions(), &vec![0, 1]);
 
-    assert_eq!(results[1].location.file_name, "resources/tests/test.txt");
-    assert_eq!(results[1].location.line_number, 1);
-    assert_eq!(results[1].content, String::from("打电动"));
+    assert_eq!(
+        results[1].file_name.as_ref().unwrap(),
+        "resources/tests/test.txt"
+    );
+    assert_eq!(results[1].line_number.unwrap(), 1);
+    assert_eq!(results[1].matching_line, String::from("打电动"));
     assert_eq!(results[1].fuzzy_match.score(), 17);
     assert_eq!(results[1].fuzzy_match.positions(), &vec![0, 1]);
 
-    assert_eq!(results[2].location.file_name, "resources/tests/тест.txt");
-    assert_eq!(results[2].location.line_number, 3);
-    assert_eq!(results[2].content, String::from("打电动"));
+    assert_eq!(
+        results[2].file_name.as_ref().unwrap(),
+        "resources/tests/тест.txt"
+    );
+    assert_eq!(results[2].line_number.unwrap(), 3);
+    assert_eq!(results[2].matching_line, String::from("打电动"));
     assert_eq!(results[2].fuzzy_match.score(), 17);
     assert_eq!(results[2].fuzzy_match.positions(), &vec![0, 1]);
 
-    assert_eq!(results[3].location.file_name, "resources/tests/测试.txt");
-    assert_eq!(results[3].location.line_number, 1);
-    assert_eq!(results[3].content, String::from("打电动"));
+    assert_eq!(
+        results[3].file_name.as_ref().unwrap(),
+        "resources/tests/测试.txt"
+    );
+    assert_eq!(results[3].line_number.unwrap(), 1);
+    assert_eq!(results[3].matching_line, String::from("打电动"));
     assert_eq!(results[3].fuzzy_match.score(), 17);
     assert_eq!(results[3].fuzzy_match.positions(), &vec![0, 1]);
 
-    assert_eq!(results[4].location.file_name, "resources/tests/👨‍🔬.txt");
-    assert_eq!(results[4].location.line_number, 3);
-    assert_eq!(results[4].content, String::from("打电动"));
+    assert_eq!(
+        results[4].file_name.as_ref().unwrap(),
+        "resources/tests/👨‍🔬.txt"
+    );
+    assert_eq!(results[4].line_number.unwrap(), 3);
+    assert_eq!(results[4].matching_line, String::from("打电动"));
     assert_eq!(results[4].fuzzy_match.score(), 17);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![0, 1]);
+}
 
-    Ok(())
+fn sorted(mut results: Vec<MatchingResult>) -> Vec<MatchingResult> {
+    // sort in descending order
+    results.sort_by(|a, b| b.cmp(a));
+    results
 }

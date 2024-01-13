@@ -2,9 +2,12 @@ pub mod cli;
 mod core;
 mod matching_results;
 
-pub use core::{
-    exit_code::ExitCode,
-    request::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets},
+pub use crate::{
+    core::{
+        exit_code::ExitCode,
+        request::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets},
+    },
+    matching_results::result::MatchingResult,
 };
 
 use crate::{
@@ -12,7 +15,7 @@ use crate::{
     core::reader::Reader,
     matching_results::{
         context_accumulators::SlidingAccumulator,
-        result::{MatchingResult, MatchingResultState, PartialMatchingResult},
+        result::{MatchingResultState, PartialMatchingResult},
     },
 };
 use log::debug;
@@ -43,20 +46,22 @@ pub fn run(
     output_dest: &mut impl Write,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {:?}", request);
-    let mut matches = find_matches(&request.query, &request.targets, &request.match_options)?;
-    // sort in descending order
-    matches.sort_by(|a, b| b.cmp(a));
+    let results = sorted_descending_score(find_matches(
+        &request.query,
+        &request.targets,
+        &request.match_options,
+    )?);
     match request.output_behavior {
         OutputBehavior::Normal(formatting) => {
             write!(
                 output_dest,
                 "{}",
-                output::format_results(&matches, &formatting)
+                output::format_results(&results, &formatting)
             )?;
         }
         OutputBehavior::Quiet => {}
     }
-    Ok(matches)
+    Ok(results)
 }
 
 /// Find fuzzy matches of `query` in `targets` using the configuration supplied `options`.
@@ -188,4 +193,10 @@ fn process_one_target(
     }
 
     Ok(result)
+}
+
+fn sorted_descending_score(mut results: Vec<MatchingResult>) -> Vec<MatchingResult> {
+    // sort in descending order
+    results.sort_by(|a, b| b.cmp(a));
+    results
 }
