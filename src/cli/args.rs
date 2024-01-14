@@ -477,16 +477,16 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
 fn formatting_from(matches: &ArgMatches) -> Formatting {
     if let Some(behavior) = matches.get_one::<String>("color") {
         let behavior = behavior.as_str();
-        match behavior {
-            "always" | "auto" if atty::is(Stream::Stdout) => {
-                let formatting_options = matches
-                    .get_one::<FormattingOptions>("color_overrides")
-                    .cloned()
-                    .unwrap_or_default();
-                Formatting::On(formatting_options)
-            }
-            "never" | "auto" if atty::isnt(Stream::Stdout) => Formatting::Off,
-            _ => unreachable!(),
+        if behavior == "always" || (behavior == "auto" && atty::is(Stream::Stdout)) {
+            let formatting_options = matches
+                .get_one::<FormattingOptions>("color_overrides")
+                .cloned()
+                .unwrap_or_default();
+            Formatting::On(formatting_options)
+        } else if behavior == "never" || (behavior == "auto" && atty::isnt(Stream::Stdout)) {
+            Formatting::Off
+        } else {
+            unreachable!();
         }
     } else {
         Formatting::On(FormattingOptions::default())
