@@ -8,20 +8,6 @@ use yansi::{Color, Style};
 ///
 /// If the string is not a valid SGR-sequence, raises a [`StyleSequenceParsingError`].
 ///
-/// # Examples
-///
-/// ```
-/// use yansi::{Color, Style};
-/// let sequence = "33;3;4;48;2;192;255;238";
-/// assert_eq!(
-///     style_from(sequence).unwrap(),
-///     Style::new(Color::Yellow)
-///         .italic()
-///         .underline()
-///         .bg(Color::RGB(192, 255, 238))
-/// );
-/// ```
-///
 pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
     let mut style = Style::default();
     let mut itr = sgr_sequence.split(';');

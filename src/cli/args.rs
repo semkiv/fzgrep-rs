@@ -25,23 +25,34 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // basic usage
-/// use fzgrep::core::request::{ContextSize, Lines, OutputBehavior, Request, Targets};
+/// use atty::{self, Stream};
+/// use fzgrep::cli::{args, formatting::{Formatting, FormattingOptions}};
+/// use fzgrep::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets};
+/// use log::LevelFilter;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request,
 ///     Request{
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
-///         track_line_numbers: false,
-///         track_file_names: false,
-///         context_size: ContextSize {
-///             before: Lines(0),
-///             after: Lines(0),
+///         match_options: MatchOptions {
+///             track_line_numbers: false,
+///             track_file_names: false,
+///             context_size: ContextSize {
+///                 before: Lines(0),
+///                 after: Lines(0),
+///             },
 ///         },
-///         output_behavior: OutputBehavior::Normal,
+///         output_behavior: OutputBehavior::Normal(
+///             if atty::is(Stream::Stdout) {
+///                 Formatting::On(FormattingOptions::default())
+///             } else {
+///                 Formatting::Off
+///             }
+///         ),
 ///         log_verbosity: LevelFilter::Error,
 ///     }
 /// );
@@ -49,79 +60,89 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // no input files - use the standard input
-/// use fzgrep::core::request::Targets;
+/// use fzgrep::cli::args;
+/// use fzgrep::Targets;
 ///
 /// let args = ["fzgrep", "query"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.targets, Targets::Stdin);
 /// ```
 ///
 /// ```
 /// // no input files and `--recursive` flag - use current directory///
-/// use fzgrep::core::request::Targets;
+/// use fzgrep::cli::args;
+/// use fzgrep::Targets;
+/// use std::{env, path::PathBuf};
 ///
 /// let args = ["fzgrep", "--recursive", "query"];
-/// let request = make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets, Targets::RecursiveEntries(vec![PathBuf::from(".")]));
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.targets, Targets::RecursiveEntries(vec![env::current_dir().unwrap()]));
 /// ```
 ///
 /// ```
 /// // multiple input files
-/// use fzgrep::core::request::Targets;
+/// use fzgrep::cli::args;
+/// use fzgrep::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.targets, Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
 /// // with more than one input file `--with-filename` is assumed
-/// assert!(request.track_file_names);
+/// assert!(request.match_options.track_file_names);
 /// ```
 ///
 /// ```
 /// // recursive mode
-/// use fzgrep::core::request::Targets;
+/// use fzgrep::cli::args;
+/// use fzgrep::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "query", "."];
-/// let request = make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets: Targets::RecursiveEntries(vec![PathBuf::from(".")]));
-/// assert_eq!(request.target_traversal_mode, TargetTraversalMode::Recursive);
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.targets, Targets::RecursiveEntries(vec![PathBuf::from(".")]));
 /// ```
 ///
 /// ```
 /// // request line numbers to be printed
+/// use fzgrep::cli::args;
+///
 /// let args = ["fzgrep", "--line-number", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
-/// assert!(request.track_line_numbers);
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert!(request.match_options.track_line_numbers);
 /// ```
 ///
 /// ```
 /// // request file names to be printed
+/// use fzgrep::cli::args;
+///
 /// let args = ["fzgrep", "--with-filename", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
-/// assert!(request.track_file_names);
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert!(request.match_options.track_file_names);
 /// ```
 ///
 /// ```
 /// // with more than one input file `--with-filename` is assumed
 /// // it is possible to override this by specifically opting out like so
-/// use fzgrep::core::request::Targets;
+/// use fzgrep::cli::args;
+/// use fzgrep::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
-/// let request = make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets: Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")]));
-/// assert!(!request.track_file_names);
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.targets, Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")]));
+/// assert!(!request.match_options.track_file_names);
 /// ```
 ///
 /// ```
 /// // symmetric context
-/// use fzgrep::core::request::{ContextSize, Lines};
+/// use fzgrep::cli::args;
+/// use fzgrep::{ContextSize, Lines};
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.context_size,
+///     request.match_options.context_size,
 ///     ContextSize {
 ///         before: Lines(2),
 ///         after: Lines(2),
@@ -131,12 +152,13 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // asymmetric context
-/// use fzgrep::core::request::{ContextSize, Lines};
+/// use fzgrep::cli::args;
+/// use fzgrep::{ContextSize, Lines};
 ///
 /// let args = ["fzgrep", "--before-context", "1", "--after-context", "2", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.context_size,
+///     request.match_options.context_size,
 ///     ContextSize {
 ///         before: Lines(1),
 ///         after: Lines(2),
@@ -146,48 +168,53 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // silence the output
-/// use fzgrep::core::request::OutputBehavior;
+/// use fzgrep::cli::args;
+/// use fzgrep::OutputBehavior;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--quiet", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.output_behavior, OutputBehavior::Quiet);
-/// assert_eq!(request.log_verbosity: LevelFilter::Off);
+/// assert_eq!(request.log_verbosity, LevelFilter::Off);
 /// ```
 ///
 /// ```
 /// // activate warn log messages (in addition to error messages enabled by default)
+/// use fzgrep::cli::args;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--verbose", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Warn);
 /// ```
 ///
 /// ```
 /// // activate warn and info log messages (in addition to error messages enabled by default)
+/// use fzgrep::cli::args;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vv", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Info);
 /// ```
 ///
 /// ```
 /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
+/// use fzgrep::cli::args;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvv", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Debug);
 /// ```
 ///
 /// ```
 /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
+/// use fzgrep::cli::args;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvvv", "query", "file"];
-/// let request = make_request(args.into_iter().map(String::from));
+/// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Trace);
 /// ```
 ///

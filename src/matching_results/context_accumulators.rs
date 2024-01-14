@@ -32,26 +32,6 @@ impl SlidingAccumulator {
     /// If the accumulator is at capacity, the oldest stored line is popped.
     /// If the capacity is zero does nothing.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let acc = SlidingAccumulator::new(2);
-    /// assert_eq!(acc.snapshot(), Vec::<String>::new());
-    /// acc.feed(String::from("one"));
-    /// assert_eq!(acc.snapshot(), vec!["one"]);
-    /// acc.feed(String::from("two"));
-    /// assert_eq!(acc.snapshot(), vec!["one", "two"]);
-    /// acc.feed(String::from("three"));
-    /// assert_eq!(acc.snapshot(), vec!["two", "three"]);
-    /// ```
-    ///
-    /// ```
-    /// let acc = SlidingAccumulator::new(0);
-    /// assert_eq!(acc.snapshot(), Vec::<String>::new());
-    /// acc.feed(String::from("something"));
-    /// assert_eq!(acc.snapshot(), Vec::<String>::new());
-    /// ```
-    ///
     pub(crate) fn feed(&mut self, line: String) {
         if self.capacity == 0 {
             return;
@@ -65,19 +45,6 @@ impl SlidingAccumulator {
     }
 
     /// Returns the accumulated lines as a [`Vec<String>`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let acc = SlidingAccumulator::new(2);
-    /// assert_eq!(acc.snapshot(), Vec::<String>::new());
-    /// acc.feed(String::from("one"));
-    /// assert_eq!(acc.snapshot(), vec!["one"]);
-    /// acc.feed(String::from("two"));
-    /// assert_eq!(acc.snapshot(), vec!["one", "two"]);
-    /// acc.feed(String::from("three"));
-    /// assert_eq!(acc.snapshot(), vec!["two", "three"]);
-    /// ```
     ///
     pub(crate) fn snapshot(&self) -> Vec<String> {
         self.data.iter().cloned().collect()
@@ -99,22 +66,6 @@ impl SaturatingAccumulator {
     /// If the accumulator is at capacity, new lines are ignored.
     /// If the capacity is zero does nothing.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let acc = SaturatingAccumulator::new(2);
-    /// acc.feed(String::from("one"));
-    /// acc.feed(String::from("two"));
-    /// acc.feed(String::from("three"));
-    /// assert_eq!(acc.consume(), vec!["one", "two"]);
-    /// ```
-    ///
-    /// ```
-    /// let acc = SaturatingAccumulator::new(0);
-    /// acc.feed(String::from("something"));
-    /// assert_eq!(acc.consume(), Vec::<String>::new());
-    /// ```
-    ///
     pub(crate) fn feed(&mut self, line: String) {
         if self.is_saturated() {
             return;
@@ -125,33 +76,11 @@ impl SaturatingAccumulator {
 
     /// Returns whether the accumulator is completely filled up.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let acc = SaturatingAccumulator::new(2);
-    /// assert!(!acc.is_saturated())
-    /// acc.feed(String::from("one"));
-    /// assert!(!acc.is_saturated())
-    /// acc.feed(String::from("two"));
-    /// assert!(acc.is_saturated())
-    /// acc.feed(String::from("three"));
-    /// assert!(acc.is_saturated())
-    /// ```
     pub(crate) fn is_saturated(&self) -> bool {
         self.data.len() == self.capacity
     }
 
     /// Turns the accumulator into a [`Vec<String>`] of accumulated lines.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let acc = SaturatingAccumulator::new(2);
-    /// acc.feed(String::from("one"));
-    /// acc.feed(String::from("two"));
-    /// acc.feed(String::from("three"));
-    /// assert_eq!(acc.consume(), vec!["two", "three"]);
-    /// ```
     ///
     pub(crate) fn consume(self) -> Vec<String> {
         self.data

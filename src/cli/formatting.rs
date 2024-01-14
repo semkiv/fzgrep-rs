@@ -46,25 +46,6 @@ impl Formatting {
     /// Converts [`Formatting`] to [`Option<FormattingOptions>`].
     /// If `self` is [`Formatting::On`] returns [`Some`] with the inner options, otherwise [`None`].
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use fzgrep::{Formatting, FormattingOptions};
-    /// use yansi::{Color, Style};
-    /// let formatting = Formatting::On(
-    ///     FormattingOptions {
-    ///         selected_match: Style::new(Color::Blue).bold(),
-    ///         ..Default::default()
-    ///     }
-    /// );
-    /// assert_eq!(formatting.options().unwrap().selected_match, Style::new(Color::Blue).bold());
-    /// ```
-    ///
-    /// ```
-    /// let formatting = Formatting::Off;
-    /// assert_eq!(formatting.options(), None);
-    /// ```
-    ///
     pub(crate) const fn options(&self) -> Option<FormattingOptions> {
         match self {
             Formatting::On(options) => Some(*options),
@@ -80,7 +61,7 @@ impl Default for FormattingOptions {
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::FormattingOptions;
+    /// use fzgrep::cli::formatting::FormattingOptions;
     /// use yansi::{Color, Style};
     ///
     /// let default = FormattingOptions::default();

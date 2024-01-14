@@ -92,75 +92,6 @@ impl MatchingResultState {
     /// Creates a result state based on the parameters.
     /// Effectively the only case when it can return [`MatchingResultState::Complete`] is `after_context_size` being `0`.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let matching_line = String::from("test");
-    /// let fuzzy_match = vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap();
-    /// let file_name = None;
-    /// let line_number = None;
-    /// let before_context = vec![String::from("line1"), String::from("line2")];///
-    /// match MatchingResultState::new(
-    ///     matching_line,
-    ///     fuzzy_match,
-    ///     file_name,
-    ///     line_number,
-    ///     before_context,
-    ///     2,
-    /// ) {
-    ///     MatchingResultState::Complete(_) => unreachable!(),
-    ///     MatchingResultState::Incomplete(partial_result) => {
-    ///         assert_eq!(
-    ///             partial_result,
-    ///             PartialMatchingResult {
-    ///                 matching_line: String::from("test"),
-    ///                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
-    ///                 file_name: None,
-    ///                 line_number: None,
-    ///                 partial_context: PartialContext {
-    ///                     before: vec![String::from("line1"), String::from("line2")],
-    ///                     after_accumulator: SaturatingAccumulator::new(2)
-    ///                 },
-    ///             }
-    ///         )
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// ```
-    /// let matching_line = String::from("test");
-    /// let fuzzy_match = vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap();
-    /// let file_name = None;
-    /// let line_number = None;
-    /// let before_context = vec![String::from("line1"), String::from("line2")];
-    ///
-    /// match MatchingResultState::new(
-    ///     matching_line,
-    ///     fuzzy_match,
-    ///     file_name,
-    ///     line_number,
-    ///     before_context,
-    ///     0,
-    /// ) {
-    ///     MatchingResultState::Complete(result) => {
-    ///         assert_eq!(
-    ///             result,
-    ///             MatchingResult {
-    ///                 matching_line: String::from("test"),
-    ///                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
-    ///                 file_name: None,
-    ///                 line_number: None,
-    ///                 context: Context {
-    ///                     before: vec![String::from("line1"), String::from("line2")],
-    ///                     after: vec![],
-    ///                 },
-    ///             }
-    ///         )
-    ///     }
-    ///     MatchingResultState::Incomplete(_) => unreachable!(),
-    /// }
-    /// ```
-    ///
     pub(crate) fn new(
         matching_line: String,
         fuzzy_match: FuzzyMatch,
@@ -192,63 +123,6 @@ impl PartialMatchingResult {
     /// Feeds a line into a partial matching result. With each line fed a partial result may become complete
     /// (depending on the state of the underlying context accumulator).
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// let matching_line = String::from("test");
-    /// let fuzzy_match = vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap();
-    /// let file_name = None;
-    /// let line_number = None;
-    /// let before_context = vec![String::from("line1"), String::from("line2")];
-    /// match MatchingResultState::new(
-    ///     matching_line,
-    ///     fuzzy_match,
-    ///     file_name,
-    ///     line_number,
-    ///     before_context,
-    ///     2,
-    /// ) {
-    ///     // the context size of 2 is expected so right after the creation the state is incomplete
-    ///     MatchingResultState::Incomplete(partial_result) => {
-    ///         match partial_result.feed(String::from("line3")) {
-    ///             // after one line has been push the context is still incomplete
-    ///             MatchingResultState::Incomplete(partial_result) => {
-    ///                 match partial_result.feed(String::from("line4")) {
-    ///                     // finally after the second line has been pushed we have a complete context and thus result
-    ///                     MatchingResultState::Complete(result) => {
-    ///                         assert_eq!(
-    ///                             result,
-    ///                             MatchingResult {
-    ///                                 matching_line: String::from("test"),
-    ///                                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match(
-    ///                                     "test", "test"
-    ///                                 )
-    ///                                 .unwrap(),
-    ///                                 file_name: None,
-    ///                                 line_number: None,
-    ///                                 context: Context {
-    ///                                     before: vec![
-    ///                                         String::from("line1"),
-    ///                                         String::from("line2")
-    ///                                     ],
-    ///                                     after: vec![
-    ///                                         String::from("line3"),
-    ///                                         String::from("line4")
-    ///                                     ],
-    ///                                 },
-    ///                             }
-    ///                         );
-    ///                     }
-    ///                     MatchingResultState::Incomplete(_) => unreachable!(),
-    ///                 }
-    ///             },
-    ///             MatchingResultState::Complete(_) => unreachable!(),
-    ///         }
-    ///     },
-    ///     MatchingResultState::Complete(_) => unreachable!(),
-    /// }
-    /// ```
-    ///
     pub(crate) fn feed(self, line: String) -> MatchingResultState {
         match self.partial_context.feed(line) {
             ContextState::Complete(context) => MatchingResultState::Complete(MatchingResult {
@@ -272,50 +146,6 @@ impl PartialMatchingResult {
 
     /// Forcibly turns a partial result into a complete one.
     /// This is useful when accumulator reaches the end of file and cannot possibly accumulate more lines.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let matching_line = String::from("test");
-    /// let fuzzy_match = vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap();
-    /// let file_name = None;
-    /// let line_number = None;
-    /// let before_context = vec![String::from("line1"), String::from("line2")];
-    /// match MatchingResultState::new(
-    ///     matching_line,
-    ///     fuzzy_match,
-    ///     file_name,
-    ///     line_number,
-    ///     before_context,
-    ///     2,
-    /// ) {
-    ///     // the context size of 2 is expected so right after the creation the state is incomplete
-    ///     MatchingResultState::Incomplete(partial_result) => {
-    ///         match partial_result.feed(String::from("line3")) {
-    ///             // after one line has been push the context is still incomplete
-    ///             MatchingResultState::Incomplete(partial_result) => {
-    ///                 // let's complete it forcibly
-    ///                 let result = partial_result.complete();
-    ///                 assert_eq!(
-    ///                     result,
-    ///                     MatchingResult {
-    ///                         matching_line: String::from("test"),
-    ///                         fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
-    ///                         file_name: None,
-    ///                         line_number: None,
-    ///                         context: Context {
-    ///                             before: vec![String::from("line1"), String::from("line2")],
-    ///                             after: vec![String::from("line3")],
-    ///                         },
-    ///                     }
-    ///                 );
-    ///             },
-    ///             MatchingResultState::Complete(_) => unreachable!(),
-    ///         }
-    ///     },
-    ///     MatchingResultState::Complete(_) => unreachable!(),
-    /// }
-    /// ```
     ///
     pub(crate) fn complete(self) -> MatchingResult {
         MatchingResult {
