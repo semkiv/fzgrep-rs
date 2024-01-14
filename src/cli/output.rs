@@ -211,11 +211,10 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 mod test {
     use super::*;
     use crate::cli::formatting::FormattingOptions;
-    use atty::Stream;
     use yansi::Color;
 
     #[test]
-    fn results_output_minimal_default() {
+    fn results_output_selected_match_default() {
         let results = vec![
             MatchingResult {
                 matching_line: String::from("test"),
@@ -251,33 +250,19 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}st\ntes{}\n{}s{}",
-                if atty::is(Stream::Stdout) {
-                    Paint::red("te").bold().to_string()
-                } else {
-                    String::from("te")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red('t').bold().to_string()
-                } else {
-                    String::from("t")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red("te").bold().to_string()
-                } else {
-                    String::from("te")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red('t').bold().to_string()
-                } else {
-                    String::from("t")
-                },
+                "{}st\n\
+                tes{}\n\
+                {}s{}\n",
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
             )
         )
     }
 
     #[test]
-    fn results_output_minimal_off() {
+    fn results_output_selected_match_off() {
         let results = vec![
             MatchingResult {
                 matching_line: String::from("test"),
@@ -312,28 +297,62 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
+            "test\n\
+            test\n\
+            test\n"
+        )
+    }
+
+    #[test]
+    fn results_output_selected_match_custom() {
+        let results = vec![
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+            MatchingResult {
+                matching_line: String::from("test"),
+                fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
+                file_name: None,
+                line_number: None,
+                context: Context {
+                    before: vec![],
+                    after: vec![],
+                },
+            },
+        ];
+        assert_eq!(
+            format_results(
+                &results,
+                &Formatting::On(FormattingOptions {
+                    selected_match: Style::new(Color::Yellow),
+                    ..Default::default()
+                })
+            ),
             format!(
-                "{}st\ntes{}\n{}s{}",
-                if atty::is(Stream::Stdout) {
-                    Paint::red("te").bold().to_string()
-                } else {
-                    String::from("te")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red('t').bold().to_string()
-                } else {
-                    String::from("t")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red("te").bold().to_string()
-                } else {
-                    String::from("te")
-                },
-                if atty::is(Stream::Stdout) {
-                    Paint::red('t').bold().to_string()
-                } else {
-                    String::from("t")
-                },
+                "{}st\n\
+                tes{}\n\
+                {}s{}\n",
+                Paint::yellow("te"),
+                Paint::yellow('t'),
+                Paint::yellow("te"),
+                Paint::yellow('t'),
             )
         )
     }
@@ -375,17 +394,13 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::green("42"),
-                Paint::cyan(':'),
+                "{}st\n\
+                tes{}\n\
+                {}s{}\n",
                 Paint::red("te").bold(),
-                Paint::green("100500"),
-                Paint::cyan(':'),
                 Paint::red('t').bold(),
-                Paint::green("13"),
-                Paint::cyan(':'),
                 Paint::red("te").bold(),
-                Paint::red('t').bold()
+                Paint::red('t').bold(),
             )
         )
     }
@@ -426,19 +441,9 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::green("42"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::green("100500"),
-                Paint::cyan(':'),
-                Paint::red('t').bold(),
-                Paint::green("13"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::red('t').bold()
-            )
+            "test\n\
+            test\n\
+            test\n"
         )
     }
 
@@ -480,22 +485,21 @@ mod test {
             format_results(
                 &results,
                 &Formatting::On(FormattingOptions {
-                    selected_line: Style::new(Color::Green),
+                    selected_line: Style::new(Color::Yellow),
                     ..Default::default()
                 })
             ),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::green("42"),
-                Paint::cyan(':'),
+                "{}{}\n\
+                {}{}\n\
+                {}{}{}\n",
                 Paint::red("te").bold(),
-                Paint::green("100500"),
-                Paint::cyan(':'),
+                Paint::yellow("st"),
+                Paint::yellow("tes"),
                 Paint::red('t').bold(),
-                Paint::green("13"),
-                Paint::cyan(':'),
                 Paint::red("te").bold(),
-                Paint::red('t').bold()
+                Paint::yellow('s'),
+                Paint::red('t').bold(),
             )
         )
     }
@@ -537,7 +541,9 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                "{}{}{}st\n\
+                {}{}tes{}\n\
+                {}{}{}s{}\n",
                 Paint::green("42"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
@@ -588,19 +594,9 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::green("42"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::green("100500"),
-                Paint::cyan(':'),
-                Paint::red('t').bold(),
-                Paint::green("13"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::red('t').bold()
-            )
+            "42:test\n\
+            100500:test\n\
+            13:test\n"
         )
     }
 
@@ -642,19 +638,21 @@ mod test {
             format_results(
                 &results,
                 &Formatting::On(FormattingOptions {
-                    line_number: Style::new(Color::Cyan),
+                    line_number: Style::new(Color::Yellow),
                     ..Default::default()
                 })
             ),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::green("42"),
+                "{}{}{}st\n\
+                {}{}tes{}\n\
+                {}{}{}s{}\n",
+                Paint::yellow("42"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
-                Paint::green("100500"),
+                Paint::yellow("100500"),
                 Paint::cyan(':'),
                 Paint::red('t').bold(),
-                Paint::green("13"),
+                Paint::yellow("13"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
                 Paint::red('t').bold()
@@ -699,7 +697,9 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
+                "{}{}{}st\n\
+                {}{}tes{}\n\
+                {}{}{}s{}\n",
                 Paint::magenta("First"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
@@ -750,19 +750,9 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
-                Paint::red('t').bold(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::red('t').bold(),
-            )
+            "First:test\n\
+            Second:test\n\
+            Third:test\n"
         )
     }
 
@@ -804,19 +794,21 @@ mod test {
             format_results(
                 &results,
                 &Formatting::On(FormattingOptions {
-                    file_name: Style::new(Color::Cyan),
+                    file_name: Style::new(Color::Yellow),
                     ..Default::default()
                 })
             ),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::magenta("First"),
+                "{}{}{}st\n\
+                {}{}tes{}\n\
+                {}{}{}s{}\n",
+                Paint::yellow("First"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
-                Paint::magenta("Second"),
+                Paint::yellow("Second"),
                 Paint::cyan(':'),
                 Paint::red('t').bold(),
-                Paint::magenta("Third"),
+                Paint::yellow("Third"),
                 Paint::cyan(':'),
                 Paint::red("te").bold(),
                 Paint::red('t').bold(),
@@ -879,19 +871,27 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
+                "first_before_one\n\
+                first_before_two\n\
+                {}st\n\
+                first_after_one\n\
+                first_after_two\n\
+                second_before_one\n\
+                second_before_two\n\
+                tes{}\n\
+                second_after_one\n\
+                second_after_two\n\
+                third_before_one\n\
+                third_before_two\n\
+                {}s{}\n\
+                third_after_one\n\
+                third_after_two\n",
                 Paint::red("te").bold(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
                 Paint::red('t').bold(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
                 Paint::red("te").bold(),
                 Paint::red('t').bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -948,19 +948,21 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
-                Paint::red('t').bold(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
-                Paint::red("te").bold(),
-                Paint::red('t').bold(),
-            )
+            "first_before_one\n\
+            first_before_two\n\
+            test\n\
+            first_after_one\n\
+            first_after_two\n\
+            second_before_one\n\
+            second_before_two\n\
+            test\n\
+            second_after_one\n\
+            second_after_two\n\
+            third_before_one\n\
+            third_before_two\n\
+            test\n\
+            third_after_one\n\
+            third_after_two\n",
         )
     }
 
@@ -1025,17 +1027,37 @@ mod test {
                 })
             ),
             format!(
-                "{}{}{}st\n{}{}tes{}\n{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
+                "{}\n\
+                {}\n\
+                {}st\n\
+                {}\n\
+                {}\n\
+                {}\n\
+                {}\n\
+                tes{}\n\
+                {}\n\
+                {}\n\
+                {}\n\
+                {}\n\
+                {}s{}\n\
+                {}\n\
+                {}\n",
+                Paint::rgb(127, 127, 127, "first_before_one").dimmed(),
+                Paint::rgb(127, 127, 127, "first_before_two").dimmed(),
                 Paint::red("te").bold(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
+                Paint::rgb(127, 127, 127, "first_after_one").dimmed(),
+                Paint::rgb(127, 127, 127, "first_after_two").dimmed(),
+                Paint::rgb(127, 127, 127, "second_before_one").dimmed(),
+                Paint::rgb(127, 127, 127, "second_before_two").dimmed(),
                 Paint::red('t').bold(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
+                Paint::rgb(127, 127, 127, "second_after_one").dimmed(),
+                Paint::rgb(127, 127, 127, "second_after_two").dimmed(),
+                Paint::rgb(127, 127, 127, "third_before_one").dimmed(),
+                Paint::rgb(127, 127, 127, "third_before_two").dimmed(),
                 Paint::red("te").bold(),
                 Paint::red('t').bold(),
+                Paint::rgb(127, 127, 127, "third_after_one").dimmed(),
+                Paint::rgb(127, 127, 127, "third_after_two").dimmed(),
             )
         )
     }
@@ -1095,23 +1117,100 @@ mod test {
         assert_eq!(
             format_results(&results, &Formatting::On(FormattingOptions::default())),
             format!(
-                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
+                "{}{}{}{}first_before_one\n\
+                {}{}{}{}first_before_two\n\
+                {}{}{}{}{}st\n\
+                {}{}{}{}first_after_one\n\
+                {}{}{}{}first_after_two\n\
+                {}{}{}{}second_before_one\n\
+                {}{}{}{}second_before_two\n\
+                {}{}{}{}tes{}\n\
+                {}{}{}{}second_after_one\n\
+                {}{}{}{}second_after_two\n\
+                {}{}{}{}third_before_one\n\
+                {}{}{}{}third_before_two\n\
+                {}{}{}{}{}s{}\n\
+                {}{}{}{}third_after_one\n\
+                {}{}{}{}third_after_two\n",
+                // first before context line
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("40"),
+                Paint::cyan(':'),
+                // second before context line
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("41"),
+                Paint::cyan(':'),
+                // selected line
                 Paint::magenta("First"),
                 Paint::cyan(':'),
                 Paint::green("42"),
                 Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
+                Paint::red("te").bold(),
+                // first after context line
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("43"),
+                Paint::cyan(':'),
+                // second after context line
+                Paint::magenta("First"),
+                Paint::cyan(':'),
+                Paint::green("44"),
+                Paint::cyan(':'),
+                // first before context line
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100498"),
+                Paint::cyan(':'),
+                // second before context line
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100499"),
+                Paint::cyan(':'),
+                // selected line
                 Paint::magenta("Second"),
                 Paint::cyan(':'),
                 Paint::green("100500"),
                 Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::red('t').bold(),
+                // first after context line
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100501"),
+                Paint::cyan(':'),
+                // second after context line
+                Paint::magenta("Second"),
+                Paint::cyan(':'),
+                Paint::green("100502"),
+                Paint::cyan(':'),
+                // first before context line
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("11"),
+                Paint::cyan(':'),
+                // second before context line
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("12"),
+                Paint::cyan(':'),
+                // selected line
                 Paint::magenta("Third"),
                 Paint::cyan(':'),
                 Paint::green("13"),
                 Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                Paint::red("te").bold(),
+                Paint::red('t').bold(),
+                // first after context line
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("14"),
+                Paint::cyan(':'),
+                // second after context line
+                Paint::magenta("Third"),
+                Paint::cyan(':'),
+                Paint::green("15"),
+                Paint::cyan(':'),
             )
         )
     }
@@ -1170,25 +1269,21 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            format!(
-                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
-                Paint::green("42"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
-                Paint::green("100500"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
-                Paint::green("13"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
-            )
+            "First:40:first_before_one\n\
+            First:41:first_before_two\n\
+            First:42:test\n\
+            First:43:first_after_one\n\
+            First:44:first_after_two\n\
+            Second:100498:second_before_one\n\
+            Second:100499:second_before_two\n\
+            Second:100500:test\n\
+            Second:100501:second_after_one\n\
+            Second:100502:second_after_two\n\
+            Third:11:third_before_one\n\
+            Third:12:third_before_two\n\
+            Third:13:test\n\
+            Third:14:third_after_one\n\
+            Third:15:third_after_two\n"
         )
     }
 
@@ -1248,7 +1343,7 @@ mod test {
             format_results(
                 &results,
                 &Formatting::On(FormattingOptions {
-                    selected_match: Style::new(Color::Green),
+                    selected_match: Style::new(Color::Yellow).italic(),
                     line_number: Style::new(Color::Cyan),
                     file_name: Style::new(Color::Cyan),
                     separator: Style::new(Color::Fixed(50)),
@@ -1257,23 +1352,115 @@ mod test {
                 })
             ),
             format!(
-                "{}{}{}{}{}st\n{}{}{}{}tes{}\n{}{}{}{}{}s{}",
-                Paint::magenta("First"),
-                Paint::cyan(':'),
-                Paint::green("42"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
-                Paint::magenta("Second"),
-                Paint::cyan(':'),
-                Paint::green("100500"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
-                Paint::magenta("Third"),
-                Paint::cyan(':'),
-                Paint::green("13"),
-                Paint::cyan(':'),
-                Paint::rgb(100, 150, 200, "te").bg(Color::Yellow).italic(),
-                Paint::rgb(100, 150, 200, 't').bg(Color::Yellow).italic(),
+                "{}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}\n",
+                // first before context line
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("40"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "first_before_one").dimmed(),
+                // second before context line
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("41"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "first_before_two").dimmed(),
+                // selected line
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("42"),
+                Paint::fixed(50, ':'),
+                Paint::yellow("te").italic(),
+                Paint::rgb(127, 127, 127, "st").dimmed(),
+                // first after context line
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("43"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "first_after_one").dimmed(),
+                // second after context line
+                Paint::cyan("First"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("44"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "first_after_two").dimmed(),
+                // first before context line
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100498"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "second_before_one").dimmed(),
+                // second before context line
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100499"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "second_before_two").dimmed(),
+                // selected line
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100500"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "tes").dimmed(),
+                Paint::yellow('t').italic(),
+                // first after context line
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100501"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "second_after_one").dimmed(),
+                // second after context line
+                Paint::cyan("Second"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("100502"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "second_after_two").dimmed(),
+                // first before context line
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("11"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "third_before_one").dimmed(),
+                // second before context line
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("12"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "third_before_two").dimmed(),
+                // selected line
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("13"),
+                Paint::fixed(50, ':'),
+                Paint::yellow("te").italic(),
+                Paint::rgb(127, 127, 127, "s").dimmed(),
+                Paint::yellow('t').italic(),
+                // first after context line
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("14"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "third_after_one").dimmed(),
+                // second after context line
+                Paint::cyan("Third"),
+                Paint::fixed(50, ':'),
+                Paint::cyan("15"),
+                Paint::fixed(50, ':'),
+                Paint::rgb(127, 127, 127, "third_after_two").dimmed(),
             )
         )
     }
