@@ -1,12 +1,12 @@
-use fzgrep::Request;
+use fzgrep::cli::args;
 use log::error;
 use std::{env, io, process};
 
 fn main() -> process::ExitCode {
-    let request = Request::new(env::args());
+    let request = args::make_request(env::args());
     // initialize logger
     env_logger::Builder::new()
-        .filter_level(request.verbosity())
+        .filter_level(request.log_verbosity)
         .init();
 
     match fzgrep::run(&request, &mut io::stdout()) {

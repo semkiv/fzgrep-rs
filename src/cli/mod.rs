@@ -1,6 +1,5 @@
-pub mod error;
-pub mod output_options;
-pub mod request;
-
-pub use output_options::{FormattingOptions, OutputOptions};
-pub use request::{OutputBehavior, Request};
+pub mod args;
+pub(crate) mod error;
+pub mod formatting;
+pub(crate) mod output;
+pub(crate) mod sgr_sequence;
