@@ -382,7 +382,15 @@ fn no_filename_multiple_files() {
 
 #[test]
 fn before_context_short() {
-    let args = ["fzgrep", "-B", "2", "contigous", "resources/tests/test.txt"];
+    let args = [
+        "fzgrep",
+        "--color",
+        "always",
+        "-B",
+        "2",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
@@ -409,6 +417,8 @@ fn before_context_short() {
 fn before_context_long() {
     let args = [
         "fzgrep",
+        "--color",
+        "always",
         "--before-context",
         "2",
         "contigous",
@@ -438,7 +448,15 @@ fn before_context_long() {
 
 #[test]
 fn after_context_short() {
-    let args = ["fzgrep", "-A", "2", "contigous", "resources/tests/test.txt"];
+    let args = [
+        "fzgrep",
+        "--color",
+        "always",
+        "-A",
+        "2",
+        "contigous",
+        "resources/tests/test.txt",
+    ];
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
@@ -466,6 +484,8 @@ fn after_context_short() {
 fn after_context_long() {
     let args = [
         "fzgrep",
+        "--color",
+        "always",
         "--after-context",
         "2",
         "contigous",
