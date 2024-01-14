@@ -565,9 +565,11 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(Formatting::On(
-                    FormattingOptions::default()
-                )),
+                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                    Formatting::On(FormattingOptions::default())
+                } else {
+                    Formatting::Off
+                }),
                 log_verbosity: LevelFilter::Error,
             }
         );
@@ -590,9 +592,11 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(Formatting::On(
-                    FormattingOptions::default()
-                )),
+                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                    Formatting::On(FormattingOptions::default())
+                } else {
+                    Formatting::Off
+                }),
                 log_verbosity: LevelFilter::Error,
             }
         );
@@ -615,9 +619,11 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(Formatting::On(
-                    FormattingOptions::default()
-                )),
+                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                    Formatting::On(FormattingOptions::default())
+                } else {
+                    Formatting::Off
+                }),
                 log_verbosity: LevelFilter::Error,
             }
         );
@@ -1230,9 +1236,11 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
-                output_behavior: OutputBehavior::Normal(Formatting::On(
-                    FormattingOptions::default()
-                )),
+                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                    Formatting::On(FormattingOptions::default())
+                } else {
+                    Formatting::Off
+                }),
                 match_options: MatchOptions {
                     track_line_numbers: true,
                     track_file_names: true,
