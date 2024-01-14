@@ -386,12 +386,15 @@ fn before_context_short() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}u{}\n",
+            "打电动\n\
+            {}u{}\n",
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
-            "{}u{}\n",
+            "打电动\n\
+            contiguous\n\
+            {}u{}\n",
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
@@ -414,12 +417,15 @@ fn before_context_long() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}u{}\n",
+            "打电动\n\
+            {}u{}\n",
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
-            "{}u{}\n",
+            "打电动\n\
+            contiguous\n\
+            {}u{}\n",
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
@@ -436,12 +442,16 @@ fn after_context_short() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}u{}\n",
+            "{}u{}\n\
+            Contiguous\n\
+            Текст\n",
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
-            "{}u{}\n",
+            "{}u{}\n\
+            Текст\n\
+            тестування\n",
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
@@ -464,12 +474,16 @@ fn after_context_long() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}u{}\n",
+            "{}u{}\n\
+            Contiguous\n\
+            Текст\n",
             Paint::red("contig").bold(),
             Paint::red("ous").bold()
         ),
         format!(
-            "{}u{}\n",
+            "{}u{}\n\
+            Текст\n\
+            тестування\n",
             Paint::red("Contig").bold(),
             Paint::red("ous").bold()
         ),
@@ -756,16 +770,26 @@ fn formatting_override_context() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}{}{}\n",
+            "{}\n\
+            {}u{}\n\
+            {}\n\
+            {}\n",
+            Paint::rgb(192, 255, 238, "打电动").dimmed(),
             Paint::red("contig").bold(),
-            Paint::rgb(192, 255, 238, 'u').dimmed(),
-            Paint::red("ous").bold()
+            Paint::red("ous").bold(),
+            Paint::rgb(192, 255, 238, "Contiguous").dimmed(),
+            Paint::rgb(192, 255, 238, "Текст").dimmed(),
         ),
         format!(
-            "{}{}{}\n",
+            "{}\n\
+            {}u{}\n\
+            {}\n\
+            {}\n",
+            Paint::rgb(192, 255, 238, "contiguous").dimmed(),
             Paint::red("Contig").bold(),
-            Paint::rgb(192, 255, 238, 'u').dimmed(),
-            Paint::red("ous").bold()
+            Paint::red("ous").bold(),
+            Paint::rgb(192, 255, 238, "Текст").dimmed(),
+            Paint::rgb(192, 255, 238, "тестування").dimmed(),
         ),
     ]
     .concat();
@@ -789,7 +813,30 @@ fn all_options_short() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}{}{}{}{}u{}\n",
+            "{}{}{}{}打电动\n\
+            {}{}{}{}{}u{}\n\
+            {}{}{}{}Contiguous\n\
+            {}{}{}{}Текст\n",
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('1').to_string()
+            } else {
+                String::from("1")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
             if atty::is(Stream::Stdout) {
                 Paint::magenta("resources/tests/test.txt").to_string()
             } else {
@@ -819,10 +866,73 @@ fn all_options_short() {
                 Paint::red("ous").bold().to_string()
             } else {
                 String::from("ous")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('3').to_string()
+            } else {
+                String::from("3")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('4').to_string()
+            } else {
+                String::from("4")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
             }
         ),
         format!(
-            "{}{}{}{}{}u{}\n",
+            "{}{}{}{}contiguous\n\
+            {}{}{}{}{}u{}\n\
+            {}{}{}{}Текст\n\
+            {}{}{}{}тестування\n",
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('2').to_string()
+            } else {
+                String::from("2")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
             if atty::is(Stream::Stdout) {
                 Paint::magenta("resources/tests/test.txt").to_string()
             } else {
@@ -852,7 +962,47 @@ fn all_options_short() {
                 Paint::red("ous").bold().to_string()
             } else {
                 String::from("ous")
-            }
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('4').to_string()
+            } else {
+                String::from("4")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::magenta("resources/tests/test.txt").to_string()
+            } else {
+                String::from("resources/tests/test.txt")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::green('5').to_string()
+            } else {
+                String::from("5")
+            },
+            if atty::is(Stream::Stdout) {
+                Paint::cyan(':').to_string()
+            } else {
+                String::from(":")
+            },
         ),
     ]
     .concat();
@@ -881,24 +1031,60 @@ fn all_options_long() {
     let request = args::make_request(args.into_iter().map(String::from));
     let expected = [
         format!(
-            "{}{}{}{}{}{}{}\n",
+            "{}{}{}{}{}\n\
+            {}{}{}{}{}{}{}\n\
+            {}{}{}{}{}\n\
+            {}{}{}{}{}\n",
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '1').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "打电动").dimmed(),
             Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
             Paint::magenta(':'),
             Paint::rgb(192, 255, 238, '2').italic(),
             Paint::magenta(':'),
             Paint::new("contig").bg(Color::Yellow),
             Paint::fixed(245, 'u').dimmed(),
-            Paint::new("ous").bg(Color::Yellow)
+            Paint::new("ous").bg(Color::Yellow),
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '3').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "Contiguous").dimmed(),
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '4').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "Текст").dimmed(),
         ),
         format!(
-            "{}{}{}{}{}{}{}\n",
+            "{}{}{}{}{}\n\
+            {}{}{}{}{}{}{}\n\
+            {}{}{}{}{}\n\
+            {}{}{}{}{}\n",
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '2').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "contiguous").dimmed(),
             Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
             Paint::magenta(':'),
             Paint::rgb(192, 255, 238, '3').italic(),
             Paint::magenta(':'),
             Paint::new("Contig").bg(Color::Yellow),
             Paint::fixed(245, 'u').dimmed(),
-            Paint::new("ous").bg(Color::Yellow)
+            Paint::new("ous").bg(Color::Yellow),
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '4').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "Текст").dimmed(),
+            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
+            Paint::magenta(':'),
+            Paint::rgb(192, 255, 238, '5').italic(),
+            Paint::magenta(':'),
+            Paint::fixed(245, "тестування").dimmed(),
         ),
     ]
     .concat();
