@@ -2,6 +2,24 @@ use crate::cli::formatting::Formatting;
 use log::LevelFilter;
 use std::path::PathBuf;
 
+/// Matches collection behavior.
+///
+#[derive(Debug, PartialEq)]
+pub enum MatchCollectionStrategy {
+    /// All matches must be kept.
+    ///
+    CollectAll,
+
+    /// Only a number best matches should be kept.
+    /// Note that the intended use for this is to reduce the strain on the memory
+    /// when the expected number of matches is very high.
+    /// Running with this strategy causes more sort operations to happen
+    /// so it might even turn out to be slower than collecting all matches
+    /// if the total number of matches is relatively low.
+    ///
+    CollectTop(usize)
+}
+
 /// Behavior of the program with respect to the output
 ///
 #[derive(Debug, PartialEq)]
@@ -44,6 +62,10 @@ pub struct Request {
     /// The input targets - files, directories or the standard input.
     ///
     pub targets: Targets,
+
+    /// Matches collection strategy,
+    ///
+    pub strategy: MatchCollectionStrategy,
 
     /// Additional data about the matches to be collected.
     ///
