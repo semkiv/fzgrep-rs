@@ -18,7 +18,7 @@ fn basic_usage() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -51,7 +51,7 @@ fn basic_usage_no_trailing_slash() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -88,7 +88,7 @@ fn only_files() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -126,7 +126,7 @@ fn files_and_dirs_mixed() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())

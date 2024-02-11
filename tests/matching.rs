@@ -28,7 +28,7 @@ fn ascii_query() {
     );
 
     let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options).unwrap(),
     );
     assert_eq!(results.len(), 10);
 
@@ -180,7 +180,7 @@ fn emoji_query() {
     );
 
     let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options).unwrap(),
     );
     assert_eq!(results.len(), 5);
 
@@ -257,7 +257,7 @@ fn cyrillic_query() {
     );
 
     let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options).unwrap(),
     );
     assert_eq!(results.len(), 10);
 
@@ -379,7 +379,7 @@ fn chinese_query() {
     );
 
     let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options).unwrap(),
     );
     assert_eq!(results.len(), 5);
 
