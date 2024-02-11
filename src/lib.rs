@@ -85,11 +85,7 @@ pub fn collect_all_matches(
     options: &MatchOptions,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
     let mut result = Vec::new();
-    collect_matches_common(
-        targets,
-        |reader| single_target_all_matches(query, reader, options),
-        &mut result,
-    )?;
+    collect_matches_common(query, targets, options, &mut result)?;
     result.sort_by(|a, b| b.cmp(a));
     Ok(result)
 }
@@ -108,57 +104,29 @@ pub fn collect_top_matches(
     top: usize,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
     let mut result = TopBracket::new(top);
-    collect_matches_common(
-        targets,
-        |reader| single_target_top_matches(query, reader, options, top),
-        &mut result,
-    )?;
+    collect_matches_common(query, targets, options, &mut result)?;
     Ok(result.into_vec())
 }
 
-fn collect_matches_common<F, T>(
+fn collect_matches_common<T: ResultCollection>(
+    query: &str,
     targets: &Targets,
-    single_target_handler: F,
+    options: &MatchOptions,
     dest: &mut T,
-) -> Result<(), Box<dyn error::Error>>
-where
-    F: Fn(Reader) -> Result<T, io::Error>,
-    T: ResultCollection,
-{
+) -> Result<(), Box<dyn error::Error>>{
     for reader in make_readers(targets) {
         let reader = reader?;
         debug!("Processing {}.", reader.display_name());
-        dest.merge(single_target_handler(reader)?);
+        merge_target_matches(query, reader, options, dest)?;
     }
     Ok(())
 }
 
-fn single_target_all_matches(
+fn merge_target_matches<T: ResultCollection>(
     query: &str,
     target: Reader,
     options: &MatchOptions,
-) -> Result<Vec<MatchingResult>, io::Error> {
-    let mut result = Vec::new();
-    merge_matches(query, target, options, &mut result)?;
-    Ok(result)
-}
-
-fn single_target_top_matches(
-    query: &str,
-    target: Reader,
-    options: &MatchOptions,
-    top: usize,
-) -> Result<TopBracket, io::Error> {
-    let mut result = TopBracket::new(top);
-    merge_matches(query, target, options, &mut result)?;
-    Ok(result)
-}
-
-fn merge_matches<T: ResultCollection>(
-    query: &str,
-    target: Reader,
-    options: &MatchOptions,
-    container: &mut T,
+    dest: &mut T,
 ) -> Result<(), io::Error> {
     let display_name = target.display_name().clone();
     let ContextSize {
@@ -173,7 +141,7 @@ fn merge_matches<T: ResultCollection>(
         // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
         for partial_result in mem::take(&mut pending_results) {
             match partial_result.feed(line.clone()) {
-                MatchingResultState::Complete(matching_result) => container.push(matching_result),
+                MatchingResultState::Complete(matching_result) => dest.push(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
                     pending_results.push_back(partial_matching_result)
                 }
@@ -195,7 +163,7 @@ fn merge_matches<T: ResultCollection>(
                 context_before.snapshot(),
                 lines_after,
             ) {
-                MatchingResultState::Complete(matching_result) => container.push(matching_result),
+                MatchingResultState::Complete(matching_result) => dest.push(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
                     pending_results.push_back(partial_matching_result)
                 }
@@ -208,7 +176,7 @@ fn merge_matches<T: ResultCollection>(
     // It is possible that the end of the file was reached when some matches were still waiting
     // for their post-context to fill up. In such case we just add what we have to `result`.
     for partial_result in pending_results {
-        container.push(partial_result.complete());
+        dest.push(partial_result.complete());
     }
 
     Ok(())
