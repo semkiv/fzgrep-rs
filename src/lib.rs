@@ -12,10 +12,12 @@ pub use crate::{
 
 use crate::{
     cli::output,
-    core::reader::Reader,
+    core::{reader::Reader, request::MatchCollectionStrategy},
     matching_results::{
         context_accumulators::SlidingAccumulator,
         result::{MatchingResultState, PartialMatchingResult},
+        result_collection::ResultCollection,
+        top_bracket::TopBracket,
     },
 };
 use log::debug;
@@ -46,11 +48,16 @@ pub fn run(
     output_dest: &mut impl Write,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {:?}", request);
-    let results = sorted_descending_score(find_matches(
-        &request.query,
-        &request.targets,
-        &request.match_options,
-    )?);
+
+    let results = match request.strategy {
+        MatchCollectionStrategy::CollectAll => {
+            collect_all_matches(&request.query, &request.targets, &request.match_options)
+        }
+        MatchCollectionStrategy::CollectTop(n) => {
+            collect_top_matches(&request.query, &request.targets, &request.match_options, n)
+        }
+    }?;
+
     match request.output_behavior {
         OutputBehavior::Normal(formatting) => {
             write!(
@@ -61,6 +68,7 @@ pub fn run(
         }
         OutputBehavior::Quiet => {}
     }
+
     Ok(results)
 }
 
@@ -71,19 +79,139 @@ pub fn run(
 ///   * [`io::Error`] if encounters any I/O related issues.
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
-pub fn find_matches(
+pub fn collect_all_matches(
     query: &str,
     targets: &Targets,
     options: &MatchOptions,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
-    let mut matches = Vec::new();
+    let mut result = Vec::new();
+    collect_matches_common(
+        targets,
+        |reader| single_target_all_matches(query, reader, options),
+        &mut result,
+    )?;
+    result.sort_by(|a, b| b.cmp(a));
+    Ok(result)
+}
+
+/// Same as [`collect_all_matches`] but collects only a given number of matches with the highest score.
+///
+/// # Errors
+///
+///   * [`io::Error`] if encounters any I/O related issues.
+///   * [`walkdir::Error`] if any errors related to recursive processing occur
+///
+pub fn collect_top_matches(
+    query: &str,
+    targets: &Targets,
+    options: &MatchOptions,
+    top: usize,
+) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
+    let mut result = TopBracket::new(top);
+    collect_matches_common(
+        targets,
+        |reader| single_target_top_matches(query, reader, options, top),
+        &mut result,
+    )?;
+    Ok(result.into_vec())
+}
+
+fn collect_matches_common<F, T>(
+    targets: &Targets,
+    single_target_handler: F,
+    dest: &mut T,
+) -> Result<(), Box<dyn error::Error>>
+where
+    F: Fn(Reader) -> Result<T, io::Error>,
+    T: ResultCollection,
+{
     for reader in make_readers(targets) {
         let reader = reader?;
         debug!("Processing {}.", reader.display_name());
-        matches.append(&mut process_one_target(query, reader, options)?);
+        dest.merge(single_target_handler(reader)?);
+    }
+    Ok(())
+}
+
+fn single_target_all_matches(
+    query: &str,
+    target: Reader,
+    options: &MatchOptions,
+) -> Result<Vec<MatchingResult>, io::Error> {
+    let mut result = Vec::new();
+    merge_matches(query, target, options, &mut result)?;
+    Ok(result)
+}
+
+fn single_target_top_matches(
+    query: &str,
+    target: Reader,
+    options: &MatchOptions,
+    top: usize,
+) -> Result<TopBracket, io::Error> {
+    let mut result = TopBracket::new(top);
+    merge_matches(query, target, options, &mut result)?;
+    Ok(result)
+}
+
+fn merge_matches<T: ResultCollection>(
+    query: &str,
+    target: Reader,
+    options: &MatchOptions,
+    container: &mut T,
+) -> Result<(), io::Error> {
+    let display_name = target.display_name().clone();
+    let ContextSize {
+        before: Lines(lines_before),
+        after: Lines(lines_after),
+    } = options.context_size;
+    let mut context_before = SlidingAccumulator::new(lines_before);
+    let mut pending_results: VecDeque<PartialMatchingResult> = VecDeque::new();
+    for (index, line) in target.into_source().lines().enumerate() {
+        let line = line?;
+
+        // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
+        for partial_result in mem::take(&mut pending_results) {
+            match partial_result.feed(line.clone()) {
+                MatchingResultState::Complete(matching_result) => container.push(matching_result),
+                MatchingResultState::Incomplete(partial_matching_result) => {
+                    pending_results.push_back(partial_matching_result)
+                }
+            }
+        }
+
+        if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
+            let line_number = index + 1;
+            debug!(
+                "Found a match in {display_name}, line {line_number}, positions {:?}",
+                m.positions()
+            );
+
+            match MatchingResultState::new(
+                line.clone(),
+                m,
+                options.track_file_names.then_some(display_name.clone()),
+                options.track_line_numbers.then_some(line_number),
+                context_before.snapshot(),
+                lines_after,
+            ) {
+                MatchingResultState::Complete(matching_result) => container.push(matching_result),
+                MatchingResultState::Incomplete(partial_matching_result) => {
+                    pending_results.push_back(partial_matching_result)
+                }
+            }
+        }
+
+        context_before.feed(line);
     }
 
-    Ok(matches)
+    // It is possible that the end of the file was reached when some matches were still waiting
+    // for their post-context to fill up. In such case we just add what we have to `result`.
+    for partial_result in pending_results {
+        container.push(partial_result.complete());
+    }
+
+    Ok(())
 }
 
 fn make_readers(
@@ -132,71 +260,4 @@ fn make_recursive_reader_iterator<'item>(
             },
         )
     }))
-}
-
-fn process_one_target(
-    query: &str,
-    target: Reader,
-    options: &MatchOptions,
-) -> Result<Vec<MatchingResult>, io::Error> {
-    let display_name = target.display_name().clone();
-    let mut result = Vec::new();
-
-    let ContextSize {
-        before: Lines(lines_before),
-        after: Lines(lines_after),
-    } = options.context_size;
-    let mut context_before = SlidingAccumulator::new(lines_before);
-    let mut pending_results: VecDeque<PartialMatchingResult> = VecDeque::new();
-    for (index, line) in target.into_source().lines().enumerate() {
-        let line = line?;
-
-        // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
-        for partial_result in mem::take(&mut pending_results) {
-            match partial_result.feed(line.clone()) {
-                MatchingResultState::Complete(matching_result) => result.push(matching_result),
-                MatchingResultState::Incomplete(partial_matching_result) => {
-                    pending_results.push_back(partial_matching_result)
-                }
-            }
-        }
-
-        if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-            let line_number = index + 1;
-            debug!(
-                "Found a match in {display_name}, line {line_number}, positions {:?}",
-                m.positions()
-            );
-
-            match MatchingResultState::new(
-                line.clone(),
-                m,
-                options.track_file_names.then_some(display_name.clone()),
-                options.track_line_numbers.then_some(line_number),
-                context_before.snapshot(),
-                lines_after,
-            ) {
-                MatchingResultState::Complete(matching_result) => result.push(matching_result),
-                MatchingResultState::Incomplete(partial_matching_result) => {
-                    pending_results.push_back(partial_matching_result)
-                }
-            }
-        }
-
-        context_before.feed(line);
-    }
-
-    // It is possible that the end of the file was reached when some matches were still waiting
-    // for their post-context to fill up. In such case we just add what we have to `result`.
-    for partial_result in pending_results {
-        result.push(partial_result.complete());
-    }
-
-    Ok(result)
-}
-
-fn sorted_descending_score(mut results: Vec<MatchingResult>) -> Vec<MatchingResult> {
-    // sort in descending order
-    results.sort_by(|a, b| b.cmp(a));
-    results
 }
