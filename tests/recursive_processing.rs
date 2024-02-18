@@ -3,14 +3,14 @@ use std::path::PathBuf;
 
 #[test]
 fn basic_usage() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--recursive",
         "recursive",
         "resources/tests/",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -18,7 +18,7 @@ fn basic_usage() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -36,14 +36,14 @@ fn basic_usage() {
 
 #[test]
 fn basic_usage_no_trailing_slash() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--recursive",
         "recursive",
         "resources/tests",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -51,7 +51,7 @@ fn basic_usage_no_trailing_slash() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -69,7 +69,7 @@ fn basic_usage_no_trailing_slash() {
 
 #[test]
 fn only_files() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--recursive",
@@ -77,7 +77,7 @@ fn only_files() {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -88,7 +88,7 @@ fn only_files() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())
@@ -105,7 +105,7 @@ fn only_files() {
 
 #[test]
 fn files_and_dirs_mixed() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--recursive",
@@ -114,7 +114,7 @@ fn files_and_dirs_mixed() {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -126,7 +126,7 @@ fn files_and_dirs_mixed() {
     );
 
     let mut results =
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options)
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
             .unwrap()
             .into_iter()
             .map(|x| x.file_name.unwrap())

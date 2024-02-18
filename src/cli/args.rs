@@ -4,7 +4,9 @@ use crate::{
         formatting::{Formatting, FormattingOptions},
         sgr_sequence,
     },
-    core::request::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets},
+    core::request::{
+        ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
+    },
 };
 use atty::Stream;
 use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
@@ -27,7 +29,7 @@ use std::{env, path::PathBuf};
 /// // basic usage
 /// use atty::{self, Stream};
 /// use fzgrep::cli::{args, formatting::{Formatting, FormattingOptions}};
-/// use fzgrep::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets};
+/// use fzgrep::{ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets};
 /// use log::LevelFilter;
 /// use std::path::PathBuf;
 ///
@@ -38,6 +40,7 @@ use std::{env, path::PathBuf};
 ///     Request{
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
+///         strategy: MatchCollectionStrategy::CollectAll,
 ///         match_options: MatchOptions {
 ///             track_line_numbers: false,
 ///             track_file_names: false,
@@ -167,6 +170,16 @@ use std::{env, path::PathBuf};
 /// ```
 ///
 /// ```
+/// // collect only top 5 matches
+/// use fzgrep::cli::args;
+/// use fzgrep::MatchCollectionStrategy;
+///
+/// let args = ["fzgrep", "--top", "5", "query", "file"];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(5));
+/// ```
+///
+/// ```
 /// // silence the output
 /// use fzgrep::cli::args;
 /// use fzgrep::OutputBehavior;
@@ -224,6 +237,7 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     Request {
         query: query_from(&matches),
         targets: targets_from(&matches),
+        strategy: strategy_from(&matches),
         match_options: match_options_from(&matches),
         output_behavior: output_behavior_from(&matches),
         log_verbosity: log_verbosity_from(&matches),
@@ -310,6 +324,13 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                 .value_parser(value_parser!(usize))
                 .conflicts_with("context")
                 .help("Print NUM lines of trailing context")
+        )
+        .arg(
+            Arg::new("top")
+                .long("top")
+                .value_name("N")
+                .value_parser(value_parser!(usize))
+                .help("Fetch only top N results")
         )
         .arg(
             Arg::new("quiet")
@@ -449,6 +470,13 @@ fn targets_from(matches: &ArgMatches) -> Targets {
     }
 }
 
+fn strategy_from(matches: &ArgMatches) -> MatchCollectionStrategy {
+    match matches.get_one::<usize>("top") {
+        Some(cap) => MatchCollectionStrategy::CollectTop(*cap),
+        None => MatchCollectionStrategy::CollectAll,
+    }
+}
+
 fn match_options_from(matches: &ArgMatches) -> MatchOptions {
     MatchOptions {
         track_line_numbers: matches.get_flag("line_number"),
@@ -557,6 +585,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::Stdin,
+                strategy: MatchCollectionStrategy::CollectAll,
                 match_options: MatchOptions {
                     track_line_numbers: false,
                     track_file_names: false,
@@ -584,6 +613,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::RecursiveEntries(vec![env::current_dir().unwrap()]),
+                strategy: MatchCollectionStrategy::CollectAll,
                 match_options: MatchOptions {
                     track_line_numbers: false,
                     track_file_names: false,
@@ -611,6 +641,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::Files(vec![PathBuf::from("file")]),
+                strategy: MatchCollectionStrategy::CollectAll,
                 match_options: MatchOptions {
                     track_line_numbers: false,
                     track_file_names: false,
@@ -865,6 +896,13 @@ mod tests {
                 after: Lines(2),
             }
         );
+    }
+
+    #[test]
+    fn make_request_top() {
+        let args = ["fzgrep", "--top", "10", "query", "file"];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(10));
     }
 
     #[test]
@@ -1236,6 +1274,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
+                strategy: MatchCollectionStrategy::CollectAll,
                 output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
                     Formatting::On(FormattingOptions::default())
                 } else {
@@ -1265,6 +1304,8 @@ mod tests {
             "1",
             "--after-context",
             "2",
+            "--top",
+            "10",
             "--verbose",
             "--color",
             "always",
@@ -1279,6 +1320,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
+                strategy: MatchCollectionStrategy::CollectTop(10),
                 output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
                     selected_match: Style::new(Color::Blue).blink(),
                     ..Default::default()

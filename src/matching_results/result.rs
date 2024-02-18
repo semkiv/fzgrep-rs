@@ -4,7 +4,7 @@ use vscode_fuzzy_score_rs::FuzzyMatch;
 
 /// Stores a full result of matching.
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MatchingResult {
     /// The line that contains the match.
     ///
@@ -29,7 +29,7 @@ pub struct MatchingResult {
 
 /// Context (surrounding lines) around a match
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Context {
     /// Lines preceding the matching line.
     ///

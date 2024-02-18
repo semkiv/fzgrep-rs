@@ -1,9 +1,9 @@
-use fzgrep::{cli::args, MatchingResult, Targets};
+use fzgrep::{cli::args, Targets};
 use std::path::PathBuf;
 
 #[test]
 fn ascii_query() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--line-number",
@@ -14,7 +14,7 @@ fn ascii_query() {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "contigous");
     assert_eq!(
         request.targets,
@@ -27,9 +27,9 @@ fn ascii_query() {
         ])
     );
 
-    let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
-    );
+    let results =
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
+            .unwrap();
     assert_eq!(results.len(), 10);
 
     assert_eq!(
@@ -155,7 +155,7 @@ fn ascii_query() {
 
 #[test]
 fn emoji_query() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--line-number",
@@ -166,7 +166,7 @@ fn emoji_query() {
         "resources/tests/тест.txt",
         "resources/tests/测试.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "🐣🦀");
     assert_eq!(
         request.targets,
@@ -179,9 +179,9 @@ fn emoji_query() {
         ])
     );
 
-    let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
-    );
+    let results =
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
+            .unwrap();
     assert_eq!(results.len(), 5);
 
     assert_eq!(
@@ -232,7 +232,7 @@ fn emoji_query() {
 
 #[test]
 fn cyrillic_query() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--line-number",
@@ -243,7 +243,7 @@ fn cyrillic_query() {
         "resources/tests/👨‍🔬.txt",
         "resources/tests/测试.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "тест");
     assert_eq!(
         request.targets,
@@ -256,9 +256,9 @@ fn cyrillic_query() {
         ])
     );
 
-    let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
-    );
+    let results =
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
+            .unwrap();
     assert_eq!(results.len(), 10);
 
     assert_eq!(
@@ -354,7 +354,7 @@ fn cyrillic_query() {
 
 #[test]
 fn chinese_query() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--line-number",
@@ -365,7 +365,7 @@ fn chinese_query() {
         "resources/tests/测试.txt",
         "resources/tests/👨‍🔬.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "打电");
     assert_eq!(
         request.targets,
@@ -378,9 +378,9 @@ fn chinese_query() {
         ])
     );
 
-    let results = sorted(
-        fzgrep::find_matches(&request.query, &request.targets, &request.match_options).unwrap(),
-    );
+    let results =
+        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
+            .unwrap();
     assert_eq!(results.len(), 5);
 
     assert_eq!(
@@ -427,10 +427,4 @@ fn chinese_query() {
     assert_eq!(results[4].matching_line, String::from("打电动"));
     assert_eq!(results[4].fuzzy_match.score(), 17);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![0, 1]);
-}
-
-fn sorted(mut results: Vec<MatchingResult>) -> Vec<MatchingResult> {
-    // sort in descending order
-    results.sort_by(|a, b| b.cmp(a));
-    results
 }
