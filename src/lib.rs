@@ -5,14 +5,17 @@ mod matching_results;
 pub use crate::{
     core::{
         exit_code::ExitCode,
-        request::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets},
+        request::{
+            ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request,
+            Targets,
+        },
     },
     matching_results::result::MatchingResult,
 };
 
 use crate::{
     cli::output,
-    core::{reader::Reader, request::MatchCollectionStrategy},
+    core::reader::Reader,
     matching_results::{
         context_accumulators::SlidingAccumulator,
         result::{MatchingResultState, PartialMatchingResult},

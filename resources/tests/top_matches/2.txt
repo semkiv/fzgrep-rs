@@ -1,0 +1,6 @@
+tool extension status
+latest
+terminal scroll to bottom
+test
+Test task
+Tests
