@@ -886,6 +886,13 @@ mod tests {
     }
 
     #[test]
+    fn make_request_top() {
+        let args = ["fzgrep", "--top", "10", "query", "file"];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(10));
+    }
+
+    #[test]
     fn make_request_quiet_short() {
         let args = ["fzgrep", "-q", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
@@ -1284,6 +1291,8 @@ mod tests {
             "1",
             "--after-context",
             "2",
+            "--top",
+            "10",
             "--verbose",
             "--color",
             "always",
@@ -1298,7 +1307,7 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
-                strategy: MatchCollectionStrategy::CollectAll,
+                strategy: MatchCollectionStrategy::CollectTop(10),
                 output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
                     selected_match: Style::new(Color::Blue).blink(),
                     ..Default::default()
