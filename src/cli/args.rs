@@ -4,7 +4,9 @@ use crate::{
         formatting::{Formatting, FormattingOptions},
         sgr_sequence,
     },
-    core::request::{ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets},
+    core::request::{
+        ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
+    },
 };
 use atty::Stream;
 use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
@@ -27,7 +29,7 @@ use std::{env, path::PathBuf};
 /// // basic usage
 /// use atty::{self, Stream};
 /// use fzgrep::cli::{args, formatting::{Formatting, FormattingOptions}};
-/// use fzgrep::{ContextSize, Lines, MatchOptions, OutputBehavior, Request, Targets};
+/// use fzgrep::{ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets};
 /// use log::LevelFilter;
 /// use std::path::PathBuf;
 ///
@@ -38,6 +40,7 @@ use std::{env, path::PathBuf};
 ///     Request{
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
+///         strategy: MatchCollectionStrategy::CollectAll,
 ///         match_options: MatchOptions {
 ///             track_line_numbers: false,
 ///             track_file_names: false,
@@ -164,6 +167,16 @@ use std::{env, path::PathBuf};
 ///         after: Lines(2),
 ///     }
 /// );
+/// ```
+///
+/// ```
+/// // collect only top 5 matches
+/// use fzgrep::cli::args;
+/// use fzgrep::MatchCollectionStrategy;
+///
+/// let args = ["fzgrep", "--top", "5", "query", "file"];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(5));
 /// ```
 ///
 /// ```
