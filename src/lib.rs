@@ -108,12 +108,12 @@ pub fn collect_top_matches(
     Ok(result.into_vec())
 }
 
-fn collect_matches_common<T: ResultCollection>(
+fn collect_matches_common(
     query: &str,
     targets: &Targets,
     options: &MatchOptions,
-    dest: &mut T,
-) -> Result<(), Box<dyn error::Error>>{
+    dest: &mut impl ResultCollection,
+) -> Result<(), Box<dyn error::Error>> {
     for reader in make_readers(targets) {
         let reader = reader?;
         debug!("Processing {}.", reader.display_name());
@@ -122,11 +122,11 @@ fn collect_matches_common<T: ResultCollection>(
     Ok(())
 }
 
-fn merge_target_matches<T: ResultCollection>(
+fn merge_target_matches(
     query: &str,
     target: Reader,
     options: &MatchOptions,
-    dest: &mut T,
+    dest: &mut impl ResultCollection,
 ) -> Result<(), io::Error> {
     let display_name = target.display_name().clone();
     let ContextSize {
