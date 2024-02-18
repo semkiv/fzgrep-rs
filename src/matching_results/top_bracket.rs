@@ -1,3 +1,4 @@
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct TopBracket<T> {
     capacity: usize,
     data: Vec<T>,
