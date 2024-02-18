@@ -5,8 +5,8 @@ use yansi::{Color, Paint};
 
 #[test]
 fn default_single_file() {
-    let args = ["fzgrep", "contigous", "resources/tests/test.txt"];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let cmd = ["fzgrep", "contigous", "resources/tests/test.txt"];
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -43,13 +43,13 @@ fn default_single_file() {
 
 #[test]
 fn default_multiple_files() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "contigous",
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -152,7 +152,7 @@ fn default_multiple_files() {
 
 #[test]
 fn line_number_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -160,7 +160,7 @@ fn line_number_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -185,7 +185,7 @@ fn line_number_short() {
 
 #[test]
 fn line_number_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -193,7 +193,7 @@ fn line_number_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -218,7 +218,7 @@ fn line_number_long() {
 
 #[test]
 fn with_filename_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -226,7 +226,7 @@ fn with_filename_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -251,7 +251,7 @@ fn with_filename_short() {
 
 #[test]
 fn with_filename_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -259,7 +259,7 @@ fn with_filename_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -284,7 +284,7 @@ fn with_filename_long() {
 
 #[test]
 fn no_filename_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -292,7 +292,7 @@ fn no_filename_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -313,7 +313,7 @@ fn no_filename_short() {
 
 #[test]
 fn no_filename_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -321,7 +321,7 @@ fn no_filename_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -342,7 +342,7 @@ fn no_filename_long() {
 
 #[test]
 fn no_filename_multiple_files() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -351,7 +351,7 @@ fn no_filename_multiple_files() {
         "resources/tests/test.txt",
         "resources/tests/тест.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -382,7 +382,7 @@ fn no_filename_multiple_files() {
 
 #[test]
 fn before_context_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -391,7 +391,7 @@ fn before_context_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "打电动\n\
@@ -415,7 +415,7 @@ fn before_context_short() {
 
 #[test]
 fn before_context_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -424,7 +424,7 @@ fn before_context_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "打电动\n\
@@ -448,7 +448,7 @@ fn before_context_long() {
 
 #[test]
 fn after_context_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -457,7 +457,7 @@ fn after_context_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n\
@@ -482,7 +482,7 @@ fn after_context_short() {
 
 #[test]
 fn after_context_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -491,7 +491,7 @@ fn after_context_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n\
@@ -516,7 +516,7 @@ fn after_context_long() {
 
 #[test]
 fn formatting_color_always() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -525,7 +525,7 @@ fn formatting_color_always() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!("{}u{}\n", Paint::blue("contig"), Paint::blue("ous")),
         format!("{}u{}\n", Paint::blue("Contig"), Paint::blue("ous")),
@@ -538,7 +538,7 @@ fn formatting_color_always() {
 
 #[test]
 fn formatting_color_auto() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "auto",
@@ -547,7 +547,7 @@ fn formatting_color_auto() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -584,7 +584,7 @@ fn formatting_color_auto() {
 
 #[test]
 fn formatting_color_never() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "never",
@@ -593,7 +593,7 @@ fn formatting_color_never() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = ["contiguous\n", "Contiguous\n"].concat();
     let mut buf = Vec::new();
     fzgrep::run(&request, &mut buf).unwrap();
@@ -602,7 +602,7 @@ fn formatting_color_never() {
 
 #[test]
 fn formatting_override_selected_match() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -611,7 +611,7 @@ fn formatting_override_selected_match() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}u{}\n",
@@ -632,7 +632,7 @@ fn formatting_override_selected_match() {
 
 #[test]
 fn formatting_override_line_number() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--line-number",
         "--color",
@@ -642,7 +642,7 @@ fn formatting_override_line_number() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -667,7 +667,7 @@ fn formatting_override_line_number() {
 
 #[test]
 fn formatting_override_file_name() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--with-filename",
         "--color",
@@ -677,7 +677,7 @@ fn formatting_override_file_name() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}u{}\n",
@@ -702,7 +702,7 @@ fn formatting_override_file_name() {
 
 #[test]
 fn formatting_override_separator() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--line-number",
         "--with-filename",
@@ -713,7 +713,7 @@ fn formatting_override_separator() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}{}{}u{}\n",
@@ -742,7 +742,7 @@ fn formatting_override_separator() {
 
 #[test]
 fn formatting_override_selected_line() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--color",
         "always",
@@ -751,7 +751,7 @@ fn formatting_override_selected_line() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}\n",
@@ -774,7 +774,7 @@ fn formatting_override_selected_line() {
 
 #[test]
 fn formatting_override_context() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--before-context",
         "1",
@@ -787,7 +787,7 @@ fn formatting_override_context() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}\n\
@@ -820,7 +820,7 @@ fn formatting_override_context() {
 
 #[test]
 fn all_options_short() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "-nf",
         "-B",
@@ -830,7 +830,7 @@ fn all_options_short() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}{}打电动\n\
@@ -1033,7 +1033,7 @@ fn all_options_short() {
 
 #[test]
 fn all_options_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--line-number",
         "--with-filename",
@@ -1048,7 +1048,7 @@ fn all_options_long() {
         "contigous",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
         format!(
             "{}{}{}{}{}\n\
@@ -1115,8 +1115,8 @@ fn all_options_long() {
 
 #[test]
 fn no_matches_default_single_file() {
-    let args = ["fzgrep", "nomatch", "resources/tests/test.txt"];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let cmd = ["fzgrep", "nomatch", "resources/tests/test.txt"];
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let mut buf = Vec::new();
     fzgrep::run(&request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), "");
@@ -1124,7 +1124,7 @@ fn no_matches_default_single_file() {
 
 #[test]
 fn no_matches_all_options_long() {
-    let args = [
+    let cmd = [
         "fzgrep",
         "--line-number",
         "--with-filename",
@@ -1135,7 +1135,7 @@ fn no_matches_all_options_long() {
         "nomatch",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(args.into_iter().map(String::from));
+    let request = args::make_request(cmd.into_iter().map(String::from));
     let mut buf = Vec::new();
     fzgrep::run(&request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), "");
