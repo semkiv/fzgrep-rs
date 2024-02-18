@@ -11,7 +11,7 @@ atty = "0.2.14"
 clap = "4.4.7"
 env_logger = "0.10.0"
 log = "0.4.20"
-vscode-fuzzy-score-rs = { git = "https://github.com/semkiv/vs-code-fuzzy-score-rs.git", tag = "v0.2.5" }
+vscode-fuzzy-score-rs = { git = "https://github.com/semkiv/vs-code-fuzzy-score-rs.git", tag = "v0.2.6" }
 walkdir = "2.4.0"
 yansi = "0.5.1"
 
