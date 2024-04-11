@@ -217,18 +217,22 @@ fn make_readers(
 fn make_recursive_reader_iterator<'item>(
     targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
-    Box::new(targets.flat_map(WalkDir::new).filter_map(|item| {
-        item.map_or_else(
-            |e| Some(Err(e.into())),
-            |d| {
-                d.metadata().map_or_else(
+    Box::new(
+        targets
+            .flat_map(|target| WalkDir::new(target).sort_by_file_name())
+            .filter_map(|item| {
+                item.map_or_else(
                     |e| Some(Err(e.into())),
-                    |m| {
-                        m.is_file()
-                            .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
+                    |d| {
+                        d.metadata().map_or_else(
+                            |e| Some(Err(e.into())),
+                            |m| {
+                                m.is_file()
+                                    .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
+                            },
+                        )
                     },
                 )
-            },
-        )
-    }))
+            }),
+    )
 }
