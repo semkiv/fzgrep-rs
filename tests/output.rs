@@ -1,7 +1,7 @@
 use atty::Stream;
 use fzgrep::cli::args;
 use std::str;
-use yansi::Paint;
+use yansi::{Condition, Paint};
 
 #[test]
 fn default_single_file() {
@@ -10,29 +10,25 @@ fn default_single_file() {
     let expected = [
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "contig".red().bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "Contig".red().bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -53,95 +49,67 @@ fn default_multiple_files() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "contig".red().bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/test.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/тест.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/тест.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "contig".red().bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/тест.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "Contig".red().bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/test.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/тест.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/тест.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "Contig".red().bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/тест.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -294,16 +262,8 @@ fn no_filename_short() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            "contig".red().bold(),
-            "ous".red().bold()
-        ),
-        format!(
-            "{}u{}\n",
-            "Contig".red().bold(),
-            "ous".red().bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -323,16 +283,8 @@ fn no_filename_long() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            "contig".red().bold(),
-            "ous".red().bold()
-        ),
-        format!(
-            "{}u{}\n",
-            "Contig".red().bold(),
-            "ous".red().bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -353,26 +305,10 @@ fn no_filename_multiple_files() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            "contig".red().bold(),
-            "ous".red().bold()
-        ),
-        format!(
-            "{}u{}\n",
-            "contig".red().bold(),
-            "ous".red().bold()
-        ),
-        format!(
-            "{}u{}\n",
-            "Contig".red().bold(),
-            "ous".red().bold()
-        ),
-        format!(
-            "{}u{}\n",
-            "Contig".red().bold(),
-            "ous".red().bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -551,29 +487,21 @@ fn formatting_color_auto() {
     let expected = [
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "contig".blue().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".blue().to_string()
-            } else {
-                String::from("ous")
-            }
+            "contig"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                "Contig".blue().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".blue().to_string()
-            } else {
-                String::from("ous")
-            }
+            "Contig"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -837,192 +765,48 @@ fn all_options_short() {
             {}{}{}{}{}u{}\n\
             {}{}{}{}Contiguous\n\
             {}{}{}{}Текст\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '1'.green().to_string()
-            } else {
-                String::from("1")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '2'.green().to_string()
-            } else {
-                String::from("2")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "contig".red().bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '3'.green().to_string()
-            } else {
-                String::from("3")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '4'.green().to_string()
-            } else {
-                String::from("4")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            }
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '1'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '2'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '3'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '4'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
         ),
         format!(
             "{}{}{}{}contiguous\n\
             {}{}{}{}{}u{}\n\
             {}{}{}{}Текст\n\
             {}{}{}{}тестування\n",
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '2'.green().to_string()
-            } else {
-                String::from("2")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '3'.green().to_string()
-            } else {
-                String::from("3")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "Contig".red().bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                "ous".red().bold().to_string()
-            } else {
-                String::from("ous")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '4'.green().to_string()
-            } else {
-                String::from("4")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                "resources/tests/test.txt".magenta().to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                '5'.green().to_string()
-            } else {
-                String::from("5")
-            },
-            if atty::is(Stream::Stdout) {
-                ':'.cyan().to_string()
-            } else {
-                String::from(":")
-            },
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '2'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '3'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '4'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '5'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
         ),
     ]
     .concat();
