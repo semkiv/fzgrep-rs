@@ -1,7 +1,7 @@
 use atty::Stream;
 use fzgrep::cli::args;
 use std::str;
-use yansi::{Color, Paint};
+use yansi::{Condition, Paint};
 
 #[test]
 fn default_single_file() {
@@ -10,29 +10,25 @@ fn default_single_file() {
     let expected = [
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::red("contig").bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::red("Contig").bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -53,95 +49,67 @@ fn default_multiple_files() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("contig").bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/test.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/тест.txt").to_string()
-            } else {
-                String::from("resources/tests/тест.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("contig").bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/тест.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("Contig").bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/test.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}{}{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/тест.txt").to_string()
-            } else {
-                String::from("resources/tests/тест.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("Contig").bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            }
+            "resources/tests/тест.txt"
+                .magenta()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .red()
+                .bold()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -164,17 +132,17 @@ fn line_number_short() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::green('2'),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            '2'.green(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::green('3'),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            '3'.green(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -197,17 +165,17 @@ fn line_number_long() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::green('2'),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            '2'.green(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::green('3'),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            '3'.green(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -230,17 +198,17 @@ fn with_filename_short() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -263,17 +231,17 @@ fn with_filename_long() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -294,16 +262,8 @@ fn no_filename_short() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
-        ),
-        format!(
-            "{}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -323,16 +283,8 @@ fn no_filename_long() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
-        ),
-        format!(
-            "{}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -353,26 +305,10 @@ fn no_filename_multiple_files() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!(
-            "{}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
-        ),
-        format!(
-            "{}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
-        ),
-        format!(
-            "{}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
-        ),
-        format!(
-            "{}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
-        ),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
+        format!("{}u{}\n", "Contig".red().bold(), "ous".red().bold()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -396,15 +332,15 @@ fn before_context_short() {
         format!(
             "打电动\n\
             {}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "打电动\n\
             contiguous\n\
             {}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -429,15 +365,15 @@ fn before_context_long() {
         format!(
             "打电动\n\
             {}u{}\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "打电动\n\
             contiguous\n\
             {}u{}\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -463,15 +399,15 @@ fn after_context_short() {
             "{}u{}\n\
             Contiguous\n\
             Текст\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}u{}\n\
             Текст\n\
             тестування\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -497,15 +433,15 @@ fn after_context_long() {
             "{}u{}\n\
             Contiguous\n\
             Текст\n",
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}u{}\n\
             Текст\n\
             тестування\n",
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -527,8 +463,8 @@ fn formatting_color_always() {
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     let expected = [
-        format!("{}u{}\n", Paint::blue("contig"), Paint::blue("ous")),
-        format!("{}u{}\n", Paint::blue("Contig"), Paint::blue("ous")),
+        format!("{}u{}\n", "contig".blue(), "ous".blue()),
+        format!("{}u{}\n", "Contig".blue(), "ous".blue()),
     ]
     .concat();
     let mut buf = Vec::new();
@@ -551,29 +487,21 @@ fn formatting_color_auto() {
     let expected = [
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::blue("contig").to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::blue("ous").to_string()
-            } else {
-                String::from("ous")
-            }
+            "contig"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
         format!(
             "{}u{}\n",
-            if atty::is(Stream::Stdout) {
-                Paint::blue("Contig").to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::blue("ous").to_string()
-            } else {
-                String::from("ous")
-            }
+            "Contig"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous"
+                .blue()
+                .whenever(Condition::cached(atty::is(Stream::Stdout)))
         ),
     ]
     .concat();
@@ -615,13 +543,13 @@ fn formatting_override_selected_match() {
     let expected = [
         format!(
             "{}u{}\n",
-            Paint::new("contig").underline().bg(Color::Yellow),
-            Paint::new("ous").underline().bg(Color::Yellow)
+            "contig".on_yellow().underline(),
+            "ous".on_yellow().underline()
         ),
         format!(
             "{}u{}\n",
-            Paint::new("Contig").underline().bg(Color::Yellow),
-            Paint::new("ous").underline().bg(Color::Yellow)
+            "Contig".on_yellow().underline(),
+            "ous".on_yellow().underline()
         ),
     ]
     .concat();
@@ -646,17 +574,17 @@ fn formatting_override_line_number() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::new('2').italic().underline(),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            '2'.new().italic().underline(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::new('3').italic().underline(),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            '3'.new().italic().underline(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -681,17 +609,17 @@ fn formatting_override_file_name() {
     let expected = [
         format!(
             "{}{}{}u{}\n",
-            Paint::new("resources/tests/test.txt").italic().dimmed(),
-            Paint::cyan(':'),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".new().italic().dim(),
+            ':'.cyan(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}u{}\n",
-            Paint::new("resources/tests/test.txt").italic().dimmed(),
-            Paint::cyan(':'),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".new().italic().dim(),
+            ':'.cyan(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -717,21 +645,21 @@ fn formatting_override_separator() {
     let expected = [
         format!(
             "{}{}{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::fixed(245, ':').dimmed(),
-            Paint::green('2'),
-            Paint::fixed(245, ':').dimmed(),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.fixed(245).dim(),
+            '2'.green(),
+            ':'.fixed(245).dim(),
+            "contig".red().bold(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}{}{}u{}\n",
-            Paint::magenta("resources/tests/test.txt"),
-            Paint::fixed(245, ':').dimmed(),
-            Paint::green('3'),
-            Paint::fixed(245, ':').dimmed(),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold()
+            "resources/tests/test.txt".magenta(),
+            ':'.fixed(245).dim(),
+            '3'.green(),
+            ':'.fixed(245).dim(),
+            "Contig".red().bold(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -755,15 +683,15 @@ fn formatting_override_selected_line() {
     let expected = [
         format!(
             "{}{}{}\n",
-            Paint::red("contig").bold(),
-            Paint::rgb(192, 255, 238, 'u').dimmed(),
-            Paint::red("ous").bold()
+            "contig".red().bold(),
+            'u'.rgb(192, 255, 238).dim(),
+            "ous".red().bold()
         ),
         format!(
             "{}{}{}\n",
-            Paint::red("Contig").bold(),
-            Paint::rgb(192, 255, 238, 'u').dimmed(),
-            Paint::red("ous").bold()
+            "Contig".red().bold(),
+            'u'.rgb(192, 255, 238).dim(),
+            "ous".red().bold()
         ),
     ]
     .concat();
@@ -794,22 +722,22 @@ fn formatting_override_context() {
             {}u{}\n\
             {}\n\
             {}\n",
-            Paint::rgb(192, 255, 238, "打电动").dimmed(),
-            Paint::red("contig").bold(),
-            Paint::red("ous").bold(),
-            Paint::rgb(192, 255, 238, "Contiguous").dimmed(),
-            Paint::rgb(192, 255, 238, "Текст").dimmed(),
+            "打电动".rgb(192, 255, 238).dim(),
+            "contig".red().bold(),
+            "ous".red().bold(),
+            "Contiguous".rgb(192, 255, 238).dim(),
+            "Текст".rgb(192, 255, 238).dim(),
         ),
         format!(
             "{}\n\
             {}u{}\n\
             {}\n\
             {}\n",
-            Paint::rgb(192, 255, 238, "contiguous").dimmed(),
-            Paint::red("Contig").bold(),
-            Paint::red("ous").bold(),
-            Paint::rgb(192, 255, 238, "Текст").dimmed(),
-            Paint::rgb(192, 255, 238, "тестування").dimmed(),
+            "contiguous".rgb(192, 255, 238).dim(),
+            "Contig".red().bold(),
+            "ous".red().bold(),
+            "Текст".rgb(192, 255, 238).dim(),
+            "тестування".rgb(192, 255, 238).dim(),
         ),
     ]
     .concat();
@@ -837,192 +765,48 @@ fn all_options_short() {
             {}{}{}{}{}u{}\n\
             {}{}{}{}Contiguous\n\
             {}{}{}{}Текст\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('1').to_string()
-            } else {
-                String::from("1")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('2').to_string()
-            } else {
-                String::from("2")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("contig").bold().to_string()
-            } else {
-                String::from("contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('3').to_string()
-            } else {
-                String::from("3")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('4').to_string()
-            } else {
-                String::from("4")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            }
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '1'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '2'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "contig".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '3'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '4'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
         ),
         format!(
             "{}{}{}{}contiguous\n\
             {}{}{}{}{}u{}\n\
             {}{}{}{}Текст\n\
             {}{}{}{}тестування\n",
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('2').to_string()
-            } else {
-                String::from("2")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('3').to_string()
-            } else {
-                String::from("3")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("Contig").bold().to_string()
-            } else {
-                String::from("Contig")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::red("ous").bold().to_string()
-            } else {
-                String::from("ous")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('4').to_string()
-            } else {
-                String::from("4")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::magenta("resources/tests/test.txt").to_string()
-            } else {
-                String::from("resources/tests/test.txt")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::green('5').to_string()
-            } else {
-                String::from("5")
-            },
-            if atty::is(Stream::Stdout) {
-                Paint::cyan(':').to_string()
-            } else {
-                String::from(":")
-            },
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '2'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '3'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "Contig".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "ous".red().bold().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '4'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            "resources/tests/test.txt".magenta().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            '5'.green().whenever(Condition::cached(atty::is(Stream::Stdout))),
+            ':'.cyan().whenever(Condition::cached(atty::is(Stream::Stdout))),
         ),
     ]
     .concat();
@@ -1055,56 +839,56 @@ fn all_options_long() {
             {}{}{}{}{}{}{}\n\
             {}{}{}{}{}\n\
             {}{}{}{}{}\n",
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '1').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "打电动").dimmed(),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '2').italic(),
-            Paint::magenta(':'),
-            Paint::new("contig").bg(Color::Yellow),
-            Paint::fixed(245, 'u').dimmed(),
-            Paint::new("ous").bg(Color::Yellow),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '3').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "Contiguous").dimmed(),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '4').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "Текст").dimmed(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '1'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "打电动".fixed(245).dim(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '2'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "contig".on_yellow(),
+            'u'.fixed(245).dim(),
+            "ous".on_yellow(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '3'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "Contiguous".fixed(245).dim(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '4'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "Текст".fixed(245).dim(),
         ),
         format!(
             "{}{}{}{}{}\n\
             {}{}{}{}{}{}{}\n\
             {}{}{}{}{}\n\
             {}{}{}{}{}\n",
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '2').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "contiguous").dimmed(),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '3').italic(),
-            Paint::magenta(':'),
-            Paint::new("Contig").bg(Color::Yellow),
-            Paint::fixed(245, 'u').dimmed(),
-            Paint::new("ous").bg(Color::Yellow),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '4').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "Текст").dimmed(),
-            Paint::rgb(192, 255, 238, "resources/tests/test.txt").italic(),
-            Paint::magenta(':'),
-            Paint::rgb(192, 255, 238, '5').italic(),
-            Paint::magenta(':'),
-            Paint::fixed(245, "тестування").dimmed(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '2'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "contiguous".fixed(245).dim(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '3'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "Contig".on_yellow(),
+            'u'.fixed(245).dim(),
+            "ous".on_yellow(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '4'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "Текст".fixed(245).dim(),
+            "resources/tests/test.txt".rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            '5'.rgb(192, 255, 238).italic(),
+            ':'.magenta(),
+            "тестування".fixed(245).dim(),
         ),
     ]
     .concat();

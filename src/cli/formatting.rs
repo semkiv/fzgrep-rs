@@ -1,4 +1,4 @@
-use yansi::{Color, Style};
+use yansi::Style;
 
 /// Controls output formatting.
 ///
@@ -62,20 +62,20 @@ impl Default for FormattingOptions {
     ///
     /// ```
     /// use fzgrep::cli::formatting::FormattingOptions;
-    /// use yansi::{Color, Style};
+    /// use yansi::Style;
     ///
     /// let default = FormattingOptions::default();
-    /// assert_eq!(default.selected_match, Style::new(Color::Red).bold());
+    /// assert_eq!(default.selected_match, Style::new().red().bold());
     /// ```
     ///
     fn default() -> Self {
         Self {
-            selected_match: Style::new(Color::Red).bold(),
-            line_number: Style::new(Color::Green),
-            file_name: Style::new(Color::Magenta),
-            separator: Style::new(Color::Cyan),
-            selected_line: Style::default(),
-            context: Style::default(),
+            selected_match: Style::new().red().bold(),
+            line_number: Style::new().green(),
+            file_name: Style::new().magenta(),
+            separator: Style::new().cyan(),
+            selected_line: Style::new(),
+            context: Style::new(),
         }
     }
 }
@@ -87,23 +87,23 @@ mod test {
     #[test]
     fn formatting_options_default() {
         let default = FormattingOptions::default();
-        assert_eq!(default.selected_match, Style::new(Color::Red).bold());
-        assert_eq!(default.line_number, Style::new(Color::Green));
-        assert_eq!(default.file_name, Style::new(Color::Magenta));
-        assert_eq!(default.separator, Style::new(Color::Cyan));
-        assert_eq!(default.selected_line, Style::default());
-        assert_eq!(default.context, Style::default());
+        assert_eq!(default.selected_match, Style::new().red().bold());
+        assert_eq!(default.line_number, Style::new().green());
+        assert_eq!(default.file_name, Style::new().magenta());
+        assert_eq!(default.separator, Style::new().cyan());
+        assert_eq!(default.selected_line, Style::new());
+        assert_eq!(default.context, Style::new());
     }
 
     #[test]
     fn formatting_on_options() {
         let formatting = Formatting::On(FormattingOptions {
-            selected_match: Style::new(Color::Blue).bold(),
+            selected_match: Style::new().blue().bold(),
             ..Default::default()
         });
         assert_eq!(
             formatting.options().unwrap().selected_match,
-            Style::new(Color::Blue).bold()
+            Style::new().blue().bold()
         );
     }
 

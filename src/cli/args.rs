@@ -574,7 +574,7 @@ fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
 mod tests {
     use super::*;
     use crate::core::request::Lines;
-    use yansi::{Color, Style};
+    use yansi::Style;
 
     #[test]
     fn make_request_no_targets() {
@@ -1095,7 +1095,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .selected_match,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1119,7 +1119,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .line_number,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1143,7 +1143,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .file_name,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1167,7 +1167,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .separator,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1191,7 +1191,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .selected_line,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1215,7 +1215,7 @@ mod tests {
                 .options()
                 .unwrap()
                 .context,
-            Style::new(Color::Green).bold().bg(Color::Yellow),
+            Style::new().green().on_yellow().bold(),
         );
     }
 
@@ -1234,9 +1234,9 @@ mod tests {
         assert_eq!(
             request.output_behavior,
             OutputBehavior::Normal(Formatting::On(FormattingOptions {
-                selected_match: Style::new(Color::Green).bold().bg(Color::Yellow),
-                line_number: Style::new(Color::Yellow).dimmed().bg(Color::Blue),
-                file_name: Style::new(Color::Blue).italic().bg(Color::Magenta),
+                selected_match: Style::new().green().on_yellow().bold(),
+                line_number: Style::new().yellow().on_blue().dim(),
+                file_name: Style::new().blue().on_magenta().italic(),
                 ..Default::default()
             }))
         );
@@ -1255,12 +1255,12 @@ mod tests {
         assert_eq!(
             request.output_behavior,
             OutputBehavior::Normal(Formatting::On(FormattingOptions {
-                selected_match: Style::new(Color::Blue).bg(Color::Yellow).bold(),
-                selected_line: Style::new(Color::White).dimmed(),
-                context: Style::new(Color::White).dimmed(),
-                file_name: Style::new(Color::Fixed(51)).underline(),
-                line_number: Style::new(Color::RGB(127, 127, 127)).italic().underline(),
-                separator: Style::new(Color::Magenta).bg(Color::RGB(0, 192, 0))
+                selected_match: Style::new().blue().on_yellow().bold(),
+                selected_line: Style::new().white().dim(),
+                context: Style::new().white().dim(),
+                file_name: Style::new().fixed(51).underline(),
+                line_number: Style::new().rgb(127, 127, 127).italic().underline(),
+                separator: Style::new().magenta().on_rgb(0, 192, 0)
             }))
         );
     }
@@ -1322,7 +1322,7 @@ mod tests {
                 targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
                 strategy: MatchCollectionStrategy::CollectTop(10),
                 output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
-                    selected_match: Style::new(Color::Blue).blink(),
+                    selected_match: Style::new().blue().blink(),
                     ..Default::default()
                 })),
                 match_options: MatchOptions {

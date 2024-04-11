@@ -9,7 +9,7 @@ use yansi::{Color, Style};
 /// If the string is not a valid SGR-sequence, raises a [`StyleSequenceParsingError`].
 ///
 pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
-    let mut style = Style::default();
+    let mut style = Style::new();
     let mut itr = sgr_sequence.split(';');
     while let Some(token) = itr.next() {
         if token.is_empty() {
@@ -22,7 +22,7 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
         match code {
             0 => {}
             1 => style = style.bold(),
-            2 => style = style.dimmed(),
+            2 => style = style.dim(),
             3 => style = style.italic(),
             4 => style = style.underline(),
             5 | 6 => {
@@ -30,8 +30,8 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
                 style = style.blink();
             }
             7 => style = style.invert(),
-            8 => style = style.hidden(),
-            9 => style = style.strikethrough(),
+            8 => style = style.conceal(),
+            9 => style = style.strike(),
             30..=39 => {
                 style = style.fg(color_from(code, &mut itr)
                     .map_err(StyleSequenceParsingError::BadColorSequence)?)
@@ -79,7 +79,7 @@ fn color_from<'a>(
                             let b = b.parse::<u8>().map_err(|e| {
                                 ColorSequenceParsingError::NotACode(b.to_string(), e)
                             })?;
-                            Ok(Color::RGB(r, g, b))
+                            Ok(Color::Rgb(r, g, b))
                         }
                         _ => Err(ColorSequenceParsingError::BadTrueColor),
                     },
@@ -99,7 +99,7 @@ fn color_from<'a>(
                 Err(ColorSequenceParsingError::IncompleteSequence)
             }
         }
-        9 => Ok(Color::Default),
+        9 => Ok(Color::Primary),
         _ => unreachable!(),
     }
 }
@@ -111,55 +111,55 @@ mod tests {
     #[test]
     fn style_reset() {
         let sequence = "0";
-        assert_eq!(style_from(sequence).unwrap(), Style::default());
+        assert_eq!(style_from(sequence).unwrap(), Style::new());
     }
 
     #[test]
     fn style_bold() {
         let sequence = "1";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().bold());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().bold());
     }
 
     #[test]
     fn style_dim() {
         let sequence = "2";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().dimmed());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().dim());
     }
 
     #[test]
     fn style_italic() {
         let sequence = "3";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().italic());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().italic());
     }
 
     #[test]
     fn style_underline() {
         let sequence = "4";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().underline());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().underline());
     }
 
     #[test]
     fn style_slow_blink() {
         let sequence = "5";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().blink());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().blink());
     }
 
     #[test]
     fn style_rapid_blink() {
         let sequence = "6";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().blink());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().blink());
     }
 
     #[test]
     fn style_invert() {
         let sequence = "7";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().invert());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().invert());
     }
 
     #[test]
     fn style_hide() {
         let sequence = "8";
-        assert_eq!(style_from(sequence).unwrap(), Style::default().hidden());
+        assert_eq!(style_from(sequence).unwrap(), Style::new().conceal());
     }
 
     #[test]
@@ -167,61 +167,61 @@ mod tests {
         let sequence = "9";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().strikethrough()
+            Style::new().strike()
         );
     }
 
     #[test]
     fn style_fg_color_black() {
         let sequence = "30";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Black));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().black());
     }
 
     #[test]
     fn style_fg_color_red() {
         let sequence = "31";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Red));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().red());
     }
 
     #[test]
     fn style_fg_color_green() {
         let sequence = "32";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Green));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().green());
     }
 
     #[test]
     fn style_fg_color_yellow() {
         let sequence = "33";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Yellow));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().yellow());
     }
     #[test]
     fn style_fg_color_blue() {
         let sequence = "34";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Blue));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().blue());
     }
 
     #[test]
     fn style_fg_color_magenta() {
         let sequence = "35";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Magenta));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().magenta());
     }
 
     #[test]
     fn style_fg_color_cyan() {
         let sequence = "36";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Cyan));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().cyan());
     }
 
     #[test]
     fn style_fg_color_white() {
         let sequence = "37";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::White));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().white());
     }
 
     #[test]
     fn style_fg_color_8bit() {
         let sequence = "38;5;120";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Fixed(120)));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().fixed(120));
     }
 
     #[test]
@@ -229,14 +229,14 @@ mod tests {
         let sequence = "38;2;192;255;238";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::new(Color::RGB(192, 255, 238))
+            Style::new().rgb(192, 255, 238)
         );
     }
 
     #[test]
     fn style_fg_color_default() {
         let sequence = "39";
-        assert_eq!(style_from(sequence).unwrap(), Style::new(Color::Default));
+        assert_eq!(style_from(sequence).unwrap(), Style::new().primary());
     }
 
     #[test]
@@ -244,7 +244,7 @@ mod tests {
         let sequence = "40";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Black)
+            Style::new().on_black()
         );
     }
 
@@ -253,7 +253,7 @@ mod tests {
         let sequence = "41";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Red)
+            Style::new().on_red()
         );
     }
 
@@ -262,7 +262,7 @@ mod tests {
         let sequence = "42";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Green)
+            Style::new().on_green()
         );
     }
 
@@ -271,7 +271,7 @@ mod tests {
         let sequence = "43";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Yellow)
+            Style::new().on_yellow()
         );
     }
     #[test]
@@ -279,7 +279,7 @@ mod tests {
         let sequence = "44";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Blue)
+            Style::new().on_blue()
         );
     }
 
@@ -288,7 +288,7 @@ mod tests {
         let sequence = "45";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Magenta)
+            Style::new().on_magenta()
         );
     }
 
@@ -297,7 +297,7 @@ mod tests {
         let sequence = "46";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Cyan)
+            Style::new().on_cyan()
         );
     }
 
@@ -306,7 +306,7 @@ mod tests {
         let sequence = "47";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::White)
+            Style::new().on_white()
         );
     }
 
@@ -315,7 +315,7 @@ mod tests {
         let sequence = "48;5;120";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Fixed(120))
+            Style::new().on_fixed(120)
         );
     }
 
@@ -324,7 +324,7 @@ mod tests {
         let sequence = "48;2;192;255;238";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::RGB(192, 255, 238))
+            Style::new().on_rgb(192, 255, 238)
         );
     }
 
@@ -333,7 +333,7 @@ mod tests {
         let sequence = "49";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::default().bg(Color::Default)
+            Style::new().on_primary()
         );
     }
 
@@ -342,10 +342,10 @@ mod tests {
         let sequence = "33;3;4;48;2;192;255;238";
         assert_eq!(
             style_from(sequence).unwrap(),
-            Style::new(Color::Yellow)
+            Style::new().yellow()
+                .on_rgb(192, 255, 238)
                 .italic()
                 .underline()
-                .bg(Color::RGB(192, 255, 238))
         );
     }
 }
