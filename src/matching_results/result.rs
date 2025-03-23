@@ -43,12 +43,7 @@ pub struct Context {
 /// Represents possible states of a matching result.
 ///
 pub(crate) enum MatchingResultState {
-    /// The result is complete and ready to use.
-    ///
     Complete(MatchingResult),
-
-    /// The result is incomplete (has only partial context).
-    ///
     Incomplete(PartialMatchingResult),
 }
 
@@ -56,24 +51,10 @@ pub(crate) enum MatchingResultState {
 ///
 #[derive(Debug, PartialEq)]
 pub(crate) struct PartialMatchingResult {
-    /// The line that contains the match.
-    ///
     matching_line: String,
-
-    /// The properties of the match.
-    ///
     fuzzy_match: FuzzyMatch,
-
-    /// An optional file name (if file names tracking was requested).
-    ///
     file_name: Option<String>,
-
-    /// An optional line number (if line numbers tracking was requested).
-    ///
     line_number: Option<usize>,
-
-    /// Partial context (the trailing context is not fully accumulated).
-    ///
     partial_context: PartialContext,
 }
 
