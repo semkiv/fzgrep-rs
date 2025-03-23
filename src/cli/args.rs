@@ -4,14 +4,40 @@ use crate::{
         formatting::{Formatting, FormattingOptions},
         sgr_sequence,
     },
-    core::request::{
-        ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
+    core::{
+        file_filtering::Filter,
+        request::{
+            ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request,
+            Targets,
+        },
     },
 };
 use atty::Stream;
-use clap::{parser::ValuesRef, value_parser, Arg, ArgAction, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
+use glob::Pattern;
 use log::LevelFilter;
 use std::{env, path::PathBuf};
+
+struct OptionId;
+
+impl OptionId {
+    const PATTERN: &'static str = "pattern";
+    const TARGET: &'static str = "target";
+    const RECURSIVE: &'static str = "recursive";
+    const EXCLUDE: &'static str = "exclude";
+    const INCLUDE: &'static str = "include";
+    const LINE_NUMBER: &'static str = "line_number";
+    const WITH_FILENAME: &'static str = "with_filename";
+    const NO_FILENAME: &'static str = "no_filename";
+    const CONTEXT: &'static str = "context";
+    const BEFORE_CONTEXT: &'static str = "before_context";
+    const AFTER_CONTEXT: &'static str = "after_context";
+    const TOP: &'static str = "top";
+    const QUIET: &'static str = "quiet";
+    const VERBOSE: &'static str = "verbose";
+    const COLOR: &'static str = "color";
+    const COLOR_OVERRIDES: &'static str = "color_overrides";
+}
 
 /// Sets up a [`Request`] struct based on the program command line arguments
 ///
@@ -28,8 +54,13 @@ use std::{env, path::PathBuf};
 /// ```
 /// // basic usage
 /// use atty::{self, Stream};
-/// use fzgrep::cli::{args, formatting::{Formatting, FormattingOptions}};
-/// use fzgrep::{ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets};
+/// use fzgrep::{
+///     cli::{
+///         args,
+///         formatting::{Formatting, FormattingOptions},
+///     },
+///     ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
+/// };
 /// use log::LevelFilter;
 /// use std::path::PathBuf;
 ///
@@ -37,7 +68,7 @@ use std::{env, path::PathBuf};
 /// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request,
-///     Request{
+///     Request {
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
 ///         strategy: MatchCollectionStrategy::CollectAll,
@@ -49,13 +80,11 @@ use std::{env, path::PathBuf};
 ///                 after: Lines(0),
 ///             },
 ///         },
-///         output_behavior: OutputBehavior::Normal(
-///             if atty::is(Stream::Stdout) {
-///                 Formatting::On(FormattingOptions::default())
-///             } else {
-///                 Formatting::Off
-///             }
-///         ),
+///         output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+///             Formatting::On(FormattingOptions::default())
+///         } else {
+///             Formatting::Off
+///         }),
 ///         log_verbosity: LevelFilter::Error,
 ///     }
 /// );
@@ -63,8 +92,7 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // no input files - use the standard input
-/// use fzgrep::cli::args;
-/// use fzgrep::Targets;
+/// use fzgrep::{cli::args, Targets};
 ///
 /// let args = ["fzgrep", "query"];
 /// let request = args::make_request(args.into_iter().map(String::from));
@@ -73,37 +101,162 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // no input files and `--recursive` flag - use current directory///
-/// use fzgrep::cli::args;
-/// use fzgrep::Targets;
+/// use fzgrep::{cli::args, Targets};
 /// use std::{env, path::PathBuf};
 ///
 /// let args = ["fzgrep", "--recursive", "query"];
 /// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets, Targets::RecursiveEntries(vec![env::current_dir().unwrap()]));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![env::current_dir().unwrap()],
+///         filter: None
+///     }
+/// );
 /// ```
 ///
 /// ```
 /// // multiple input files
-/// use fzgrep::cli::args;
-/// use fzgrep::Targets;
+/// use fzgrep::{cli::args, Targets};
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
 /// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets, Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2"), PathBuf::from("file3")]));
+/// assert_eq!(
+///     request.targets,
+///     Targets::Files(vec![
+///         PathBuf::from("file1"),
+///         PathBuf::from("file2"),
+///         PathBuf::from("file3")
+///     ])
+/// );
 /// // with more than one input file `--with-filename` is assumed
 /// assert!(request.match_options.track_file_names);
 /// ```
 ///
 /// ```
 /// // recursive mode
-/// use fzgrep::cli::args;
-/// use fzgrep::Targets;
+/// use fzgrep::{cli::args, Targets};
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "query", "."];
 /// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets, Targets::RecursiveEntries(vec![PathBuf::from(".")]));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![PathBuf::from(".")],
+///         filter: None
+///     }
+/// );
+/// ```
+///
+/// ```
+/// // recursive mode, including only `.txt` files
+/// use fzgrep::{cli::args, Filter, Targets};
+/// use glob::Pattern;
+/// use std::path::PathBuf;
+///
+/// let args = ["fzgrep", "--recursive", "--include", "*.txt", "query", "."];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![PathBuf::from(".")],
+///         filter: Some(Filter::with_include(vec![Pattern::new("*.txt").unwrap()]))
+///     }
+/// );
+/// ```
+///
+/// ```
+/// // recursive mode, excluding files in `build` directory
+/// use fzgrep::{cli::args, Filter, Targets};
+/// use glob::Pattern;
+/// use std::path::PathBuf;
+///
+/// let args = [
+///     "fzgrep",
+///     "--recursive",
+///     "--exclude",
+///     "build/*",
+///     "query",
+///     ".",
+/// ];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![PathBuf::from(".")],
+///         filter: Some(Filter::with_exclude(vec![Pattern::new("build/*").unwrap()]))
+///     }
+/// );
+/// ```
+///
+/// ```
+/// // recursive mode, including only `.txt` files except for those in `tests` directory
+/// use fzgrep::{cli::args, Filter, Targets};
+/// use glob::Pattern;
+/// use std::path::PathBuf;
+///
+/// let args = [
+///     "fzgrep",
+///     "--recursive",
+///     "--include",
+///     "*.txt",
+///     "--exclude",
+///     "tests/*",
+///     "query",
+///     ".",
+/// ];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![PathBuf::from(".")],
+///         filter: Some(Filter::new(
+///             vec![Pattern::new("*.txt").unwrap()],
+///             vec![Pattern::new("tests/*").unwrap()],
+///         ))
+///     }
+/// );
+/// ```
+///
+/// ```
+/// // recursive mode, including only `.txt` and `.json` files except for those in `build` or `tests` directory
+/// use fzgrep::{cli::args, Filter, Targets};
+/// use glob::Pattern;
+/// use std::path::PathBuf;
+///
+/// let args = [
+///     "fzgrep",
+///     "--recursive",
+///     "--include",
+///     "*.txt",
+///     "--include",
+///     "*.json",
+///     "--exclude",
+///     "build/*",
+///     "--exclude",
+///     "tests/*",
+///     "query",
+///     ".",
+/// ];
+/// let request = args::make_request(args.into_iter().map(String::from));
+/// assert_eq!(
+///     request.targets,
+///     Targets::RecursiveEntries {
+///         paths: vec![PathBuf::from(".")],
+///         filter: Some(Filter::new(
+///             vec![
+///                 Pattern::new("*.txt").unwrap(),
+///                 Pattern::new("*.json").unwrap()
+///             ],
+///             vec![
+///                 Pattern::new("build/*").unwrap(),
+///                 Pattern::new("tests/*").unwrap()
+///             ],
+///         ))
+///     }
+/// );
 /// ```
 ///
 /// ```
@@ -127,20 +280,21 @@ use std::{env, path::PathBuf};
 /// ```
 /// // with more than one input file `--with-filename` is assumed
 /// // it is possible to override this by specifically opting out like so
-/// use fzgrep::cli::args;
-/// use fzgrep::Targets;
+/// use fzgrep::{cli::args, Targets};
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
 /// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.targets, Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")]));
+/// assert_eq!(
+///     request.targets,
+///     Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")])
+/// );
 /// assert!(!request.match_options.track_file_names);
 /// ```
 ///
 /// ```
 /// // symmetric context
-/// use fzgrep::cli::args;
-/// use fzgrep::{ContextSize, Lines};
+/// use fzgrep::{cli::args, ContextSize, Lines};
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
 /// let request = args::make_request(args.into_iter().map(String::from));
@@ -155,10 +309,17 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // asymmetric context
-/// use fzgrep::cli::args;
-/// use fzgrep::{ContextSize, Lines};
+/// use fzgrep::{cli::args, ContextSize, Lines};
 ///
-/// let args = ["fzgrep", "--before-context", "1", "--after-context", "2", "query", "file"];
+/// let args = [
+///     "fzgrep",
+///     "--before-context",
+///     "1",
+///     "--after-context",
+///     "2",
+///     "query",
+///     "file",
+/// ];
 /// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.match_options.context_size,
@@ -171,8 +332,7 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // collect only top 5 matches
-/// use fzgrep::cli::args;
-/// use fzgrep::MatchCollectionStrategy;
+/// use fzgrep::{cli::args, MatchCollectionStrategy};
 ///
 /// let args = ["fzgrep", "--top", "5", "query", "file"];
 /// let request = args::make_request(args.into_iter().map(String::from));
@@ -181,8 +341,7 @@ use std::{env, path::PathBuf};
 ///
 /// ```
 /// // silence the output
-/// use fzgrep::cli::args;
-/// use fzgrep::OutputBehavior;
+/// use fzgrep::{cli::args, OutputBehavior};
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--quiet", "query", "file"];
@@ -253,13 +412,13 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
             Exit status is 0 if any match is found, 1 otherwise; if any error(s) occur, the exit status is 2."
         )
         .arg(
-            Arg::new("pattern")
+            Arg::new(OptionId::PATTERN)
                 .value_name("PATTERN")
                 .required(true)
                 .help("Pattern to match"),
         )
         .arg(
-            Arg::new("target")
+            Arg::new(OptionId::TARGET)
                 .value_name("TARGET")
                 .num_args(0..)
                 .help(
@@ -269,84 +428,104 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                 ),
         )
         .arg(
-            Arg::new("recursive")
+            Arg::new(OptionId::RECURSIVE)
                 .short('r')
                 .long("recursive")
                 .action(ArgAction::SetTrue)
-                .help("Recurse directories")
+                .help("Recurse directories. '--exclude' and '--include' can be used for more fine-grained control")
         )
         .arg(
-            Arg::new("line_number")
+            Arg::new(OptionId::EXCLUDE)
+                .long("exclude")
+                .action(ArgAction::Append)
+                .value_parser(Pattern::new)
+                .help(
+                    "A UNIX globs. Files matching this glob will be ignored.\n\
+                    Can be specified multiple times and combined with '--include' option."
+                )
+        )
+        .arg(
+            Arg::new(OptionId::INCLUDE)
+                .long("include")
+                .action(ArgAction::Append)
+                .value_parser(Pattern::new)
+                .help(
+                    "A UNIX globs. Files matching this glob will be ignored.\n\
+                    Can be specified multiple times and combined with '--exclude' option."
+                )
+        )
+        .arg(
+            Arg::new(OptionId::LINE_NUMBER)
                 .short('n')
                 .long("line-number")
                 .action(ArgAction::SetTrue)
                 .help("Print line number with matching lines"),
         )
         .arg(
-            Arg::new("with_filename")
+            Arg::new(OptionId::WITH_FILENAME)
                 .short('f')
                 .long("with-filename")
                 .action(ArgAction::SetTrue)
-                .conflicts_with("no_filename")
+                .conflicts_with(OptionId::NO_FILENAME)
                 .help("Print file name with output lines"),
         )
         .arg(
-            Arg::new("no_filename")
+            Arg::new(OptionId::NO_FILENAME)
                 .short('F')
                 .long("no-filename")
                 .action(ArgAction::SetTrue)
-                .conflicts_with("with_filename")
+                .conflicts_with(OptionId::WITH_FILENAME)
                 .help("Suppress the file name prefix on output"),
         )
         .arg(
-            Arg::new("context")
+            Arg::new(OptionId::CONTEXT)
                 .short('C')
                 .long("context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with_all(["before_context", "after_context"])
+                .conflicts_with_all([OptionId::BEFORE_CONTEXT, OptionId::AFTER_CONTEXT])
                 .help("Print NUM lines of surrounding context")
         )
         .arg(
-            Arg::new("before_context")
+            Arg::new(OptionId::BEFORE_CONTEXT)
                 .short('B')
                 .long("before-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with("context")
+                .conflicts_with(OptionId::CONTEXT)
                 .help("Print NUM lines of leading context")
         )
         .arg(
-            Arg::new("after_context")
+            Arg::new(OptionId::AFTER_CONTEXT)
                 .short('A')
                 .long("after-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with("context")
+                .conflicts_with(OptionId::CONTEXT)
                 .help("Print NUM lines of trailing context")
         )
         .arg(
-            Arg::new("top")
+            Arg::new(OptionId::TOP)
                 .long("top")
                 .value_name("N")
                 .value_parser(value_parser!(usize))
                 .help("Fetch only top N results")
         )
         .arg(
-            Arg::new("quiet")
+            Arg::new(OptionId::QUIET)
                 .short('q')
                 .long("quiet")
                 .visible_alias("silent")
                 .action(ArgAction::SetTrue)
-                .conflicts_with("verbose")
+                .conflicts_with(OptionId::VERBOSE)
                 .help("Suppress all output")
         )
         .arg(
-            Arg::new("verbose")
+            Arg::new(OptionId::VERBOSE)
                 .short('v')
                 .long("verbose")
                 .action(ArgAction::Count)
-                .conflicts_with("quiet")
+                .conflicts_with(OptionId::QUIET)
                 .help(
                     "Verbose output. Specify multiple times to increase verbosity.\n\
                     Without the switch only errors are reported (unless '-q' is specified);\n\
@@ -357,7 +536,7 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                 )
         )
         .arg(
-            Arg::new("color")
+            Arg::new(OptionId::COLOR)
                 .long("color")
                 .visible_alias("colour")
                 .value_name("WHEN")
@@ -369,7 +548,7 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                 )
         )
         .arg(
-            Arg::new("color_overrides")
+            Arg::new(OptionId::COLOR_OVERRIDES)
                 .long("color-overrides")
                 .visible_alias("colour-overrides")
                 .value_name("CAPS")
@@ -445,24 +624,30 @@ fn color_overrides_parser(
 
 fn query_from(matches: &ArgMatches) -> String {
     let query = matches
-        .get_one::<String>("pattern")
+        .get_one::<String>(OptionId::PATTERN)
         .expect("QUERY argument is required, it cannot be empty");
     query.clone()
 }
 
 fn targets_from(matches: &ArgMatches) -> Targets {
-    match matches.get_many::<String>("target") {
+    match matches.get_many::<String>(OptionId::TARGET) {
         Some(targets) => {
             let targets = targets.map(PathBuf::from).collect::<Vec<_>>();
-            if matches.get_flag("recursive") {
-                Targets::RecursiveEntries(targets)
+            if matches.get_flag(OptionId::RECURSIVE) {
+                Targets::RecursiveEntries {
+                    paths: targets,
+                    filter: filter_from(matches),
+                }
             } else {
                 Targets::Files(targets)
             }
         }
         None => {
-            if matches.get_flag("recursive") {
-                Targets::RecursiveEntries(vec![env::current_dir().unwrap_or(PathBuf::from("."))])
+            if matches.get_flag(OptionId::RECURSIVE) {
+                Targets::RecursiveEntries {
+                    paths: vec![env::current_dir().unwrap_or(PathBuf::from("."))],
+                    filter: filter_from(matches),
+                }
             } else {
                 Targets::Stdin
             }
@@ -470,8 +655,22 @@ fn targets_from(matches: &ArgMatches) -> Targets {
     }
 }
 
+fn filter_from(matches: &ArgMatches) -> Option<Filter> {
+    let exclude_globs = matches.get_many(OptionId::EXCLUDE);
+    let include_globs = matches.get_many(OptionId::INCLUDE);
+    match (exclude_globs, include_globs) {
+        (Some(excl), Some(incl)) => Some(Filter::new(
+            incl.cloned().collect(),
+            excl.cloned().collect(),
+        )),
+        (Some(excl), None) => Some(Filter::with_exclude(excl.cloned().collect())),
+        (None, Some(incl)) => Some(Filter::with_include(incl.cloned().collect())),
+        (None, None) => None,
+    }
+}
+
 fn strategy_from(matches: &ArgMatches) -> MatchCollectionStrategy {
-    match matches.get_one::<usize>("top") {
+    match matches.get_one::<usize>(OptionId::TOP) {
         Some(cap) => MatchCollectionStrategy::CollectTop(*cap),
         None => MatchCollectionStrategy::CollectAll,
     }
@@ -479,7 +678,7 @@ fn strategy_from(matches: &ArgMatches) -> MatchCollectionStrategy {
 
 fn match_options_from(matches: &ArgMatches) -> MatchOptions {
     MatchOptions {
-        track_line_numbers: matches.get_flag("line_number"),
+        track_line_numbers: matches.get_flag(OptionId::LINE_NUMBER),
         track_file_names: track_file_name_from(matches),
         context_size: context_size_from(matches),
     }
@@ -487,17 +686,17 @@ fn match_options_from(matches: &ArgMatches) -> MatchOptions {
 
 fn track_file_name_from(matches: &ArgMatches) -> bool {
     // `--with-filename` flag has been specified -> file names *should* be tracked
-    if matches.get_flag("with_filename") {
+    if matches.get_flag(OptionId::WITH_FILENAME) {
         return true;
     }
     // `--no-filename` flag has been specified -> file names *should not* be tracked
-    if matches.get_flag("no_filename") {
+    if matches.get_flag(OptionId::NO_FILENAME) {
         return false;
     }
     // no flags specified, but there are multiple input files -> file names *should* be tracked
     if matches
-        .get_many("target")
-        .is_some_and(|fs: ValuesRef<'_, String>| fs.len() > 1)
+        .get_many::<String>(OptionId::TARGET)
+        .is_some_and(|fs| fs.len() > 1)
     {
         return true;
     }
@@ -506,7 +705,7 @@ fn track_file_name_from(matches: &ArgMatches) -> bool {
 }
 
 fn context_size_from(matches: &ArgMatches) -> ContextSize {
-    if let Some(num) = matches.get_one::<usize>("context").copied() {
+    if let Some(num) = matches.get_one::<usize>(OptionId::CONTEXT).copied() {
         ContextSize {
             before: Lines(num),
             after: Lines(num),
@@ -515,13 +714,13 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
         ContextSize {
             before: Lines(
                 matches
-                    .get_one::<usize>("before_context")
+                    .get_one::<usize>(OptionId::BEFORE_CONTEXT)
                     .copied()
                     .unwrap_or(0),
             ),
             after: Lines(
                 matches
-                    .get_one::<usize>("after_context")
+                    .get_one::<usize>(OptionId::AFTER_CONTEXT)
                     .copied()
                     .unwrap_or(0),
             ),
@@ -530,11 +729,11 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
 }
 
 fn formatting_from(matches: &ArgMatches) -> Formatting {
-    if let Some(behavior) = matches.get_one::<String>("color") {
+    if let Some(behavior) = matches.get_one::<String>(OptionId::COLOR) {
         let behavior = behavior.as_str();
         if behavior == "always" || (behavior == "auto" && atty::is(Stream::Stdout)) {
             let formatting_options = matches
-                .get_one::<FormattingOptions>("color_overrides")
+                .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
                 .cloned()
                 .unwrap_or_default();
             Formatting::On(formatting_options)
@@ -549,7 +748,7 @@ fn formatting_from(matches: &ArgMatches) -> Formatting {
 }
 
 fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
-    if matches.get_flag("quiet") {
+    if matches.get_flag(OptionId::QUIET) {
         return OutputBehavior::Quiet;
     }
 
@@ -557,11 +756,11 @@ fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
 }
 
 fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
-    if matches.get_flag("quiet") {
+    if matches.get_flag(OptionId::QUIET) {
         return LevelFilter::Off;
     }
 
-    match matches.get_count("verbose") {
+    match matches.get_count(OptionId::VERBOSE) {
         0 => LevelFilter::Error,
         1 => LevelFilter::Warn,
         2 => LevelFilter::Info,
@@ -612,7 +811,10 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Targets::RecursiveEntries(vec![env::current_dir().unwrap()]),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![env::current_dir().unwrap()],
+                    filter: None
+                },
                 strategy: MatchCollectionStrategy::CollectAll,
                 match_options: MatchOptions {
                     track_line_numbers: false,
@@ -744,7 +946,10 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.targets,
-            Targets::RecursiveEntries(vec![PathBuf::from("dir")])
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: None
+            }
         );
     }
 
@@ -754,7 +959,160 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.targets,
-            Targets::RecursiveEntries(vec![PathBuf::from("dir")])
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: None
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_include() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--include",
+            "*.txt",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::with_include(vec![Pattern::new("*.txt").unwrap()]))
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_include_multiple_globs() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--include",
+            "*.txt",
+            "--include",
+            "*.rs",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::with_include(vec![
+                    Pattern::new("*.txt").unwrap(),
+                    Pattern::new("*.rs").unwrap()
+                ]))
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_exclude() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--exclude",
+            "build/*",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::with_exclude(vec![Pattern::new("build/*").unwrap()]))
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_exclude_multiple_globs() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--exclude",
+            "build/*",
+            "--exclude",
+            "tests/*",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::with_exclude(vec![
+                    Pattern::new("build/*").unwrap(),
+                    Pattern::new("tests/*").unwrap()
+                ]))
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_include_and_exclude() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--include",
+            "*.txt",
+            "--exclude",
+            "tests/*",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::new(
+                    vec![Pattern::new("*.txt").unwrap()],
+                    vec![Pattern::new("tests/*").unwrap()]
+                ))
+            }
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_with_include_and_exclude_multiple_globs() {
+        let args = [
+            "fzgrep",
+            "--recursive",
+            "--include",
+            "*.txt",
+            "--include",
+            "*.rs",
+            "--exclude",
+            "build/*",
+            "--exclude",
+            "tests/*",
+            "query",
+            "dir",
+        ];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from("dir")],
+                filter: Some(Filter::new(
+                    vec![
+                        Pattern::new("*.txt").unwrap(),
+                        Pattern::new("*.rs").unwrap()
+                    ],
+                    vec![
+                        Pattern::new("build/*").unwrap(),
+                        Pattern::new("tests/*").unwrap()
+                    ]
+                ))
+            }
         );
     }
 
@@ -1273,7 +1631,10 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![PathBuf::from("file")],
+                    filter: None
+                },
                 strategy: MatchCollectionStrategy::CollectAll,
                 output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
                     Formatting::On(FormattingOptions::default())
@@ -1298,6 +1659,10 @@ mod tests {
         let args = [
             "fzgrep",
             "--recursive",
+            "--include",
+            "*.txt",
+            "--exclude",
+            "tests/*",
             "--line-number",
             "--with-filename",
             "--before-context",
@@ -1319,7 +1684,13 @@ mod tests {
             request,
             Request {
                 query: String::from("query"),
-                targets: Targets::RecursiveEntries(vec![PathBuf::from("file")]),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![PathBuf::from("file")],
+                    filter: Some(Filter::new(
+                        vec![Pattern::new("*.txt").unwrap(),],
+                        vec![Pattern::new("tests/*").unwrap()]
+                    ))
+                },
                 strategy: MatchCollectionStrategy::CollectTop(10),
                 output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
                     selected_match: Style::new().blue().blink(),
@@ -1337,4 +1708,5 @@ mod tests {
             }
         );
     }
+    // TODO: tests featuring '--include' and '--exclude' options, especially filenames with commas
 }

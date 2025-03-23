@@ -1,3 +1,5 @@
+/// A container that store up to a max count (capacity) of items sorted in descending order.
+///
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct TopBracket<T> {
     capacity: usize,
@@ -5,6 +7,8 @@ pub(crate) struct TopBracket<T> {
 }
 
 impl<T> TopBracket<T> {
+    /// Creates a empty `TopBracket` with a capacity of `capacity`.
+    ///
     pub(crate) fn new(capacity: usize) -> Self {
         Self {
             capacity,
@@ -12,12 +16,24 @@ impl<T> TopBracket<T> {
         }
     }
 
+    /// Converts this `TopBracket` into a [`Vec`].
+    ///
     pub(crate) fn into_vec(self) -> Vec<T> {
         self.data
     }
 }
 
 impl<T: Ord> TopBracket<T> {
+    /// Tries to add an `item` to the container. If the container is not at capacity yet, the item is added right away.
+    /// If the container is at capacity already one of the two happens:
+    /// if the item is larger than the the smallest item present in the container,
+    /// the smallest item is removed from the container and the new item is added,
+    /// otherwise the new item is simply discarded.
+    ///
+    /// After each addition the container is sorted to ensure order.
+    ///
+    /// Returns `true` if the item was actually inserted, `false` otherwise.
+    ///
     pub(crate) fn push(&mut self, item: T) -> bool {
         if self.data.len() == self.capacity {
             if item <= *self.data.last().unwrap() {

@@ -6,8 +6,8 @@ pub use crate::{
     core::{
         exit_code::ExitCode,
         request::{
-            ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request,
-            Targets,
+            ContextSize, Filter, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior,
+            Request, Targets,
         },
     },
     matching_results::result::MatchingResult,
@@ -200,12 +200,20 @@ fn make_readers(
                     .map(|p| Reader::file_reader(p).map_err(|e| e.into())),
             )
         }
-        Targets::RecursiveEntries(entries) => {
+        Targets::RecursiveEntries { paths, filter } => {
             debug!(
                 "Recursive mode; using the following input targets: {:?}",
-                entries
+                paths
             );
-            make_recursive_reader_iterator(entries.iter())
+            debug!(
+                "File filter{}",
+                if let Some(filter) = filter {
+                    format!(": {:?}", filter)
+                } else {
+                    String::from(" not set")
+                }
+            );
+            make_recursive_reader_iterator(paths.iter(), filter)
         }
         Targets::Stdin => {
             debug!("*Non*-recursive mode; using STDIN.");
@@ -216,6 +224,7 @@ fn make_readers(
 
 fn make_recursive_reader_iterator<'item>(
     targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
+    filter: &'item Option<Filter>,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
     Box::new(
         targets
@@ -224,6 +233,10 @@ fn make_recursive_reader_iterator<'item>(
                 item.map_or_else(
                     |e| Some(Err(e.into())),
                     |d| {
+                        if filter.as_ref().is_some_and(|f| !f.test(d.path())) {
+                            return None;
+                        }
+
                         d.metadata().map_or_else(
                             |e| Some(Err(e.into())),
                             |m| {

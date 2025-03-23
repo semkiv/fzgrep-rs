@@ -1,3 +1,5 @@
+pub use crate::core::file_filtering::Filter;
+
 use crate::cli::formatting::Formatting;
 use log::LevelFilter;
 use std::path::PathBuf;
@@ -17,7 +19,7 @@ pub enum MatchCollectionStrategy {
     /// so it might even turn out to be slower than collecting all matches
     /// if the total number of matches is relatively low.
     ///
-    CollectTop(usize)
+    CollectTop(usize),
 }
 
 /// Behavior of the program with respect to the output
@@ -44,7 +46,10 @@ pub enum Targets {
     /// A list of files and/or directories to process.
     /// Files are processed normally, directories are descended into and processed recursively.
     ///
-    RecursiveEntries(Vec<PathBuf>),
+    RecursiveEntries {
+        paths: Vec<PathBuf>,
+        filter: Option<Filter>,
+    },
 
     /// The standard input.
     ///
@@ -128,7 +133,10 @@ impl OutputBehavior {
     /// use fzgrep::{Formatting, FormattingOptions, OutputBehavior};
     ///
     /// let formatting = Formatting::On(FormattingOptions::default());
-    /// assert_eq!(formatting.formatting().unwrap(), Formatting::On(FormattingOptions::default()));
+    /// assert_eq!(
+    ///     formatting.formatting().unwrap(),
+    ///     Formatting::On(FormattingOptions::default())
+    /// );
     /// ```
     ///
     /// ```
