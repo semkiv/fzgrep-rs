@@ -12,11 +12,14 @@ use crate::{
         },
     },
 };
-use atty::Stream;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 use glob::Pattern;
 use log::LevelFilter;
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    io::{self, IsTerminal},
+    path::PathBuf,
+};
 
 struct OptionId;
 
@@ -53,7 +56,6 @@ impl OptionId {
 ///
 /// ```
 /// // basic usage
-/// use atty::{self, Stream};
 /// use fzgrep::{
 ///     cli::{
 ///         args,
@@ -62,7 +64,10 @@ impl OptionId {
 ///     ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
 /// };
 /// use log::LevelFilter;
-/// use std::path::PathBuf;
+/// use std::{
+///     io::{self, IsTerminal},
+///     path::PathBuf,
+/// };
 ///
 /// let args = ["fzgrep", "query", "file"];
 /// let request = args::make_request(args.into_iter().map(String::from));
@@ -80,7 +85,7 @@ impl OptionId {
 ///                 after: Lines(0),
 ///             },
 ///         },
-///         output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+///         output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
 ///             Formatting::On(FormattingOptions::default())
 ///         } else {
 ///             Formatting::Off
@@ -731,13 +736,13 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
 fn formatting_from(matches: &ArgMatches) -> Formatting {
     if let Some(behavior) = matches.get_one::<String>(OptionId::COLOR) {
         let behavior = behavior.as_str();
-        if behavior == "always" || (behavior == "auto" && atty::is(Stream::Stdout)) {
+        if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
             let formatting_options = matches
                 .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
                 .cloned()
                 .unwrap_or_default();
             Formatting::On(formatting_options)
-        } else if behavior == "never" || (behavior == "auto" && atty::isnt(Stream::Stdout)) {
+        } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {
             Formatting::Off
         } else {
             unreachable!();
@@ -793,7 +798,7 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(FormattingOptions::default())
                 } else {
                     Formatting::Off
@@ -824,7 +829,7 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(FormattingOptions::default())
                 } else {
                     Formatting::Off
@@ -852,7 +857,7 @@ mod tests {
                         after: Lines(0),
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(FormattingOptions::default())
                 } else {
                     Formatting::Off
@@ -1387,7 +1392,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+            OutputBehavior::Normal(if io::stdout().is_terminal() {
                 Formatting::On(FormattingOptions::default())
             } else {
                 Formatting::Off
@@ -1636,7 +1641,7 @@ mod tests {
                     filter: None
                 },
                 strategy: MatchCollectionStrategy::CollectAll,
-                output_behavior: OutputBehavior::Normal(if atty::is(Stream::Stdout) {
+                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(FormattingOptions::default())
                 } else {
                     Formatting::Off
