@@ -1,4 +1,5 @@
 use glob::{MatchOptions, Pattern};
+use path_slash::PathExt;
 use std::path::Path;
 
 /// Contains two sets of UNIX globs, one of include patterns and one of exclude ones.
@@ -44,11 +45,12 @@ impl Filter {
     /// Otherwise returns `false`.
     ///
     pub fn test(&self, path: &Path) -> bool {
-        !self.exclude.iter().flatten().any(|p| p.matches_path(path))
+        let normalized = path.to_slash_lossy();
+        !self.exclude.iter().flatten().any(|p| p.matches(&normalized))
             && self.include.as_ref().is_none_or(|incl| {
                 incl.iter().any(|p| {
-                    p.matches_path_with(
-                        path,
+                    p.matches_with(
+                        &normalized,
                         MatchOptions {
                             require_literal_separator: true,
                             ..Default::default()
