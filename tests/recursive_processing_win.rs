@@ -1,3 +1,5 @@
+#![cfg(target_os = "windows")]
+
 use fzgrep::{cli::args, Filter, Targets};
 use glob::Pattern;
 use std::path::PathBuf;
@@ -9,14 +11,14 @@ fn basic_usage() {
         "--with-filename",
         "--recursive",
         "recursive",
-        "resources/tests/",
+        "resources\\tests\\",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
         Targets::RecursiveEntries {
-            paths: vec![PathBuf::from("resources/tests/")],
+            paths: vec![PathBuf::from(r"resources\tests\")],
             filter: None
         }
     );
@@ -31,18 +33,18 @@ fn basic_usage() {
     assert_eq!(
         results,
         [
-            "resources/tests/ignore.json",
-            "resources/tests/nested/ignore.json",
-            "resources/tests/nested/ignore/ignore.json",
-            "resources/tests/nested/ignore/test.json",
-            "resources/tests/nested/more_nested/ignore.json",
-            "resources/tests/nested/more_nested/test.json",
-            "resources/tests/nested/more_nested/test.txt",
-            "resources/tests/nested/test.json",
-            "resources/tests/nested/test.txt",
-            "resources/tests/nested/test2.txt",
-            "resources/tests/test.json",
-            "resources/tests/test.txt",
+            r"resources\tests\ignore.json",
+            r"resources\tests\nested\ignore.json",
+            r"resources\tests\nested\ignore\ignore.json",
+            r"resources\tests\nested\ignore\test.json",
+            r"resources\tests\nested\more_nested\ignore.json",
+            r"resources\tests\nested\more_nested\test.json",
+            r"resources\tests\nested\more_nested\test.txt",
+            r"resources\tests\nested\test.json",
+            r"resources\tests\nested\test.txt",
+            r"resources\tests\nested\test2.txt",
+            r"resources\tests\test.json",
+            r"resources\tests\test.txt",
         ]
     );
 }
@@ -54,14 +56,14 @@ fn basic_usage_no_trailing_slash() {
         "--with-filename",
         "--recursive",
         "recursive",
-        "resources/tests",
+        "resources\\tests",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
         Targets::RecursiveEntries {
-            paths: vec![PathBuf::from("resources/tests/")],
+            paths: vec![PathBuf::from(r"resources\tests\")],
             filter: None
         }
     );
@@ -76,18 +78,18 @@ fn basic_usage_no_trailing_slash() {
     assert_eq!(
         results,
         [
-            "resources/tests/ignore.json",
-            "resources/tests/nested/ignore.json",
-            "resources/tests/nested/ignore/ignore.json",
-            "resources/tests/nested/ignore/test.json",
-            "resources/tests/nested/more_nested/ignore.json",
-            "resources/tests/nested/more_nested/test.json",
-            "resources/tests/nested/more_nested/test.txt",
-            "resources/tests/nested/test.json",
-            "resources/tests/nested/test.txt",
-            "resources/tests/nested/test2.txt",
-            "resources/tests/test.json",
-            "resources/tests/test.txt",
+            r"resources\tests\ignore.json",
+            r"resources\tests\nested\ignore.json",
+            r"resources\tests\nested\ignore\ignore.json",
+            r"resources\tests\nested\ignore\test.json",
+            r"resources\tests\nested\more_nested\ignore.json",
+            r"resources\tests\nested\more_nested\test.json",
+            r"resources\tests\nested\more_nested\test.txt",
+            r"resources\tests\nested\test.json",
+            r"resources\tests\nested\test.txt",
+            r"resources\tests\nested\test2.txt",
+            r"resources\tests\test.json",
+            r"resources\tests\test.txt",
         ]
     );
 }
@@ -99,8 +101,8 @@ fn only_files() {
         "--with-filename",
         "--recursive",
         "recursive",
-        "resources/tests/nested/test.txt",
-        "resources/tests/nested/test2.txt",
+        "resources\\tests\\nested\\test.txt",
+        "resources\\tests\\nested\\test2.txt",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
@@ -108,8 +110,8 @@ fn only_files() {
         request.targets,
         Targets::RecursiveEntries {
             paths: vec![
-                PathBuf::from("resources/tests/nested/test.txt"),
-                PathBuf::from("resources/tests/nested/test2.txt")
+                PathBuf::from(r"resources\tests\nested\test.txt"),
+                PathBuf::from(r"resources\tests\nested\test2.txt")
             ],
             filter: None
         }
@@ -125,8 +127,8 @@ fn only_files() {
     assert_eq!(
         results,
         [
-            "resources/tests/nested/test.txt",
-            "resources/tests/nested/test2.txt",
+            r"resources\tests\nested\test.txt",
+            r"resources\tests\nested\test2.txt",
         ]
     );
 }
@@ -138,9 +140,9 @@ fn files_and_dirs_mixed() {
         "--with-filename",
         "--recursive",
         "recursive",
-        "resources/tests/nested/more_nested/",
-        "resources/tests/nested/test.txt",
-        "resources/tests/nested/test2.txt",
+        "resources\\tests\\nested\\more_nested\\",
+        "resources\\tests\\nested\\test.txt",
+        "resources\\tests\\nested\\test2.txt",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
@@ -148,9 +150,9 @@ fn files_and_dirs_mixed() {
         request.targets,
         Targets::RecursiveEntries {
             paths: vec![
-                PathBuf::from("resources/tests/nested/more_nested/"),
-                PathBuf::from("resources/tests/nested/test.txt"),
-                PathBuf::from("resources/tests/nested/test2.txt")
+                PathBuf::from(r"resources\tests\nested\more_nested\"),
+                PathBuf::from(r"resources\tests\nested\test.txt"),
+                PathBuf::from(r"resources\tests\nested\test2.txt")
             ],
             filter: None
         }
@@ -166,11 +168,11 @@ fn files_and_dirs_mixed() {
     assert_eq!(
         results,
         [
-            "resources/tests/nested/more_nested/ignore.json",
-            "resources/tests/nested/more_nested/test.json",
-            "resources/tests/nested/more_nested/test.txt",
-            "resources/tests/nested/test.txt",
-            "resources/tests/nested/test2.txt",
+            r"resources\tests\nested\more_nested\ignore.json",
+            r"resources\tests\nested\more_nested\test.json",
+            r"resources\tests\nested\more_nested\test.txt",
+            r"resources\tests\nested\test.txt",
+            r"resources\tests\nested\test2.txt",
         ]
     );
 }
@@ -186,10 +188,10 @@ fn recursive_with_include_filters() {
         "--include",
         "**/tests/*.txt",
         "recursive",
-        "resources/tests/nested",
-        "resources/tests/ignore.json",
-        "resources/tests/test.json",
-        "resources/tests/test.txt",
+        "resources\\tests\\nested",
+        "resources\\tests\\ignore.json",
+        "resources\\tests\\test.json",
+        "resources\\tests\\test.txt",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
@@ -197,10 +199,10 @@ fn recursive_with_include_filters() {
         request.targets,
         Targets::RecursiveEntries {
             paths: vec![
-                PathBuf::from("resources/tests/nested/"),
-                PathBuf::from("resources/tests/ignore.json"),
-                PathBuf::from("resources/tests/test.json"),
-                PathBuf::from("resources/tests/test.txt"),
+                PathBuf::from(r"resources\tests\nested\"),
+                PathBuf::from(r"resources\tests\ignore.json"),
+                PathBuf::from(r"resources\tests\test.json"),
+                PathBuf::from(r"resources\tests\test.txt"),
             ],
             filter: Some(Filter::with_include(vec![
                 Pattern::new("**/more_nested/*.txt").unwrap(),
@@ -219,8 +221,8 @@ fn recursive_with_include_filters() {
     assert_eq!(
         results,
         [
-            "resources/tests/nested/more_nested/test.txt",
-            "resources/tests/test.txt",
+            r"resources\tests\nested\more_nested\test.txt",
+            r"resources\tests\test.txt",
         ]
     );
 }
@@ -238,10 +240,10 @@ fn recursive_with_exclude_filters() {
         "--exclude",
         "**/*.txt",
         "recursive",
-        "resources/tests/nested",
-        "resources/tests/ignore.json",
-        "resources/tests/test.json",
-        "resources/tests/test.txt",
+        "resources\\tests\\nested",
+        "resources\\tests\\ignore.json",
+        "resources\\tests\\test.json",
+        "resources\\tests\\test.txt",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
@@ -249,10 +251,10 @@ fn recursive_with_exclude_filters() {
         request.targets,
         Targets::RecursiveEntries {
             paths: vec![
-                PathBuf::from("resources/tests/nested/"),
-                PathBuf::from("resources/tests/ignore.json"),
-                PathBuf::from("resources/tests/test.json"),
-                PathBuf::from("resources/tests/test.txt"),
+                PathBuf::from(r"resources\tests\nested\"),
+                PathBuf::from(r"resources\tests\ignore.json"),
+                PathBuf::from(r"resources\tests\test.json"),
+                PathBuf::from(r"resources\tests\test.txt"),
             ],
             filter: Some(Filter::with_exclude(vec![
                 Pattern::new("**/ignore/**").unwrap(),
@@ -272,9 +274,9 @@ fn recursive_with_exclude_filters() {
     assert_eq!(
         results,
         [
-            "resources/tests/nested/more_nested/test.json",
-            "resources/tests/nested/test.json",
-            "resources/tests/test.json",
+            r"resources\tests\nested\more_nested\test.json",
+            r"resources\tests\nested\test.json",
+            r"resources\tests\test.json",
         ]
     );
 }
@@ -294,10 +296,10 @@ fn recursive_with_include_and_exclude_filters() {
         "--exclude",
         "**/ignore.json",
         "recursive",
-        "resources/tests/nested",
-        "resources/tests/ignore.json",
-        "resources/tests/test.json",
-        "resources/tests/test.txt",
+        "resources\\tests\\nested",
+        "resources\\tests\\ignore.json",
+        "resources\\tests\\test.json",
+        "resources\\tests\\test.txt",
     ];
     let request = args::make_request(cmd.into_iter().map(String::from));
     assert_eq!(request.query, "recursive");
@@ -305,10 +307,10 @@ fn recursive_with_include_and_exclude_filters() {
         request.targets,
         Targets::RecursiveEntries {
             paths: vec![
-                PathBuf::from("resources/tests/nested/"),
-                PathBuf::from("resources/tests/ignore.json"),
-                PathBuf::from("resources/tests/test.json"),
-                PathBuf::from("resources/tests/test.txt"),
+                PathBuf::from(r"resources\tests\nested\"),
+                PathBuf::from(r"resources\tests\ignore.json"),
+                PathBuf::from(r"resources\tests\test.json"),
+                PathBuf::from(r"resources\tests\test.txt"),
             ],
             filter: Some(Filter::new(
                 vec![
@@ -333,11 +335,11 @@ fn recursive_with_include_and_exclude_filters() {
     assert_eq!(
         results,
         [
-            "resources/tests/nested/more_nested/test.json",
-            "resources/tests/nested/more_nested/test.txt",
-            "resources/tests/nested/test.json",
-            "resources/tests/nested/test.txt",
-            "resources/tests/nested/test2.txt",
+            r"resources\tests\nested\more_nested\test.json",
+            r"resources\tests\nested\more_nested\test.txt",
+            r"resources\tests\nested\test.json",
+            r"resources\tests\nested\test.txt",
+            r"resources\tests\nested\test2.txt",
         ]
     );
 }
