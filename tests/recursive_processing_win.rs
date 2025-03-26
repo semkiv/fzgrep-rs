@@ -1,6 +1,6 @@
 #![cfg(target_os = "windows")]
 
-use fzgrep::{cli::args, Filter, Targets};
+use fzgrep::{Filter, Targets, cli::args};
 use glob::Pattern;
 use std::path::PathBuf;
 

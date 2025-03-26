@@ -1,4 +1,4 @@
-use crate::{matching_results::top_bracket::TopBracket, MatchingResult};
+use crate::{MatchingResult, matching_results::top_bracket::TopBracket};
 
 /// A trait that generalizes interface between possible results containers
 /// As it currently stands, only one method is required to be provided -

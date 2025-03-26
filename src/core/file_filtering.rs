@@ -46,7 +46,11 @@ impl Filter {
     ///
     pub fn test(&self, path: &Path) -> bool {
         let normalized = path.to_slash_lossy();
-        !self.exclude.iter().flatten().any(|p| p.matches(&normalized))
+        !self
+            .exclude
+            .iter()
+            .flatten()
+            .any(|p| p.matches(&normalized))
             && self.include.as_ref().is_none_or(|incl| {
                 incl.iter().any(|p| {
                     p.matches_with(

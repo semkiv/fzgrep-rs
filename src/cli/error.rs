@@ -129,10 +129,22 @@ impl Error for StyleSequenceParsingError {}
 impl Display for ColorSequenceParsingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::BadColorType(code) => write!(f, "Code '{code}' is not a valid non-standard color type. Either '2' or '5' is expected"),
-            Self::BadFixedColor => write!(f, "Code '5' (fixed 8-bit color) is expected to be followed by a color code, but there is none"),
-            Self::BadTrueColor => write!(f, "Code '2' (true 24-bit color) is expected to be followed by 3 color components, but there too few"),
-            Self::IncompleteSequence => write!(f, "Code '8' (non-standard color) is expected to be followed by a type code, but there is none"),
+            Self::BadColorType(code) => write!(
+                f,
+                "Code '{code}' is not a valid non-standard color type. Either '2' or '5' is expected"
+            ),
+            Self::BadFixedColor => write!(
+                f,
+                "Code '5' (fixed 8-bit color) is expected to be followed by a color code, but there is none"
+            ),
+            Self::BadTrueColor => write!(
+                f,
+                "Code '2' (true 24-bit color) is expected to be followed by 3 color components, but there too few"
+            ),
+            Self::IncompleteSequence => write!(
+                f,
+                "Code '8' (non-standard color) is expected to be followed by a type code, but there is none"
+            ),
             Self::NotACode(s, e) => write!(f, "'{s}' is not an 8-bit code: {e}"),
         }
     }
