@@ -638,8 +638,18 @@ fn query_from(matches: &ArgMatches) -> String {
 }
 
 fn targets_from(matches: &ArgMatches) -> Targets {
-    match matches.get_many::<String>(OptionId::TARGET) {
-        Some(targets) => {
+    matches.get_many::<String>(OptionId::TARGET).map_or_else(
+        || {
+            if matches.get_flag(OptionId::RECURSIVE) {
+                Targets::RecursiveEntries {
+                    paths: vec![env::current_dir().unwrap_or(PathBuf::from("."))],
+                    filter: filter_from(matches),
+                }
+            } else {
+                Targets::Stdin
+            }
+        },
+        |targets| {
             let targets = targets.map(PathBuf::from).collect::<Vec<_>>();
             if matches.get_flag(OptionId::RECURSIVE) {
                 Targets::RecursiveEntries {
@@ -649,18 +659,8 @@ fn targets_from(matches: &ArgMatches) -> Targets {
             } else {
                 Targets::Files(targets)
             }
-        }
-        None => {
-            if matches.get_flag(OptionId::RECURSIVE) {
-                Targets::RecursiveEntries {
-                    paths: vec![env::current_dir().unwrap_or(PathBuf::from("."))],
-                    filter: filter_from(matches),
-                }
-            } else {
-                Targets::Stdin
-            }
-        }
-    }
+        },
+    )
 }
 
 fn filter_from(matches: &ArgMatches) -> Option<Filter> {
@@ -740,22 +740,23 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
 }
 
 fn formatting_from(matches: &ArgMatches) -> Formatting {
-    if let Some(behavior) = matches.get_one::<String>(OptionId::COLOR) {
-        let behavior = behavior.as_str();
-        if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
-            let formatting_options = matches
-                .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
-                .copied()
-                .unwrap_or_default();
-            Formatting::On(formatting_options)
-        } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {
-            Formatting::Off
-        } else {
-            unreachable!();
-        }
-    } else {
-        Formatting::On(FormattingOptions::default())
-    }
+    matches.get_one::<String>(OptionId::COLOR).map_or_else(
+        || Formatting::On(FormattingOptions::default()),
+        |behavior| {
+            let behavior = behavior.as_str();
+            if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
+                let formatting_options = matches
+                    .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
+                    .copied()
+                    .unwrap_or_default();
+                Formatting::On(formatting_options)
+            } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {
+                Formatting::Off
+            } else {
+                unreachable!();
+            }
+        },
+    )
 }
 
 fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {

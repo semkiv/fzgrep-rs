@@ -1,3 +1,6 @@
+// It's tests, who cares?
+#![allow(clippy::cognitive_complexity)]
+
 use fzgrep::{MatchCollectionStrategy, cli::args};
 
 #[test]

@@ -1,3 +1,6 @@
+// It's tests, who cares?
+#![allow(clippy::too_many_lines)]
+
 use fzgrep::cli::args;
 use std::{
     io::{self, IsTerminal},

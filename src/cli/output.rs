@@ -208,6 +208,9 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod test {
+    // It's tests, who cares?
+    #![allow(clippy::too_many_lines)]
+
     use super::*;
     use crate::cli::formatting::FormattingOptions;
 

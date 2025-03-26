@@ -1,3 +1,7 @@
+// It's tests, who cares?
+#![allow(clippy::cognitive_complexity)]
+#![allow(clippy::too_many_lines)]
+
 use fzgrep::{Targets, cli::args};
 use std::path::PathBuf;
 
