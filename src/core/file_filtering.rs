@@ -5,7 +5,7 @@ use std::path::Path;
 /// Contains two sets of UNIX globs, one of include patterns and one of exclude ones.
 /// A [`std::path::Path`] can be tested against those to see whether it should be allowed.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Filter {
     include: Option<Vec<Pattern>>,
     exclude: Option<Vec<Pattern>>,

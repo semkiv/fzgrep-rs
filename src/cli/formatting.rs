@@ -2,7 +2,7 @@ use yansi::Style;
 
 /// Controls output formatting.
 ///
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Formatting {
     /// Request the output text to be formatted according to the supplied options.
     ///
@@ -15,7 +15,7 @@ pub enum Formatting {
 
 /// Holds formatting options
 ///
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FormattingOptions {
     /// Style of the selected match (the matching portion of the line)
     ///
@@ -48,8 +48,8 @@ impl Formatting {
     ///
     pub(crate) const fn options(&self) -> Option<FormattingOptions> {
         match self {
-            Formatting::On(options) => Some(*options),
-            Formatting::Off => None,
+            Self::On(options) => Some(*options),
+            Self::Off => None,
         }
     }
 }

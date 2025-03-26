@@ -642,7 +642,7 @@ fn targets_from(matches: &ArgMatches) -> Targets {
         || {
             if matches.get_flag(OptionId::RECURSIVE) {
                 Targets::RecursiveEntries {
-                    paths: vec![env::current_dir().unwrap_or(PathBuf::from("."))],
+                    paths: vec![env::current_dir().unwrap_or_else(|_| PathBuf::from("."))],
                     filter: filter_from(matches),
                 }
             } else {

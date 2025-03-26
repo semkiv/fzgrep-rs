@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 /// Matches collection behavior.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum MatchCollectionStrategy {
     /// All matches must be kept.
     ///
@@ -24,7 +24,7 @@ pub enum MatchCollectionStrategy {
 
 /// Behavior of the program with respect to the output
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum OutputBehavior {
     /// Output normally.
     ///
@@ -37,7 +37,7 @@ pub enum OutputBehavior {
 
 /// Possible categories of input targets.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Targets {
     /// A list of files to process.
     ///
@@ -58,7 +58,7 @@ pub enum Targets {
 
 /// Represents a run configuration.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Request {
     /// The query to match against.
     ///
@@ -89,7 +89,7 @@ pub struct Request {
 }
 
 /// Represents a set of options that control how the additional data about matches is collected.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct MatchOptions {
     /// Determines whether the numbers of matching lines are of interest and should be tracked during processing.
     ///
@@ -107,12 +107,12 @@ pub struct MatchOptions {
 
 /// A thin new-type wrapper that represents a number of lines of text.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Lines(pub usize);
 
 /// Represents the size of the context surrounding the matching line.
 ///
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ContextSize {
     /// (Maximum) number of lines preceding the matching line.
     ///
@@ -147,8 +147,8 @@ impl OutputBehavior {
     #[cfg(test)]
     pub(crate) const fn formatting(&self) -> Option<Formatting> {
         match self {
-            OutputBehavior::Normal(formatting) => Some(*formatting),
-            OutputBehavior::Quiet => None,
+            Self::Normal(formatting) => Some(*formatting),
+            Self::Quiet => None,
         }
     }
 }

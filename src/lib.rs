@@ -203,9 +203,10 @@ fn make_readers(
             debug!("Recursive mode; using the following input targets: {paths:?}");
             debug!(
                 "File filter{}",
-                filter
-                    .as_ref()
-                    .map_or(String::from(" not set"), |filter| format!(": {filter:?}"))
+                filter.as_ref().map_or_else(
+                    || String::from(" not set"),
+                    |filter| format!(": {filter:?}")
+                )
             );
             make_recursive_reader_iterator(paths.iter(), filter.as_ref())
         }

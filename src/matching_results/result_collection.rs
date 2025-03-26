@@ -91,6 +91,6 @@ mod tests {
             tb
         };
 
-        assert_eq!(*do_push(&mut tb, item.clone()), expected);
+        assert_eq!(*do_push(&mut tb, item), expected);
     }
 }

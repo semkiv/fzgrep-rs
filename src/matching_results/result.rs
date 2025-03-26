@@ -113,15 +113,13 @@ impl PartialMatchingResult {
                 line_number: self.line_number,
                 context,
             }),
-            ContextState::Incomplete(partial_context) => {
-                MatchingResultState::Incomplete(PartialMatchingResult {
-                    matching_line: self.matching_line,
-                    fuzzy_match: self.fuzzy_match,
-                    file_name: self.file_name,
-                    line_number: self.line_number,
-                    partial_context,
-                })
-            }
+            ContextState::Incomplete(partial_context) => MatchingResultState::Incomplete(Self {
+                matching_line: self.matching_line,
+                fuzzy_match: self.fuzzy_match,
+                file_name: self.file_name,
+                line_number: self.line_number,
+                partial_context,
+            }),
         }
     }
 
@@ -160,7 +158,7 @@ impl Ord for MatchingResult {
 }
 
 impl ContextState {
-    fn new(before: Vec<String>, after_size: usize) -> ContextState {
+    fn new(before: Vec<String>, after_size: usize) -> Self {
         let accumulator = SaturatingAccumulator::new(after_size);
         if accumulator.is_saturated() {
             Self::Complete(Context {
