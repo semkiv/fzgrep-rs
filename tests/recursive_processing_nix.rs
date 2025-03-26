@@ -1,6 +1,6 @@
 #![cfg(any(target_os = "linux", target_os = "macos"))]
 
-use fzgrep::{cli::args, Filter, Targets};
+use fzgrep::{Filter, Targets, cli::args};
 use glob::Pattern;
 use std::path::PathBuf;
 

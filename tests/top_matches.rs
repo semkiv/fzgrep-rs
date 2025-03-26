@@ -1,4 +1,4 @@
-use fzgrep::{cli::args, MatchCollectionStrategy};
+use fzgrep::{MatchCollectionStrategy, cli::args};
 
 #[test]
 fn top_five() {

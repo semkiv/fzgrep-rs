@@ -12,7 +12,7 @@ use crate::{
         },
     },
 };
-use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use glob::Pattern;
 use log::LevelFilter;
 use std::{
@@ -1608,7 +1608,9 @@ mod tests {
     #[test]
     fn make_request_color_overrides_all() {
         let args = [
-            "fzgrep", "--color", "always",
+            "fzgrep",
+            "--color",
+            "always",
             "--color-overrides",
             "ms=01;34;43:sl=02;37:cx=02;37:fn=04;38;5;51:ln=03;04;38;2;127;127;127:se=35;48;2;0;192;0",
             "query",

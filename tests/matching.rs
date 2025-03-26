@@ -1,4 +1,4 @@
-use fzgrep::{cli::args, Targets};
+use fzgrep::{Targets, cli::args};
 use std::path::PathBuf;
 
 #[test]
