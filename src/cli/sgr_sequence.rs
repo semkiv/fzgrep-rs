@@ -34,11 +34,11 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
             9 => style = style.strike(),
             30..=39 => {
                 style = style.fg(color_from(code, &mut itr)
-                    .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                    .map_err(StyleSequenceParsingError::BadColorSequence)?);
             }
             40..=49 => {
                 style = style.bg(color_from(code, &mut itr)
-                    .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                    .map_err(StyleSequenceParsingError::BadColorSequence)?);
             }
             10..=29 | 50..=107 => return Err(StyleSequenceParsingError::UnsupportedCode(code)),
             _ => return Err(StyleSequenceParsingError::BadCode(code)),

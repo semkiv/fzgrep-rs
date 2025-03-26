@@ -18,3 +18,18 @@ yansi = "1.0.1"
 
 [dev-dependencies]
 tempfile = "3.19.1"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cognitive_complexity = "warn"
+dbg_macro = "warn"
+debug_assert_with_mut_call = "deny"
+empty_structs_with_brackets = "warn"
+expect_used = "deny"
+float_cmp_const = "warn"
+missing_const_for_fn = "warn"
+mod_module_files = "warn"
+option_if_let_else = "warn"
+shadow_unrelated = "warn"
+suspicious_operation_groupings = "warn"
+unwrap_used = "deny"

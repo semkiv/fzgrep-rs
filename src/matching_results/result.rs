@@ -230,7 +230,7 @@ mod test {
                             after: vec![],
                         },
                     }
-                )
+                );
             }
             MatchingResultState::Incomplete(_) => unreachable!(),
         }
@@ -266,7 +266,7 @@ mod test {
                             after_accumulator: SaturatingAccumulator::new(2)
                         },
                     }
-                )
+                );
             }
         }
     }
@@ -353,7 +353,7 @@ mod test {
                     after: vec![String::from("line3")],
                 },
             }
-        )
+        );
     }
 
     #[test]

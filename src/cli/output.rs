@@ -18,7 +18,7 @@ use yansi::{Paint, Style};
 ///
 pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting) -> String {
     let mut ret = String::new();
-    for m in matches.iter() {
+    for m in matches {
         let MatchingResult {
             matching_line,
             fuzzy_match,
@@ -114,7 +114,7 @@ fn format_selected_line(
             result.push_str(&format_one_piece(
                 &preceding_non_match,
                 options.map(|o| o.selected_line),
-            ))
+            ));
         }
 
         let matching_part = str_itr
@@ -170,10 +170,7 @@ fn format_line_prefix(
 }
 
 fn format_one_piece(s: &str, style: Option<Style>) -> String {
-    match style {
-        Some(style) => s.paint(style).to_string(),
-        None => s.to_string(),
-    }
+    style.map_or_else(|| s.to_string(), |style| s.paint(style).to_string())
 }
 
 fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
@@ -183,7 +180,8 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
     let mut ret = Vec::new();
     let mut itr = indices.iter();
-    // we've already handled the case of an empty input, it is safe to unwrap
+    // We've already handled the case of an empty input, it is safe to unwrap
+    #[allow(clippy::unwrap_used)]
     let mut start = *itr.next().unwrap();
 
     for (i, x) in itr.enumerate() {
@@ -196,13 +194,14 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
             start = *x;
         }
     }
-    // again, the case of an empty input is already handled so it is safe to unwrap here too
     ret.push(Range {
         start,
+        // Again, the case of an empty input is already handled so it is safe to unwrap here too
+        #[allow(clippy::unwrap_used)]
         end: indices.last().unwrap() + 1,
     });
 
-    debug!("Match indices {:?} -> ranges {:?}", indices, ret);
+    debug!("Match indices {indices:?} -> ranges {ret:?}");
 
     ret
 }
@@ -257,7 +256,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -299,7 +298,7 @@ mod test {
             "test\n\
             test\n\
             test\n"
-        )
+        );
     }
 
     #[test]
@@ -353,7 +352,7 @@ mod test {
                 "te".yellow(),
                 't'.yellow(),
             )
-        )
+        );
     }
 
     #[test]
@@ -401,7 +400,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -443,7 +442,7 @@ mod test {
             "test\n\
             test\n\
             test\n"
-        )
+        );
     }
 
     #[test]
@@ -500,7 +499,7 @@ mod test {
                 's'.yellow(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -520,7 +519,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![],
                     after: vec![],
@@ -554,7 +553,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold()
             )
-        )
+        );
     }
 
     #[test]
@@ -574,7 +573,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![],
                     after: vec![],
@@ -596,7 +595,7 @@ mod test {
             "42:test\n\
             100500:test\n\
             13:test\n"
-        )
+        );
     }
 
     #[test]
@@ -616,7 +615,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![],
                     after: vec![],
@@ -656,7 +655,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold()
             )
-        )
+        );
     }
 
     #[test]
@@ -710,7 +709,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -752,7 +751,7 @@ mod test {
             "First:test\n\
             Second:test\n\
             Third:test\n"
-        )
+        );
     }
 
     #[test]
@@ -812,7 +811,7 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
@@ -962,7 +961,7 @@ mod test {
             test\n\
             third_after_one\n\
             third_after_two\n",
-        )
+        );
     }
 
     #[test]
@@ -1058,7 +1057,7 @@ mod test {
                 "third_after_one".rgb(127, 127, 127).dim(),
                 "third_after_two".rgb(127, 127, 127).dim(),
             )
-        )
+        );
     }
 
     #[test]
@@ -1084,7 +1083,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![
                         String::from("second_before_one"),
@@ -1211,7 +1210,7 @@ mod test {
                 "15".green(),
                 ':'.cyan(),
             )
-        )
+        );
     }
 
     #[test]
@@ -1237,7 +1236,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![
                         String::from("second_before_one"),
@@ -1283,7 +1282,7 @@ mod test {
             Third:13:test\n\
             Third:14:third_after_one\n\
             Third:15:third_after_two\n"
-        )
+        );
     }
 
     #[test]
@@ -1309,7 +1308,7 @@ mod test {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                line_number: Some(100_500),
                 context: Context {
                     before: vec![
                         String::from("second_before_one"),
@@ -1461,7 +1460,7 @@ mod test {
                 ':'.fixed(50),
                 "third_after_two".rgb(127, 127, 127).dim(),
             )
-        )
+        );
     }
 
     #[test]
@@ -1495,6 +1494,6 @@ mod test {
                 })
             ),
             ""
-        )
+        );
     }
 }

@@ -35,7 +35,13 @@ impl<T: Ord> TopBracket<T> {
     /// Returns `true` if the item was actually inserted, `false` otherwise.
     ///
     pub(crate) fn push(&mut self, item: T) -> bool {
+        if self.capacity == 0 {
+            return false;
+        }
+
         if self.data.len() == self.capacity {
+            // The capacity is non-zero, so the deque is non-empty and there must be the last element
+            #[allow(clippy::unwrap_used)]
             if item <= *self.data.last().unwrap() {
                 return false;
             }

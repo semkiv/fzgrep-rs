@@ -50,7 +50,7 @@ pub fn run(
     request: &Request,
     output_dest: &mut impl Write,
 ) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
-    debug!("Running with the following configuration: {:?}", request);
+    debug!("Running with the following configuration: {request:?}");
 
     let results = match request.strategy {
         MatchCollectionStrategy::CollectAll => {
@@ -146,7 +146,7 @@ fn merge_target_matches(
             match partial_result.feed(line.clone()) {
                 MatchingResultState::Complete(matching_result) => dest.push(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
-                    pending_results.push_back(partial_matching_result)
+                    pending_results.push_back(partial_matching_result);
                 }
             }
         }
@@ -168,7 +168,7 @@ fn merge_target_matches(
             ) {
                 MatchingResultState::Complete(matching_result) => dest.push(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
-                    pending_results.push_back(partial_matching_result)
+                    pending_results.push_back(partial_matching_result);
                 }
             }
         }
@@ -190,10 +190,7 @@ fn make_readers(
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + '_> {
     match targets {
         Targets::Files(files) => {
-            debug!(
-                "*Non*-recursive mode; using the following input files: {:?}",
-                files
-            );
+            debug!("*Non*-recursive mode; using the following input files: {files:?}");
             Box::new(
                 files
                     .iter()
@@ -201,17 +198,12 @@ fn make_readers(
             )
         }
         Targets::RecursiveEntries { paths, filter } => {
-            debug!(
-                "Recursive mode; using the following input targets: {:?}",
-                paths
-            );
+            debug!("Recursive mode; using the following input targets: {paths:?}");
             debug!(
                 "File filter{}",
-                if let Some(filter) = filter {
-                    format!(": {:?}", filter)
-                } else {
-                    String::from(" not set")
-                }
+                filter
+                    .as_ref()
+                    .map_or(String::from(" not set"), |filter| format!(": {filter:?}"))
             );
             make_recursive_reader_iterator(paths.iter(), filter)
         }

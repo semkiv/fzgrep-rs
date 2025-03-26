@@ -14,7 +14,8 @@ pub struct Filter {
 impl Filter {
     /// Constructs a [`Filter`] with include patterns from `include` and exclude patterns from `exclude`.
     ///
-    pub fn new(include: Vec<Pattern>, exclude: Vec<Pattern>) -> Self {
+    #[must_use]
+    pub const fn new(include: Vec<Pattern>, exclude: Vec<Pattern>) -> Self {
         Self {
             include: Some(include),
             exclude: Some(exclude),
@@ -23,7 +24,8 @@ impl Filter {
 
     /// Constructs a [`Filter`] with include patterns from `include` and empty exclude patterns.
     ///
-    pub fn with_include(include: Vec<Pattern>) -> Self {
+    #[must_use]
+    pub const fn with_include(include: Vec<Pattern>) -> Self {
         Self {
             include: Some(include),
             exclude: None,
@@ -32,7 +34,8 @@ impl Filter {
 
     /// Constructs a [`Filter`] with exclude patterns from `exclude` and empty include patterns.
     ///
-    pub fn with_exclude(exclude: Vec<Pattern>) -> Self {
+    #[must_use]
+    pub const fn with_exclude(exclude: Vec<Pattern>) -> Self {
         Self {
             include: None,
             exclude: Some(exclude),
@@ -44,6 +47,7 @@ impl Filter {
     /// and matches at least one glob of the include ones or the list of include globs is empty.
     /// Otherwise returns `false`.
     ///
+    #[must_use]
     pub fn test(&self, path: &Path) -> bool {
         let normalized = path.to_slash_lossy();
         !self
@@ -86,7 +90,7 @@ mod tests {
                 include: Some(incl),
                 exclude: Some(excl),
             }
-        )
+        );
     }
 
     #[test]
@@ -102,7 +106,7 @@ mod tests {
                 include: Some(incl),
                 exclude: None,
             }
-        )
+        );
     }
 
     #[test]
@@ -118,7 +122,7 @@ mod tests {
                 include: None,
                 exclude: Some(excl),
             }
-        )
+        );
     }
 
     #[test]

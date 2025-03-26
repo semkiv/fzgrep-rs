@@ -408,6 +408,8 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     }
 }
 
+// Cannot do much about this builder
+#[allow(clippy::too_many_lines)]
 fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
@@ -588,27 +590,27 @@ fn color_overrides_parser(
             match cap {
                 "ms" => {
                     options.selected_match = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "ln" => {
                     options.line_number = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "fn" => {
                     options.file_name = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "se" => {
                     options.separator = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "sl" => {
                     options.selected_line = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "cx" => {
                     options.context = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
                 }
                 "bn" | "mt" => {
                     return Err(ColorOverrideParsingError::UnsupportedCapability(
@@ -628,6 +630,7 @@ fn color_overrides_parser(
 }
 
 fn query_from(matches: &ArgMatches) -> String {
+    #[allow(clippy::expect_used)]
     let query = matches
         .get_one::<String>(OptionId::PATTERN)
         .expect("QUERY argument is required, it cannot be empty");
@@ -675,10 +678,11 @@ fn filter_from(matches: &ArgMatches) -> Option<Filter> {
 }
 
 fn strategy_from(matches: &ArgMatches) -> MatchCollectionStrategy {
-    match matches.get_one::<usize>(OptionId::TOP) {
-        Some(cap) => MatchCollectionStrategy::CollectTop(*cap),
-        None => MatchCollectionStrategy::CollectAll,
-    }
+    matches
+        .get_one::<usize>(OptionId::TOP)
+        .map_or(MatchCollectionStrategy::CollectAll, |cap| {
+            MatchCollectionStrategy::CollectTop(*cap)
+        })
 }
 
 fn match_options_from(matches: &ArgMatches) -> MatchOptions {
@@ -710,27 +714,29 @@ fn track_file_name_from(matches: &ArgMatches) -> bool {
 }
 
 fn context_size_from(matches: &ArgMatches) -> ContextSize {
-    if let Some(num) = matches.get_one::<usize>(OptionId::CONTEXT).copied() {
-        ContextSize {
-            before: Lines(num),
-            after: Lines(num),
-        }
-    } else {
-        ContextSize {
-            before: Lines(
-                matches
-                    .get_one::<usize>(OptionId::BEFORE_CONTEXT)
-                    .copied()
-                    .unwrap_or(0),
-            ),
-            after: Lines(
-                matches
-                    .get_one::<usize>(OptionId::AFTER_CONTEXT)
-                    .copied()
-                    .unwrap_or(0),
-            ),
-        }
-    }
+    matches
+        .get_one::<usize>(OptionId::CONTEXT)
+        .copied()
+        .map_or_else(
+            || ContextSize {
+                before: Lines(
+                    matches
+                        .get_one::<usize>(OptionId::BEFORE_CONTEXT)
+                        .copied()
+                        .unwrap_or(0),
+                ),
+                after: Lines(
+                    matches
+                        .get_one::<usize>(OptionId::AFTER_CONTEXT)
+                        .copied()
+                        .unwrap_or(0),
+                ),
+            },
+            |num| ContextSize {
+                before: Lines(num),
+                after: Lines(num),
+            },
+        )
 }
 
 fn formatting_from(matches: &ArgMatches) -> Formatting {
@@ -739,7 +745,7 @@ fn formatting_from(matches: &ArgMatches) -> Formatting {
         if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
             let formatting_options = matches
                 .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
-                .cloned()
+                .copied()
                 .unwrap_or_default();
             Formatting::On(formatting_options)
         } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {

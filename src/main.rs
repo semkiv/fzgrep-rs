@@ -11,10 +11,10 @@ fn main() -> process::ExitCode {
 
     match fzgrep::run(&request, &mut io::stdout()) {
         Ok(matches) => {
-            if !matches.is_empty() {
-                process::ExitCode::from(fzgrep::ExitCode::SUCCESS)
-            } else {
+            if matches.is_empty() {
                 process::ExitCode::from(fzgrep::ExitCode::NO_MATCHES)
+            } else {
+                process::ExitCode::from(fzgrep::ExitCode::SUCCESS)
             }
         }
         Err(err) => {
