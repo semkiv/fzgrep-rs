@@ -57,6 +57,9 @@ impl<T: Ord> TopBracket<T> {
 
 #[cfg(test)]
 mod tests {
+    // It's tests, who cares?
+    #![allow(clippy::shadow_unrelated)]
+
     use super::*;
 
     #[test]

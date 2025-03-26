@@ -30,13 +30,15 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
                     after: context_after,
                 },
         } = m;
+        let file_name = file_name.as_ref();
+        let line_number = line_number.as_ref().copied();
 
         for (index, context_line) in context_before.iter().enumerate() {
-            let line_number = line_number.and_then(|l| Some(l - matches.len() + index + 1));
+            let line_number = line_number.map(|l| l - matches.len() + index + 1);
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number,
+                line_number,
                 formatting,
             ));
             ret.push('\n');
@@ -52,11 +54,11 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
         ret.push('\n');
 
         for (index, context_line) in context_after.iter().enumerate() {
-            let line_number = line_number.and_then(|l| Some(l + index + 1));
+            let line_number = line_number.map(|l| l + index + 1);
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
-                &line_number,
+                line_number,
                 formatting,
             ));
             ret.push('\n');
@@ -68,8 +70,8 @@ pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting
 
 fn format_context_line(
     content: &str,
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
+    file_name: Option<&String>,
+    line_number: Option<usize>,
     formatting: &Formatting,
 ) -> String {
     let mut result = String::new();
@@ -89,8 +91,8 @@ fn format_context_line(
 fn format_selected_line(
     content: &str,
     fuzzy_match: &FuzzyMatch,
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
+    file_name: Option<&String>,
+    line_number: Option<usize>,
     formatting: &Formatting,
 ) -> String {
     let mut result = String::new();
@@ -144,8 +146,8 @@ fn format_selected_line(
 }
 
 fn format_line_prefix(
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
+    file_name: Option<&String>,
+    line_number: Option<usize>,
     formatting: &Formatting,
 ) -> Option<String> {
     let mut result = None;

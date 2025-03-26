@@ -192,6 +192,8 @@ fn make_readers(
         Targets::Files(files) => {
             debug!("*Non*-recursive mode; using the following input files: {files:?}");
             Box::new(
+                // `std::convert::Into::into` is arguably worse than `|e| e.into()`
+                #[allow(clippy::redundant_closure_for_method_calls)]
                 files
                     .iter()
                     .map(|p| Reader::file_reader(p).map_err(|e| e.into())),
@@ -205,7 +207,7 @@ fn make_readers(
                     .as_ref()
                     .map_or(String::from(" not set"), |filter| format!(": {filter:?}"))
             );
-            make_recursive_reader_iterator(paths.iter(), filter)
+            make_recursive_reader_iterator(paths.iter(), filter.as_ref())
         }
         Targets::Stdin => {
             debug!("*Non*-recursive mode; using STDIN.");
@@ -216,22 +218,24 @@ fn make_readers(
 
 fn make_recursive_reader_iterator<'item>(
     targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
-    filter: &'item Option<Filter>,
+    filter: Option<&'item Filter>,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
     Box::new(
         targets
             .flat_map(|target| WalkDir::new(target).sort_by_file_name())
-            .filter_map(|item| {
+            .filter_map(move |item| {
                 item.map_or_else(
                     |e| Some(Err(e.into())),
                     |d| {
-                        if filter.as_ref().is_some_and(|f| !f.test(d.path())) {
+                        if filter.is_some_and(|f| !f.test(d.path())) {
                             return None;
                         }
 
                         d.metadata().map_or_else(
                             |e| Some(Err(e.into())),
                             |m| {
+                                // `std::convert::Into::into` is arguably worse than `|e| e.into()`
+                                #[allow(clippy::redundant_closure_for_method_calls)]
                                 m.is_file()
                                     .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
                             },

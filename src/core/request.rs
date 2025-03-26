@@ -155,6 +155,9 @@ impl OutputBehavior {
 
 #[cfg(test)]
 mod test {
+    // It's tests, who cares?
+    #![allow(clippy::shadow_unrelated)]
+
     use super::*;
     use crate::cli::formatting::FormattingOptions;
 
