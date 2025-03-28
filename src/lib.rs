@@ -2,35 +2,25 @@ pub mod cli;
 mod core;
 mod matching_results;
 
-pub use crate::{
-    core::{
-        exit_code::ExitCode,
-        request::{
-            ContextSize, Filter, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior,
-            Request, Targets,
-        },
-    },
-    matching_results::result::MatchingResult,
+pub use crate::core::exit_code::ExitCode;
+pub use crate::core::request::{
+    ContextSize, Filter, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
 };
+pub use crate::matching_results::result::MatchingResult;
 
-use crate::{
-    cli::output,
-    core::reader::Reader,
-    matching_results::{
-        context_accumulators::SlidingAccumulator,
-        result::{MatchingResultState, PartialMatchingResult},
-        result_collection::ResultCollection,
-        top_bracket::TopBracket,
-    },
-};
+use crate::cli::output;
+use crate::core::reader::Reader;
+use crate::matching_results::context_accumulators::SlidingAccumulator;
+use crate::matching_results::result::{MatchingResultState, PartialMatchingResult};
+use crate::matching_results::result_collection::ResultCollection;
+use crate::matching_results::top_bracket::TopBracket;
+
 use log::debug;
-use std::{
-    collections::VecDeque,
-    error,
-    io::{self, BufRead, Write},
-    iter, mem,
-    path::Path,
-};
+use std::collections::VecDeque;
+use std::error;
+use std::io::{self, BufRead as _, Write};
+use std::path::Path;
+use std::{iter, mem};
 use walkdir::WalkDir;
 
 /// This function handles all the application logic.
@@ -133,8 +123,8 @@ fn merge_target_matches(
 ) -> Result<(), io::Error> {
     let display_name = target.display_name().clone();
     let ContextSize {
-        before: Lines(lines_before),
-        after: Lines(lines_after),
+        lines_before,
+        lines_after,
     } = options.context_size;
     let mut context_before = SlidingAccumulator::new(lines_before);
     let mut pending_results: VecDeque<PartialMatchingResult> = VecDeque::new();
@@ -144,7 +134,7 @@ fn merge_target_matches(
         // Feed the current line to the results that are waiting for their post-contexts to fill up (if there are any).
         for partial_result in mem::take(&mut pending_results) {
             match partial_result.feed(line.clone()) {
-                MatchingResultState::Complete(matching_result) => dest.push(matching_result),
+                MatchingResultState::Complete(matching_result) => dest.add(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
                     pending_results.push_back(partial_matching_result);
                 }
@@ -166,7 +156,7 @@ fn merge_target_matches(
                 context_before.snapshot(),
                 lines_after,
             ) {
-                MatchingResultState::Complete(matching_result) => dest.push(matching_result),
+                MatchingResultState::Complete(matching_result) => dest.add(matching_result),
                 MatchingResultState::Incomplete(partial_matching_result) => {
                     pending_results.push_back(partial_matching_result);
                 }
@@ -179,7 +169,7 @@ fn merge_target_matches(
     // It is possible that the end of the file was reached when some matches were still waiting
     // for their post-context to fill up. In such case we just add what we have to `result`.
     for partial_result in pending_results {
-        dest.push(partial_result.complete());
+        dest.add(partial_result.complete());
     }
 
     Ok(())
@@ -192,8 +182,10 @@ fn make_readers(
         Targets::Files(files) => {
             debug!("*Non*-recursive mode; using the following input files: {files:?}");
             Box::new(
-                // `std::convert::Into::into` is arguably worse than `|e| e.into()`
-                #[allow(clippy::redundant_closure_for_method_calls)]
+                #[expect(
+                    clippy::redundant_closure_for_method_calls,
+                    reason = "`std::convert::Into::into` is arguably worse than `|e| e.into()`"
+                )]
                 files
                     .iter()
                     .map(|p| Reader::file_reader(p).map_err(|e| e.into())),
@@ -235,8 +227,7 @@ fn make_recursive_reader_iterator<'item>(
                         d.metadata().map_or_else(
                             |e| Some(Err(e.into())),
                             |m| {
-                                // `std::convert::Into::into` is arguably worse than `|e| e.into()`
-                                #[allow(clippy::redundant_closure_for_method_calls)]
+                                #[expect(clippy::redundant_closure_for_method_calls, reason = "`std::convert::Into::into` is arguably worse than `|e| e.into()`")]
                                 m.is_file()
                                     .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
                             },

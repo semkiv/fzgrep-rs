@@ -1,5 +1,5 @@
-// It's tests, who cares?
-#![allow(clippy::cognitive_complexity)]
+#![expect(clippy::cognitive_complexity, reason = "It's tests, who cares?")]
+#![expect(clippy::indexing_slicing, reason = "It's tests, who cares?")]
 
 use fzgrep::{MatchCollectionStrategy, cli::args};
 

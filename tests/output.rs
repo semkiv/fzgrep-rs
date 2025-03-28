@@ -1,12 +1,12 @@
-// It's tests, who cares?
-#![allow(clippy::too_many_lines)]
+#![expect(clippy::non_ascii_literal, reason = "It's tests, who cares?")]
+#![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
 
 use fzgrep::cli::args;
 use std::{
-    io::{self, IsTerminal},
+    io::{self, IsTerminal as _},
     str,
 };
-use yansi::{Condition, Paint};
+use yansi::{Condition, Paint as _};
 
 #[test]
 fn default_single_file() {

@@ -40,8 +40,10 @@ impl<T: Ord> TopBracket<T> {
         }
 
         if self.data.len() == self.capacity {
-            // The capacity is non-zero, so the deque is non-empty and there must be the last element
-            #[allow(clippy::unwrap_used)]
+            #[expect(
+                clippy::unwrap_used,
+                reason = "The capacity is non-zero, so the deque is non-empty and there must at least one element"
+            )]
             if item <= *self.data.last().unwrap() {
                 return false;
             }
@@ -57,8 +59,8 @@ impl<T: Ord> TopBracket<T> {
 
 #[cfg(test)]
 mod tests {
-    // It's tests, who cares?
-    #![allow(clippy::shadow_unrelated)]
+    #![expect(clippy::default_numeric_fallback, reason = "It's tests, who cares?")]
+    #![expect(clippy::shadow_unrelated, reason = "It's tests, who cares?")]
 
     use super::*;
 

@@ -5,7 +5,7 @@ use crate::{
 use log::debug;
 use std::ops::Range;
 use vscode_fuzzy_score_rs::FuzzyMatch;
-use yansi::{Paint, Style};
+use yansi::{Paint as _, Style};
 
 /// Formats supplied `matches` into a rich text string.
 ///
@@ -172,7 +172,7 @@ fn format_line_prefix(
 }
 
 fn format_one_piece(s: &str, style: Option<Style>) -> String {
-    style.map_or_else(|| s.to_string(), |style| s.paint(style).to_string())
+    style.map_or_else(|| s.to_owned(), |style| s.paint(style).to_string())
 }
 
 fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
@@ -182,11 +182,14 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
     let mut ret = Vec::new();
     let mut itr = indices.iter();
-    // We've already handled the case of an empty input, it is safe to unwrap
-    #[allow(clippy::unwrap_used)]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "The case of an empty input is already handled"
+    )]
     let mut start = *itr.next().unwrap();
 
     for (i, x) in itr.enumerate() {
+        #[expect(clippy::indexing_slicing, reason = "The index comes from `enumerate`, so it cannot be out of bounds")]
         if x - indices[i] != 1 {
             let end = indices[i];
             ret.push(Range {
@@ -198,8 +201,10 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     }
     ret.push(Range {
         start,
-        // Again, the case of an empty input is already handled so it is safe to unwrap here too
-        #[allow(clippy::unwrap_used)]
+        #[expect(
+            clippy::unwrap_used,
+            reason = "The case of an empty input is already handled"
+        )]
         end: indices.last().unwrap() + 1,
     });
 
@@ -210,8 +215,7 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod test {
-    // It's tests, who cares?
-    #![allow(clippy::too_many_lines)]
+    #![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
 
     use super::*;
     use crate::cli::formatting::FormattingOptions;

@@ -1,5 +1,5 @@
 use glob::{MatchOptions, Pattern};
-use path_slash::PathExt;
+use path_slash::PathExt as _;
 use std::path::Path;
 
 /// Contains two sets of UNIX globs, one of include patterns and one of exclude ones.

@@ -1,4 +1,5 @@
-use std::{error::Error, fmt::Display, num::ParseIntError};
+use std::{error::Error, num::ParseIntError};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 /// Errors that can occur when parsing `grep` formatting sequences.
 /// (see [`grep` documentation](https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT) for more information)
@@ -98,7 +99,7 @@ pub(crate) enum ColorSequenceParsingError {
 }
 
 impl Display for ColorOverrideParsingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::BadCapability(s) => write!(f, "Invalid capability '{s}'"),
             Self::BadStyleSequence(e) => write!(f, "Invalid style sequence: {e}"),
@@ -114,7 +115,7 @@ impl Display for ColorOverrideParsingError {
 impl Error for ColorOverrideParsingError {}
 
 impl Display for StyleSequenceParsingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::BadCode(code) => write!(f, "Code '{code}' is invalid"),
             Self::BadColorSequence(e) => write!(f, "Invalid color sequence: {e}"),
@@ -127,7 +128,7 @@ impl Display for StyleSequenceParsingError {
 impl Error for StyleSequenceParsingError {}
 
 impl Display for ColorSequenceParsingError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::BadColorType(code) => write!(
                 f,

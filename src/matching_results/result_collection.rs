@@ -5,17 +5,17 @@ use crate::{MatchingResult, matching_results::top_bracket::TopBracket};
 /// the one that adds an item into the container.
 ///
 pub(crate) trait ResultCollection {
-    fn push(&mut self, result: MatchingResult);
+    fn add(&mut self, result: MatchingResult);
 }
 
 impl ResultCollection for Vec<MatchingResult> {
-    fn push(&mut self, result: MatchingResult) {
+    fn add(&mut self, result: MatchingResult) {
         self.push(result);
     }
 }
 
 impl ResultCollection for TopBracket<MatchingResult> {
-    fn push(&mut self, result: MatchingResult) {
+    fn add(&mut self, result: MatchingResult) {
         self.push(result);
     }
 }
@@ -25,8 +25,8 @@ mod tests {
     use super::*;
     use crate::matching_results::result::Context;
 
-    fn do_push<T: ResultCollection>(tested: &mut T, item: MatchingResult) -> &T {
-        tested.push(item);
+    fn do_add<T: ResultCollection>(tested: &mut T, item: MatchingResult) -> &T {
+        tested.add(item);
         tested
     }
 
@@ -58,7 +58,7 @@ mod tests {
             v
         };
 
-        assert_eq!(*do_push(&mut v, item), expected);
+        assert_eq!(*do_add(&mut v, item), expected);
     }
 
     #[test]
@@ -91,6 +91,6 @@ mod tests {
             tb
         };
 
-        assert_eq!(*do_push(&mut tb, item), expected);
+        assert_eq!(*do_add(&mut tb, item), expected);
     }
 }

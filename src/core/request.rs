@@ -105,21 +105,16 @@ pub struct MatchOptions {
     pub context_size: ContextSize,
 }
 
-/// A thin new-type wrapper that represents a number of lines of text.
-///
-#[derive(Debug, Eq, PartialEq)]
-pub struct Lines(pub usize);
-
 /// Represents the size of the context surrounding the matching line.
 ///
 #[derive(Debug, Eq, PartialEq)]
 pub struct ContextSize {
     /// (Maximum) number of lines preceding the matching line.
     ///
-    pub before: Lines,
+    pub lines_before: usize,
 
     /// (Maximum) number of lines following the matching line.
-    pub after: Lines,
+    pub lines_after: usize,
 }
 
 impl OutputBehavior {
@@ -155,8 +150,7 @@ impl OutputBehavior {
 
 #[cfg(test)]
 mod test {
-    // It's tests, who cares?
-    #![allow(clippy::shadow_unrelated)]
+    #![expect(clippy::shadow_unrelated, reason = "It's tests, who cares?")]
 
     use super::*;
     use crate::cli::formatting::FormattingOptions;
