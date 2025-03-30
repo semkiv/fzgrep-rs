@@ -6,7 +6,7 @@ use yansi::Style;
 pub enum Formatting {
     /// Request the output text to be formatted according to the supplied options.
     ///
-    On(FormattingOptions),
+    On(StyleSet),
 
     /// Request formatting to be disabled and the output to be just plain text.
     ///
@@ -16,7 +16,7 @@ pub enum Formatting {
 /// Holds formatting options
 ///
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct FormattingOptions {
+pub struct StyleSet {
     /// Style of the selected match (the matching portion of the line)
     ///
     pub selected_match: Style,
@@ -46,7 +46,7 @@ impl Formatting {
     /// Converts [`Formatting`] to [`Option<FormattingOptions>`].
     /// If `self` is [`Formatting::On`] returns [`Some`] with the inner options, otherwise [`None`].
     ///
-    pub(crate) const fn options(&self) -> Option<FormattingOptions> {
+    pub(crate) const fn options(&self) -> Option<StyleSet> {
         match self {
             Self::On(options) => Some(*options),
             Self::Off => None,
@@ -54,17 +54,17 @@ impl Formatting {
     }
 }
 
-impl Default for FormattingOptions {
+impl Default for StyleSet {
     /// Default formatting options that correspond to `grep`'s defaults.
     /// More info, see [`grep` source code](https://git.savannah.gnu.org/cgit/grep.git/tree/src/grep.c?id=102be2bfa571355ff44db39348438a0def1ab382#n299).
     ///
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::cli::formatting::FormattingOptions;
+    /// use fzgrep::cli::formatting::StyleSet;
     /// use yansi::Style;
     ///
-    /// let default = FormattingOptions::default();
+    /// let default = StyleSet::default();
     /// assert_eq!(default.selected_match, Style::new().red().bold());
     /// ```
     ///
@@ -86,7 +86,7 @@ mod test {
 
     #[test]
     fn formatting_options_default() {
-        let default = FormattingOptions::default();
+        let default = StyleSet::default();
         assert_eq!(default.selected_match, Style::new().red().bold());
         assert_eq!(default.line_number, Style::new().green());
         assert_eq!(default.file_name, Style::new().magenta());
@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn formatting_on_options() {
-        let formatting = Formatting::On(FormattingOptions {
+        let formatting = Formatting::On(StyleSet {
             selected_match: Style::new().blue().bold(),
             ..Default::default()
         });

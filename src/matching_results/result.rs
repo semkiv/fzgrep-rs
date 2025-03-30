@@ -5,7 +5,7 @@ use vscode_fuzzy_score_rs::FuzzyMatch;
 /// Stores a full result of matching.
 ///
 #[derive(Clone, Debug)]
-pub struct MatchingResult {
+pub struct MatchProperties {
     /// The line that contains the match.
     ///
     pub matching_line: String,
@@ -43,7 +43,7 @@ pub struct Context {
 /// Represents possible states of a matching result.
 ///
 pub(crate) enum MatchingResultState {
-    Complete(MatchingResult),
+    Complete(MatchProperties),
     Incomplete(PartialMatchingResult),
 }
 
@@ -82,7 +82,7 @@ impl MatchingResultState {
         after_context_size: usize,
     ) -> Self {
         match ContextState::new(before_context, after_context_size) {
-            ContextState::Complete(context) => Self::Complete(MatchingResult {
+            ContextState::Complete(context) => Self::Complete(MatchProperties {
                 matching_line,
                 fuzzy_match,
                 file_name,
@@ -106,7 +106,7 @@ impl PartialMatchingResult {
     ///
     pub(crate) fn feed(self, line: String) -> MatchingResultState {
         match self.partial_context.feed(line) {
-            ContextState::Complete(context) => MatchingResultState::Complete(MatchingResult {
+            ContextState::Complete(context) => MatchingResultState::Complete(MatchProperties {
                 matching_line: self.matching_line,
                 fuzzy_match: self.fuzzy_match,
                 file_name: self.file_name,
@@ -126,8 +126,8 @@ impl PartialMatchingResult {
     /// Forcibly turns a partial result into a complete one.
     /// This is useful when accumulator reaches the end of file and cannot possibly accumulate more lines.
     ///
-    pub(crate) fn complete(self) -> MatchingResult {
-        MatchingResult {
+    pub(crate) fn complete(self) -> MatchProperties {
+        MatchProperties {
             matching_line: self.matching_line,
             fuzzy_match: self.fuzzy_match,
             file_name: self.file_name,
@@ -137,21 +137,21 @@ impl PartialMatchingResult {
     }
 }
 
-impl PartialEq for MatchingResult {
+impl PartialEq for MatchProperties {
     fn eq(&self, other: &Self) -> bool {
         self.fuzzy_match.eq(&other.fuzzy_match)
     }
 }
 
-impl PartialOrd for MatchingResult {
+impl PartialOrd for MatchProperties {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Eq for MatchingResult {}
+impl Eq for MatchProperties {}
 
-impl Ord for MatchingResult {
+impl Ord for MatchProperties {
     fn cmp(&self, other: &Self) -> Ordering {
         self.fuzzy_match.cmp(&other.fuzzy_match)
     }
@@ -197,6 +197,8 @@ impl PartialContext {
 
 #[cfg(test)]
 mod test {
+    #![expect(clippy::unreachable, reason = "It's tests, who cares?")]
+
     use super::*;
 
     #[test]
@@ -218,7 +220,7 @@ mod test {
             MatchingResultState::Complete(result) => {
                 assert_eq!(
                     result,
-                    MatchingResult {
+                    MatchProperties {
                         matching_line: String::from("test"),
                         fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
                         file_name: None,
@@ -291,7 +293,7 @@ mod test {
                             MatchingResultState::Complete(result) => {
                                 assert_eq!(
                                     result,
-                                    MatchingResult {
+                                    MatchProperties {
                                         matching_line: String::from("test"),
                                         fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match(
                                             "test", "test"
@@ -341,7 +343,7 @@ mod test {
         let result = partial_result.complete();
         assert_eq!(
             result,
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
                 file_name: None,
@@ -356,7 +358,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_ne() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             file_name: None,
@@ -366,7 +368,7 @@ mod test {
                 after: vec![String::from("after")],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tes", "test").unwrap(),
             file_name: None,
@@ -381,7 +383,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_eq() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test1"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
             file_name: Some(String::from("test.txt")),
@@ -391,7 +393,7 @@ mod test {
                 after: vec![String::from("after1")],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test2"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
             file_name: None,
@@ -406,7 +408,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_lt() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test1"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test1").unwrap(),
             file_name: Some(String::from("test.txt")),
@@ -416,7 +418,7 @@ mod test {
                 after: vec![String::from("after1")],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test2"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
             file_name: None,
@@ -431,7 +433,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_gt() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test1"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
             file_name: Some(String::from("test1.txt")),
@@ -441,7 +443,7 @@ mod test {
                 after: vec![String::from("after1")],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test2"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test2").unwrap(),
             file_name: Some(String::from("test2.txt")),
@@ -456,7 +458,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_le() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test1"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
             file_name: None,
@@ -466,7 +468,7 @@ mod test {
                 after: vec![],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test2"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
             file_name: None,
@@ -481,7 +483,7 @@ mod test {
 
     #[test]
     fn matching_result_comparisons_ge() {
-        let m1 = MatchingResult {
+        let m1 = MatchProperties {
             matching_line: String::from("test1"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test1", "test1").unwrap(),
             file_name: None,
@@ -491,7 +493,7 @@ mod test {
                 after: vec![],
             },
         };
-        let m2 = MatchingResult {
+        let m2 = MatchProperties {
             matching_line: String::from("test2"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test2", "test2").unwrap(),
             file_name: None,

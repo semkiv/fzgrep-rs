@@ -1,21 +1,22 @@
-use crate::{MatchingResult, matching_results::top_bracket::TopBracket};
+use crate::MatchProperties;
+use crate::matching_results::top_bracket::TopBracket;
 
 /// A trait that generalizes interface between possible results containers
 /// As it currently stands, only one method is required to be provided -
 /// the one that adds an item into the container.
 ///
 pub(crate) trait ResultCollection {
-    fn add(&mut self, result: MatchingResult);
+    fn add(&mut self, result: MatchProperties);
 }
 
-impl ResultCollection for Vec<MatchingResult> {
-    fn add(&mut self, result: MatchingResult) {
+impl ResultCollection for Vec<MatchProperties> {
+    fn add(&mut self, result: MatchProperties) {
         self.push(result);
     }
 }
 
-impl ResultCollection for TopBracket<MatchingResult> {
-    fn add(&mut self, result: MatchingResult) {
+impl ResultCollection for TopBracket<MatchProperties> {
+    fn add(&mut self, result: MatchProperties) {
         self.push(result);
     }
 }
@@ -25,14 +26,14 @@ mod tests {
     use super::*;
     use crate::matching_results::result::Context;
 
-    fn do_add<T: ResultCollection>(tested: &mut T, item: MatchingResult) -> &T {
+    fn do_add<T: ResultCollection>(tested: &mut T, item: MatchProperties) -> &T {
         tested.add(item);
         tested
     }
 
     #[test]
     fn push_vec() {
-        let mut v = vec![MatchingResult {
+        let mut v = vec![MatchProperties {
             matching_line: String::from("test_vec"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test_vec", "test_vec").unwrap(),
             file_name: None,
@@ -42,7 +43,7 @@ mod tests {
                 after: Vec::new(),
             },
         }];
-        let item = MatchingResult {
+        let item = MatchProperties {
             matching_line: String::from("test"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             file_name: None,
@@ -64,7 +65,7 @@ mod tests {
     #[test]
     fn push_top_bracket() {
         let mut tb = TopBracket::new(1);
-        tb.push(MatchingResult {
+        tb.push(MatchProperties {
             matching_line: String::from("test_top_bracket"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test_top_bracket", "test_top_bracket")
                 .unwrap(),
@@ -75,7 +76,7 @@ mod tests {
                 after: Vec::new(),
             },
         });
-        let item = MatchingResult {
+        let item = MatchProperties {
             matching_line: String::from("test"),
             fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
             file_name: None,

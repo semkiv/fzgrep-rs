@@ -1,6 +1,7 @@
 pub use crate::core::file_filtering::Filter;
 
 use crate::cli::formatting::Formatting;
+
 use log::LevelFilter;
 use std::path::PathBuf;
 
@@ -153,14 +154,14 @@ mod test {
     #![expect(clippy::shadow_unrelated, reason = "It's tests, who cares?")]
 
     use super::*;
-    use crate::cli::formatting::FormattingOptions;
+    use crate::cli::formatting::StyleSet;
 
     #[test]
     fn output_behavior_to_formatting() {
-        let behavior = OutputBehavior::Normal(Formatting::On(FormattingOptions::default()));
+        let behavior = OutputBehavior::Normal(Formatting::On(StyleSet::default()));
         assert_eq!(
             behavior.formatting(),
-            Some(Formatting::On(FormattingOptions::default()))
+            Some(Formatting::On(StyleSet::default()))
         );
         let behavior = OutputBehavior::Quiet;
         assert_eq!(behavior.formatting(), None);

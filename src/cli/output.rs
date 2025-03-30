@@ -1,7 +1,6 @@
-use crate::{
-    cli::formatting::Formatting,
-    matching_results::result::{Context, MatchingResult},
-};
+use crate::cli::formatting::Formatting;
+use crate::matching_results::result::{Context, MatchProperties};
+
 use log::debug;
 use std::ops::Range;
 use vscode_fuzzy_score_rs::FuzzyMatch;
@@ -16,10 +15,10 @@ use yansi::{Paint as _, Style};
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting) -> String {
+pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formatting) -> String {
     let mut ret = String::new();
     for m in matches {
-        let MatchingResult {
+        let MatchProperties {
             matching_line,
             fuzzy_match,
             file_name,
@@ -189,7 +188,10 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     let mut start = *itr.next().unwrap();
 
     for (i, x) in itr.enumerate() {
-        #[expect(clippy::indexing_slicing, reason = "The index comes from `enumerate`, so it cannot be out of bounds")]
+        #[expect(
+            clippy::indexing_slicing,
+            reason = "The index comes from `enumerate`, so it cannot be out of bounds"
+        )]
         if x - indices[i] != 1 {
             let end = indices[i];
             ret.push(Range {
@@ -218,12 +220,12 @@ mod test {
     #![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
 
     use super::*;
-    use crate::cli::formatting::FormattingOptions;
+    use crate::cli::formatting::StyleSet;
 
     #[test]
     fn results_output_selected_match_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -233,7 +235,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -243,7 +245,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -255,7 +257,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -271,7 +273,7 @@ mod test {
     #[test]
     fn results_output_selected_match_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -281,7 +283,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -291,7 +293,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -313,7 +315,7 @@ mod test {
     #[test]
     fn results_output_selected_match_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -323,7 +325,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -333,7 +335,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -347,7 +349,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     selected_match: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -367,7 +369,7 @@ mod test {
     #[test]
     fn results_output_selected_line_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -377,7 +379,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -387,7 +389,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -399,7 +401,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -415,7 +417,7 @@ mod test {
     #[test]
     fn results_output_selected_line_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -425,7 +427,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -435,7 +437,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -457,7 +459,7 @@ mod test {
     #[test]
     fn results_output_selected_line_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -467,7 +469,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -477,7 +479,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -491,7 +493,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     selected_line: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -514,7 +516,7 @@ mod test {
     #[test]
     fn results_output_line_number_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -524,7 +526,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -534,7 +536,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -546,7 +548,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -568,7 +570,7 @@ mod test {
     #[test]
     fn results_output_line_number_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -578,7 +580,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -588,7 +590,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -610,7 +612,7 @@ mod test {
     #[test]
     fn results_output_line_number_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -620,7 +622,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -630,7 +632,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -644,7 +646,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     line_number: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -670,7 +672,7 @@ mod test {
     #[test]
     fn results_output_file_name_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -680,7 +682,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -690,7 +692,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -702,7 +704,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -724,7 +726,7 @@ mod test {
     #[test]
     fn results_output_file_name_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -734,7 +736,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -744,7 +746,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -766,7 +768,7 @@ mod test {
     #[test]
     fn results_output_file_name_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -776,7 +778,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -786,7 +788,7 @@ mod test {
                     after: vec![],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -800,7 +802,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     file_name: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -826,7 +828,7 @@ mod test {
     #[test]
     fn results_output_context_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -842,7 +844,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -858,7 +860,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -876,7 +878,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "first_before_one\n\
                 first_before_two\n\
@@ -904,7 +906,7 @@ mod test {
     #[test]
     fn results_output_context_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -920,7 +922,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -936,7 +938,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -976,7 +978,7 @@ mod test {
     #[test]
     fn results_output_context_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: None,
@@ -992,7 +994,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: None,
@@ -1008,7 +1010,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: None,
@@ -1028,7 +1030,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     context: Style::new().rgb(127, 127, 127).dim(),
                     ..Default::default()
                 })
@@ -1072,7 +1074,7 @@ mod test {
     #[test]
     fn results_output_all_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -1088,7 +1090,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -1104,7 +1106,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -1122,7 +1124,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}{}{}{}first_before_one\n\
                 {}{}{}{}first_before_two\n\
@@ -1225,7 +1227,7 @@ mod test {
     #[test]
     fn results_output_all_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -1241,7 +1243,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -1257,7 +1259,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -1297,7 +1299,7 @@ mod test {
     #[test]
     fn results_output_all_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
                 file_name: Some(String::from("First")),
@@ -1313,7 +1315,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
                 file_name: Some(String::from("Second")),
@@ -1329,7 +1331,7 @@ mod test {
                     ],
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
                 file_name: Some(String::from("Third")),
@@ -1349,7 +1351,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     selected_match: Style::new().yellow().italic(),
                     line_number: Style::new().cyan(),
                     file_name: Style::new().cyan(),
@@ -1476,7 +1478,7 @@ mod test {
     fn no_results_output_default() {
         let results = vec![];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::On(StyleSet::default())),
             ""
         );
     }
@@ -1493,7 +1495,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::On(StyleSet {
                     selected_match: Style::new().green(),
                     line_number: Style::new().cyan(),
                     file_name: Style::new().cyan(),

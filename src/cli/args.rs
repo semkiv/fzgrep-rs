@@ -1,45 +1,37 @@
-use crate::{
-    cli::{
-        error::ColorOverrideParsingError,
-        formatting::{Formatting, FormattingOptions},
-        sgr_sequence,
-    },
-    core::{
-        file_filtering::Filter,
-        request::{
-            ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request,
-            Targets,
-        },
-    },
+use crate::cli::formatting::{Formatting, StyleSet};
+use crate::cli::{error::ColorOverrideParsingError, sgr_sequence};
+use crate::core::file_filtering::Filter;
+use crate::core::request::{
+    ContextSize, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
 };
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+
+use clap::builder::EnumValueParser;
+use clap::{Arg, ArgAction, ArgMatches, ColorChoice, Command, value_parser};
 use glob::Pattern;
 use log::LevelFilter;
-use std::{
-    env,
-    io::{self, IsTerminal},
-    path::PathBuf,
-};
+use std::env;
+use std::io::{self, IsTerminal as _};
+use std::path::PathBuf;
 
 struct OptionId;
 
 impl OptionId {
-    const PATTERN: &'static str = "pattern";
-    const TARGET: &'static str = "target";
-    const RECURSIVE: &'static str = "recursive";
+    const AFTER_CONTEXT: &'static str = "after_context";
+    const BEFORE_CONTEXT: &'static str = "before_context";
+    const COLOR: &'static str = "color";
+    const COLOR_OVERRIDES: &'static str = "color_overrides";
+    const CONTEXT: &'static str = "context";
     const EXCLUDE: &'static str = "exclude";
     const INCLUDE: &'static str = "include";
     const LINE_NUMBER: &'static str = "line_number";
-    const WITH_FILENAME: &'static str = "with_filename";
     const NO_FILENAME: &'static str = "no_filename";
-    const CONTEXT: &'static str = "context";
-    const BEFORE_CONTEXT: &'static str = "before_context";
-    const AFTER_CONTEXT: &'static str = "after_context";
-    const TOP: &'static str = "top";
+    const PATTERN: &'static str = "pattern";
     const QUIET: &'static str = "quiet";
+    const RECURSIVE: &'static str = "recursive";
+    const TARGET: &'static str = "target";
+    const TOP: &'static str = "top";
     const VERBOSE: &'static str = "verbose";
-    const COLOR: &'static str = "color";
-    const COLOR_OVERRIDES: &'static str = "color_overrides";
+    const WITH_FILENAME: &'static str = "with_filename";
 }
 
 /// Sets up a [`Request`] struct based on the program command line arguments
@@ -59,9 +51,9 @@ impl OptionId {
 /// use fzgrep::{
 ///     cli::{
 ///         args,
-///         formatting::{Formatting, FormattingOptions},
+///         formatting::{Formatting, StyleSet},
 ///     },
-///     ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
+///     ContextSize, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
 /// };
 /// use log::LevelFilter;
 /// use std::{
@@ -81,12 +73,12 @@ impl OptionId {
 ///             track_line_numbers: false,
 ///             track_file_names: false,
 ///             context_size: ContextSize {
-///                 before: Lines(0),
-///                 after: Lines(0),
+///                 lines_before: 0,
+///                 lines_after: 0,
 ///             },
 ///         },
 ///         output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-///             Formatting::On(FormattingOptions::default())
+///             Formatting::On(StyleSet::default())
 ///         } else {
 ///             Formatting::Off
 ///         }),
@@ -299,22 +291,22 @@ impl OptionId {
 ///
 /// ```
 /// // symmetric context
-/// use fzgrep::{cli::args, ContextSize, Lines};
+/// use fzgrep::{cli::args, ContextSize};
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
 /// let request = args::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.match_options.context_size,
 ///     ContextSize {
-///         before: Lines(2),
-///         after: Lines(2),
+///         lines_before: 2,
+///         lines_after: 2,
 ///     }
 /// );
 /// ```
 ///
 /// ```
 /// // asymmetric context
-/// use fzgrep::{cli::args, ContextSize, Lines};
+/// use fzgrep::{cli::args, ContextSize};
 ///
 /// let args = [
 ///     "fzgrep",
@@ -329,8 +321,8 @@ impl OptionId {
 /// assert_eq!(
 ///     request.match_options.context_size,
 ///     ContextSize {
-///         before: Lines(1),
-///         after: Lines(2),
+///         lines_before: 1,
+///         lines_after: 2,
 ///     }
 /// );
 /// ```
@@ -408,8 +400,7 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     }
 }
 
-// Cannot do much about this builder
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines, reason = "Cannot do much about this builder")]
 fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
     Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
@@ -547,7 +538,7 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                 .long("color")
                 .visible_alias("colour")
                 .value_name("WHEN")
-                .value_parser(["always", "auto", "never"])
+                .value_parser(EnumValueParser::<ColorChoice>::new())
                 .default_value("auto")
                 .help(
                     "Display matched strings, lines, context, file names, line numbers and separators in color.\n\
@@ -580,10 +571,8 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
         .get_matches_from(args)
 }
 
-fn color_overrides_parser(
-    grep_sequence: &str,
-) -> Result<FormattingOptions, ColorOverrideParsingError> {
-    let mut options = FormattingOptions::default();
+fn color_overrides_parser(grep_sequence: &str) -> Result<StyleSet, ColorOverrideParsingError> {
+    let mut options = StyleSet::default();
 
     for token in grep_sequence.split(':') {
         if let Some((cap, sgr)) = token.split_once('=') {
@@ -614,15 +603,15 @@ fn color_overrides_parser(
                 }
                 "bn" | "mt" => {
                     return Err(ColorOverrideParsingError::UnsupportedCapability(
-                        cap.to_string(),
+                        cap.to_owned(),
                     ));
                 }
                 _ => {
-                    return Err(ColorOverrideParsingError::BadCapability(cap.to_string()));
+                    return Err(ColorOverrideParsingError::BadCapability(cap.to_owned()));
                 }
             }
         } else {
-            return Err(ColorOverrideParsingError::NotAnOverride(token.to_string()));
+            return Err(ColorOverrideParsingError::NotAnOverride(token.to_owned()));
         }
     }
 
@@ -630,10 +619,11 @@ fn color_overrides_parser(
 }
 
 fn query_from(matches: &ArgMatches) -> String {
-    #[allow(clippy::expect_used)]
-    let query = matches
-        .get_one::<String>(OptionId::PATTERN)
-        .expect("QUERY argument is required, it cannot be empty");
+    #[expect(
+        clippy::unwrap_used,
+        reason = "QUERY argument is required, it cannot be empty"
+    )]
+    let query = matches.get_one::<String>(OptionId::PATTERN).unwrap();
     query.clone()
 }
 
@@ -719,41 +709,41 @@ fn context_size_from(matches: &ArgMatches) -> ContextSize {
         .copied()
         .map_or_else(
             || ContextSize {
-                before: Lines(
-                    matches
-                        .get_one::<usize>(OptionId::BEFORE_CONTEXT)
-                        .copied()
-                        .unwrap_or(0),
-                ),
-                after: Lines(
-                    matches
-                        .get_one::<usize>(OptionId::AFTER_CONTEXT)
-                        .copied()
-                        .unwrap_or(0),
-                ),
+                lines_before: matches
+                    .get_one::<usize>(OptionId::BEFORE_CONTEXT)
+                    .copied()
+                    .unwrap_or(0),
+                lines_after: matches
+                    .get_one::<usize>(OptionId::AFTER_CONTEXT)
+                    .copied()
+                    .unwrap_or(0),
             },
             |num| ContextSize {
-                before: Lines(num),
-                after: Lines(num),
+                lines_before: num,
+                lines_after: num,
             },
         )
 }
 
+fn styleset_from(matches: &ArgMatches) -> StyleSet {
+    matches
+        .get_one::<StyleSet>(OptionId::COLOR_OVERRIDES)
+        .copied()
+        .unwrap_or_default()
+}
+
 fn formatting_from(matches: &ArgMatches) -> Formatting {
-    matches.get_one::<String>(OptionId::COLOR).map_or_else(
-        || Formatting::On(FormattingOptions::default()),
-        |behavior| {
-            let behavior = behavior.as_str();
-            if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
-                let formatting_options = matches
-                    .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
-                    .copied()
-                    .unwrap_or_default();
-                Formatting::On(formatting_options)
-            } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {
-                Formatting::Off
-            } else {
-                unreachable!();
+    matches.get_one::<ColorChoice>(OptionId::COLOR).map_or_else(
+        || Formatting::On(StyleSet::default()),
+        |choice| match choice {
+            ColorChoice::Always => Formatting::On(styleset_from(matches)),
+            ColorChoice::Never => Formatting::Off,
+            ColorChoice::Auto => {
+                if io::stdout().is_terminal() {
+                    Formatting::On(styleset_from(matches))
+                } else {
+                    Formatting::Off
+                }
             }
         },
     )
@@ -783,8 +773,9 @@ fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::non_ascii_literal, reason = "It's tests, who cares?")]
+
     use super::*;
-    use crate::core::request::Lines;
     use yansi::Style;
 
     #[test]
@@ -801,12 +792,12 @@ mod tests {
                     track_line_numbers: false,
                     track_file_names: false,
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
                 output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                    Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
@@ -832,12 +823,12 @@ mod tests {
                     track_line_numbers: false,
                     track_file_names: false,
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
                 output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                    Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
@@ -860,12 +851,12 @@ mod tests {
                     track_line_numbers: false,
                     track_file_names: false,
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
                 output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                    Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
@@ -1163,8 +1154,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(2),
+                lines_before: 2,
+                lines_after: 2,
             }
         );
     }
@@ -1176,8 +1167,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(2),
+                lines_before: 2,
+                lines_after: 2,
             }
         );
     }
@@ -1189,8 +1180,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(0),
+                lines_before: 2,
+                lines_after: 0,
             }
         );
     }
@@ -1202,8 +1193,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(0),
+                lines_before: 2,
+                lines_after: 0,
             }
         );
     }
@@ -1215,8 +1206,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(0),
-                after: Lines(2),
+                lines_before: 0,
+                lines_after: 2,
             }
         );
     }
@@ -1228,8 +1219,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(0),
-                after: Lines(2),
+                lines_before: 0,
+                lines_after: 2,
             }
         );
     }
@@ -1241,8 +1232,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(1),
-                after: Lines(2),
+                lines_before: 1,
+                lines_after: 2,
             }
         );
     }
@@ -1262,8 +1253,8 @@ mod tests {
         assert_eq!(
             request.match_options.context_size,
             ContextSize {
-                before: Lines(1),
-                after: Lines(2),
+                lines_before: 1,
+                lines_after: 2,
             }
         );
     }
@@ -1400,7 +1391,7 @@ mod tests {
         assert_eq!(
             request.output_behavior,
             OutputBehavior::Normal(if io::stdout().is_terminal() {
-                Formatting::On(FormattingOptions::default())
+                Formatting::On(StyleSet::default())
             } else {
                 Formatting::Off
             })
@@ -1413,7 +1404,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions::default()))
+            OutputBehavior::Normal(Formatting::On(StyleSet::default()))
         );
     }
 
@@ -1603,7 +1594,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions {
+            OutputBehavior::Normal(Formatting::On(StyleSet {
                 selected_match: Style::new().green().on_yellow().bold(),
                 line_number: Style::new().yellow().on_blue().dim(),
                 file_name: Style::new().blue().on_magenta().italic(),
@@ -1626,7 +1617,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions {
+            OutputBehavior::Normal(Formatting::On(StyleSet {
                 selected_match: Style::new().blue().on_yellow().bold(),
                 selected_line: Style::new().white().dim(),
                 context: Style::new().white().dim(),
@@ -1651,7 +1642,7 @@ mod tests {
                 },
                 strategy: MatchCollectionStrategy::CollectAll,
                 output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                    Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
@@ -1659,8 +1650,8 @@ mod tests {
                     track_line_numbers: true,
                     track_file_names: true,
                     context_size: ContextSize {
-                        before: Lines(1),
-                        after: Lines(2)
+                        lines_before: 1,
+                        lines_after: 2
                     },
                 },
                 log_verbosity: LevelFilter::Warn,
@@ -1706,7 +1697,7 @@ mod tests {
                     ))
                 },
                 strategy: MatchCollectionStrategy::CollectTop(10),
-                output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
+                output_behavior: OutputBehavior::Normal(Formatting::On(StyleSet {
                     selected_match: Style::new().blue().blink(),
                     ..Default::default()
                 })),
@@ -1714,8 +1705,8 @@ mod tests {
                     track_line_numbers: true,
                     track_file_names: true,
                     context_size: ContextSize {
-                        before: Lines(1),
-                        after: Lines(2)
+                        lines_before: 1,
+                        lines_after: 2,
                     },
                 },
                 log_verbosity: LevelFilter::Warn,

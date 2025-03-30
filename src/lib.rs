@@ -6,7 +6,7 @@ pub use crate::core::exit_code::ExitCode;
 pub use crate::core::request::{
     ContextSize, Filter, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
 };
-pub use crate::matching_results::result::MatchingResult;
+pub use crate::matching_results::result::MatchProperties;
 
 use crate::cli::output;
 use crate::core::reader::Reader;
@@ -39,7 +39,7 @@ use walkdir::WalkDir;
 pub fn run(
     request: &Request,
     output_dest: &mut impl Write,
-) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
+) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {request:?}");
 
     let results = match request.strategy {
@@ -76,7 +76,7 @@ pub fn collect_all_matches(
     query: &str,
     targets: &Targets,
     options: &MatchOptions,
-) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
+) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
     let mut result = Vec::new();
     collect_matches_common(query, targets, options, &mut result)?;
     result.sort_by(|a, b| b.cmp(a));
@@ -95,7 +95,7 @@ pub fn collect_top_matches(
     targets: &Targets,
     options: &MatchOptions,
     top: usize,
-) -> Result<Vec<MatchingResult>, Box<dyn error::Error>> {
+) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
     let mut result = TopBracket::new(top);
     collect_matches_common(query, targets, options, &mut result)?;
     Ok(result.into_vec())
