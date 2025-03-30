@@ -17,7 +17,7 @@ use yansi::{Paint as _, Style};
 ///
 pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formatting) -> String {
     let mut ret = String::new();
-    for m in matches {
+    for match_props in matches {
         let MatchProperties {
             matching_line,
             fuzzy_match,
@@ -28,12 +28,12 @@ pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formattin
                     before: context_before,
                     after: context_after,
                 },
-        } = m;
+        } = match_props;
         let file_name = file_name.as_ref();
         let line_number = line_number.as_ref().copied();
 
         for (index, context_line) in context_before.iter().enumerate() {
-            let line_number = line_number.map(|l| l - matches.len() + index + 1);
+            let line_number = line_number.map(|num| num - matches.len() + index + 1);
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
@@ -53,7 +53,7 @@ pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formattin
         ret.push('\n');
 
         for (index, context_line) in context_after.iter().enumerate() {
-            let line_number = line_number.map(|l| l + index + 1);
+            let line_number = line_number.map(|num| num + index + 1);
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
@@ -81,7 +81,7 @@ fn format_context_line(
 
     result.push_str(&format_one_piece(
         content,
-        formatting.options().map(|o| o.context),
+        formatting.options().map(|styleset| styleset.context),
     ));
 
     result
@@ -114,7 +114,7 @@ fn format_selected_line(
         if !preceding_non_match.is_empty() {
             result.push_str(&format_one_piece(
                 &preceding_non_match,
-                options.map(|o| o.selected_line),
+                options.map(|styleset| styleset.selected_line),
             ));
         }
 
@@ -124,7 +124,7 @@ fn format_selected_line(
             .collect::<String>();
         result.push_str(&format_one_piece(
             &matching_part,
-            options.map(|o| o.selected_match),
+            options.map(|styleset| styleset.selected_match),
         ));
 
         previous_range_end = range.end;
@@ -137,7 +137,7 @@ fn format_selected_line(
     if !remaining_non_match.is_empty() {
         result.push_str(&format_one_piece(
             &remaining_non_match,
-            options.map(|o| o.selected_line),
+            options.map(|styleset| styleset.selected_line),
         ));
     }
 
@@ -154,24 +154,33 @@ fn format_line_prefix(
 
     if let Some(file_name) = file_name {
         let result = result.get_or_insert(String::new());
-        result.push_str(&format_one_piece(file_name, options.map(|o| o.file_name)));
-        result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
+        result.push_str(&format_one_piece(
+            file_name,
+            options.map(|styleset| styleset.file_name),
+        ));
+        result.push_str(&format_one_piece(
+            ":",
+            options.map(|styleset| styleset.separator),
+        ));
     }
 
     if let Some(line_number) = line_number {
         let result = result.get_or_insert(String::new());
         result.push_str(&format_one_piece(
             &line_number.to_string(),
-            options.map(|o| o.line_number),
+            options.map(|styleset| styleset.line_number),
         ));
-        result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
+        result.push_str(&format_one_piece(
+            ":",
+            options.map(|styleset| styleset.separator),
+        ));
     }
 
     result
 }
 
-fn format_one_piece(s: &str, style: Option<Style>) -> String {
-    style.map_or_else(|| s.to_owned(), |style| s.paint(style).to_string())
+fn format_one_piece(piece: &str, style: Option<Style>) -> String {
+    style.map_or_else(|| piece.to_owned(), |style| piece.paint(style).to_string())
 }
 
 fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {

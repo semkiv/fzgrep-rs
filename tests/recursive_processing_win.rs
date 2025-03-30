@@ -1,4 +1,8 @@
 #![cfg(target_os = "windows")]
+#![expect(
+    clippy::tests_outside_test_module,
+    reason = "These are integration tests"
+)]
 
 use fzgrep::{Filter, Targets, cli::args};
 use glob::Pattern;

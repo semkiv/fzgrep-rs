@@ -54,10 +54,10 @@ impl Filter {
             .exclude
             .iter()
             .flatten()
-            .any(|p| p.matches(&normalized))
+            .any(|pattern| pattern.matches(&normalized))
             && self.include.as_ref().is_none_or(|incl| {
-                incl.iter().any(|p| {
-                    p.matches_with(
+                incl.iter().any(|pattern| {
+                    pattern.matches_with(
                         &normalized,
                         MatchOptions {
                             require_literal_separator: true,

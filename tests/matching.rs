@@ -1,6 +1,10 @@
 #![expect(clippy::cognitive_complexity, reason = "It's tests, who cares?")]
 #![expect(clippy::indexing_slicing, reason = "It's tests, who cares?")]
 #![expect(clippy::non_ascii_literal, reason = "It's tests, who cares?")]
+#![expect(
+    clippy::tests_outside_test_module,
+    reason = "These are integration tests"
+)]
 #![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
 
 use fzgrep::{Targets, cli::args};

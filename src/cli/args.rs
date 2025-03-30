@@ -692,10 +692,16 @@ fn track_file_name_from(matches: &ArgMatches) -> bool {
     if matches.get_flag(OptionId::NO_FILENAME) {
         return false;
     }
+
+    // `--recursive` flag has been specified -> file names *should* be tracked
+    if matches.get_flag(OptionId::RECURSIVE) {
+        return true;
+    }
+
     // no flags specified, but there are multiple input files -> file names *should* be tracked
     if matches
         .get_many::<String>(OptionId::TARGET)
-        .is_some_and(|fs| fs.len() > 1)
+        .is_some_and(|targets| targets.len() > 1)
     {
         return true;
     }
@@ -821,7 +827,7 @@ mod tests {
                 strategy: MatchCollectionStrategy::CollectAll,
                 match_options: MatchOptions {
                     track_line_numbers: false,
-                    track_file_names: false,
+                    track_file_names: true,
                     context_size: ContextSize {
                         lines_before: 0,
                         lines_after: 0,
@@ -866,7 +872,7 @@ mod tests {
     }
 
     #[test]
-    fn make_request_multiple_targets() {
+    fn make_request_multiple_targets_file_name_assumed() {
         let args = ["fzgrep", "query", "file1", "file2", "file3"];
         let request = make_request(args.into_iter().map(String::from));
 
@@ -877,6 +883,21 @@ mod tests {
                 PathBuf::from("file2"),
                 PathBuf::from("file3")
             ])
+        );
+        assert!(request.match_options.track_file_names);
+    }
+
+    #[test]
+    fn make_request_recursive_file_name_assumed() {
+        let args = ["fzgrep", "query", "--recursive", "."];
+        let request = make_request(args.into_iter().map(String::from));
+
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from(".")],
+                filter: None
+            }
         );
         assert!(request.match_options.track_file_names);
     }
@@ -1713,5 +1734,4 @@ mod tests {
             }
         );
     }
-    // TODO: tests featuring '--include' and '--exclude' options, especially filenames with commas
 }

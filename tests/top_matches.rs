@@ -1,5 +1,9 @@
 #![expect(clippy::cognitive_complexity, reason = "It's tests, who cares?")]
 #![expect(clippy::indexing_slicing, reason = "It's tests, who cares?")]
+#![expect(
+    clippy::tests_outside_test_module,
+    reason = "These are integration tests"
+)]
 
 use fzgrep::{MatchCollectionStrategy, cli::args};
 

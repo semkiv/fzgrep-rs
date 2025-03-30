@@ -141,16 +141,16 @@ fn merge_target_matches(
             }
         }
 
-        if let Some(m) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
+        if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
             let line_number = index + 1;
             debug!(
                 "Found a match in {display_name}, line {line_number}, positions {:?}",
-                m.positions()
+                fuzzy_match.positions()
             );
 
             match MatchingResultState::new(
                 line.clone(),
-                m,
+                fuzzy_match,
                 options.track_file_names.then_some(display_name.clone()),
                 options.track_line_numbers.then_some(line_number),
                 context_before.snapshot(),
@@ -188,7 +188,7 @@ fn make_readers(
                 )]
                 files
                     .iter()
-                    .map(|p| Reader::file_reader(p).map_err(|e| e.into())),
+                    .map(|path| Reader::file_reader(path).map_err(|err| err.into())),
             )
         }
         Targets::RecursiveEntries { paths, filter } => {
@@ -218,18 +218,18 @@ fn make_recursive_reader_iterator<'item>(
             .flat_map(|target| WalkDir::new(target).sort_by_file_name())
             .filter_map(move |item| {
                 item.map_or_else(
-                    |e| Some(Err(e.into())),
-                    |d| {
-                        if filter.is_some_and(|f| !f.test(d.path())) {
+                    |err| Some(Err(err.into())),
+                    |entry| {
+                        if filter.is_some_and(|filter| !filter.test(entry.path())) {
                             return None;
                         }
 
-                        d.metadata().map_or_else(
-                            |e| Some(Err(e.into())),
-                            |m| {
-                                #[expect(clippy::redundant_closure_for_method_calls, reason = "`std::convert::Into::into` is arguably worse than `|e| e.into()`")]
-                                m.is_file()
-                                    .then_some(Reader::file_reader(d.path()).map_err(|e| e.into()))
+                        entry.metadata().map_or_else(
+                            |err| Some(Err(err.into())),
+                            |metadata| {
+                                #[expect(clippy::redundant_closure_for_method_calls, reason = "`std::convert::Into::into` is arguably worse than `|err| err.into()`")]
+                                metadata.is_file()
+                                    .then_some(Reader::file_reader(entry.path()).map_err(|err| err.into()))
                             },
                         )
                     },

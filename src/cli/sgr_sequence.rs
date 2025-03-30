@@ -18,7 +18,7 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
 
         let code = token
             .parse::<u8>()
-            .map_err(|e| StyleSequenceParsingError::NotACode(token.to_owned(), e))?;
+            .map_err(|err| StyleSequenceParsingError::NotACode(token.to_owned(), err))?;
         match code {
             0 => {}
             1 => style = style.bold(),
@@ -64,31 +64,31 @@ fn color_from<'src>(
         7 => Ok(Color::White),
         8 => {
             if let Some(differentiator) = itr.next() {
-                let differentiator = differentiator.parse::<u8>().map_err(|e| {
-                    ColorSequenceParsingError::NotACode(differentiator.to_owned(), e)
+                let differentiator = differentiator.parse::<u8>().map_err(|err| {
+                    ColorSequenceParsingError::NotACode(differentiator.to_owned(), err)
                 })?;
                 match differentiator {
                     2 => match (itr.next(), itr.next(), itr.next()) {
-                        (Some(r), Some(g), Some(b)) => {
-                            let r = r.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(r.to_owned(), e)
+                        (Some(red), Some(green), Some(blue)) => {
+                            let red = red.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(red.to_owned(), err)
                             })?;
-                            let g = g.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(g.to_owned(), e)
+                            let green = green.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(green.to_owned(), err)
                             })?;
-                            let b = b.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(b.to_owned(), e)
+                            let blue = blue.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(blue.to_owned(), err)
                             })?;
-                            Ok(Color::Rgb(r, g, b))
+                            Ok(Color::Rgb(red, green, blue))
                         }
                         _ => Err(ColorSequenceParsingError::BadTrueColor),
                     },
                     5 => {
-                        if let Some(n) = itr.next() {
-                            let n = n.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(n.to_owned(), e)
+                        if let Some(val) = itr.next() {
+                            let val = val.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(val.to_owned(), err)
                             })?;
-                            Ok(Color::Fixed(n))
+                            Ok(Color::Fixed(val))
                         } else {
                             Err(ColorSequenceParsingError::BadFixedColor)
                         }

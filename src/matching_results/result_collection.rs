@@ -23,6 +23,8 @@ impl ResultCollection for TopBracket<MatchProperties> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::min_ident_chars, reason = "It's tests, who cares?")]
+
     use super::*;
     use crate::matching_results::result::Context;
 

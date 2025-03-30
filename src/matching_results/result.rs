@@ -197,6 +197,7 @@ impl PartialContext {
 
 #[cfg(test)]
 mod test {
+    #![expect(clippy::min_ident_chars, reason = "It's tests, who cares?")]
     #![expect(clippy::unreachable, reason = "It's tests, who cares?")]
 
     use super::*;

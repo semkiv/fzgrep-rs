@@ -99,15 +99,19 @@ pub(crate) enum ColorSequenceParsingError {
 }
 
 impl Display for ColorOverrideParsingError {
+    #[expect(
+        clippy::min_ident_chars,
+        reason = "Corresponds to the name used in trait"
+    )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Self::BadCapability(s) => write!(f, "Invalid capability '{s}'"),
-            Self::BadStyleSequence(e) => write!(f, "Invalid style sequence: {e}"),
-            Self::NotAnOverride(s) => write!(
+            Self::BadCapability(cap) => write!(f, "Invalid capability '{cap}'"),
+            Self::BadStyleSequence(seq) => write!(f, "Invalid style sequence: {seq}"),
+            Self::NotAnOverride(seq) => write!(
                 f,
-                "Incorrect format: expected '<capability>=<sgr_sequence>', got '{s}'"
+                "Incorrect format: expected '<capability>=<sgr_sequence>', got '{seq}'"
             ),
-            Self::UnsupportedCapability(s) => write!(f, "Capability '{s}' is not supported"),
+            Self::UnsupportedCapability(cap) => write!(f, "Capability '{cap}' is not supported"),
         }
     }
 }
@@ -115,11 +119,15 @@ impl Display for ColorOverrideParsingError {
 impl Error for ColorOverrideParsingError {}
 
 impl Display for StyleSequenceParsingError {
+    #[expect(
+        clippy::min_ident_chars,
+        reason = "Corresponds to the name used in trait"
+    )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::BadCode(code) => write!(f, "Code '{code}' is invalid"),
-            Self::BadColorSequence(e) => write!(f, "Invalid color sequence: {e}"),
-            Self::NotACode(s, e) => write!(f, "'{s}' is not an 8-bit code: {e}"),
+            Self::BadColorSequence(seq) => write!(f, "Invalid color sequence: {seq}"),
+            Self::NotACode(seq, err) => write!(f, "'{seq}' is not an 8-bit code: {err}"),
             Self::UnsupportedCode(code) => write!(f, "Code '{code} is unsupported"),
         }
     }
@@ -128,6 +136,10 @@ impl Display for StyleSequenceParsingError {
 impl Error for StyleSequenceParsingError {}
 
 impl Display for ColorSequenceParsingError {
+    #[expect(
+        clippy::min_ident_chars,
+        reason = "Corresponds to the name used in trait"
+    )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             Self::BadColorType(code) => write!(
@@ -146,7 +158,7 @@ impl Display for ColorSequenceParsingError {
                 f,
                 "Code '8' (non-standard color) is expected to be followed by a type code, but there is none"
             ),
-            Self::NotACode(s, e) => write!(f, "'{s}' is not an 8-bit code: {e}"),
+            Self::NotACode(seq, err) => write!(f, "'{seq}' is not an 8-bit code: {err}"),
         }
     }
 }
