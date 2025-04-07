@@ -142,7 +142,7 @@ fn merge_target_matches(
         }
 
         if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-            let line_number = index + 1;
+            let line_number = index.wrapping_add(1);
             debug!(
                 "Found a match in {display_name}, line {line_number}, positions {:?}",
                 fuzzy_match.positions()
@@ -184,7 +184,7 @@ fn make_readers(
             Box::new(
                 #[expect(
                     clippy::redundant_closure_for_method_calls,
-                    reason = "`std::convert::Into::into` is arguably worse than `|e| e.into()`"
+                    reason = "`|e| e.into()` is arguably more concise than `std::convert::Into::into`"
                 )]
                 files
                     .iter()
@@ -227,7 +227,10 @@ fn make_recursive_reader_iterator<'item>(
                         entry.metadata().map_or_else(
                             |err| Some(Err(err.into())),
                             |metadata| {
-                                #[expect(clippy::redundant_closure_for_method_calls, reason = "`std::convert::Into::into` is arguably worse than `|err| err.into()`")]
+                                #[expect(
+                    clippy::redundant_closure_for_method_calls,
+                    reason = "`|e| e.into()` is arguably more concise than `std::convert::Into::into`"
+                )]
                                 metadata.is_file()
                                     .then_some(Reader::file_reader(entry.path()).map_err(|err| err.into()))
                             },

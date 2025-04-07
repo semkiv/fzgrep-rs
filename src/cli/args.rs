@@ -620,10 +620,12 @@ fn color_overrides_parser(grep_sequence: &str) -> Result<StyleSet, ColorOverride
 
 fn query_from(matches: &ArgMatches) -> String {
     #[expect(
-        clippy::unwrap_used,
-        reason = "QUERY argument is required, it cannot be empty"
+        clippy::expect_used,
+        reason = "QUERY argument is required, it cannot be empty, `clap` should've taken care of this"
     )]
-    let query = matches.get_one::<String>(OptionId::PATTERN).unwrap();
+    let query = matches
+        .get_one::<String>(OptionId::PATTERN)
+        .expect("QUERY argument is required, but is missing - a bug in `clap`?");
     query.clone()
 }
 

@@ -33,7 +33,18 @@ pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formattin
         let line_number = line_number.as_ref().copied();
 
         for (index, context_line) in context_before.iter().enumerate() {
-            let line_number = line_number.map(|num| num - matches.len() + index + 1);
+            #[expect(
+                clippy::arithmetic_side_effects,
+                reason = "`index` comes from enumerating `context_before` so it cannot be greater than `context_before.len()`"
+            )]
+            let offset = context_before.len() - index;
+            let line_number = line_number.map(|num| {
+                #[expect(
+                    clippy::unwrap_used,
+                    reason = "Context length and thus `offset` must not exceed line number. If it does it's a bug in the code that collects context (`result.rs`)"
+                )]
+                num.checked_sub(offset).unwrap()
+            });
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
@@ -53,7 +64,7 @@ pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formattin
         ret.push('\n');
 
         for (index, context_line) in context_after.iter().enumerate() {
-            let line_number = line_number.map(|num| num + index + 1);
+            let line_number = line_number.map(|num| num.wrapping_add(index).wrapping_add(1));
             ret.push_str(&format_context_line(
                 context_line,
                 file_name,
@@ -106,7 +117,13 @@ fn format_selected_line(
     for range in group_indices(fuzzy_match.positions()) {
         let preceding_non_match = str_itr
             .by_ref()
-            .take(range.start - previous_range_end)
+            .take(
+                #[expect(
+                    clippy::unwrap_used,
+                    reason = "The range is not supposed to start before the previous one ends. If it happens, it's a bug in the indices grouping code"
+                )]
+                range.start.checked_sub(previous_range_end).unwrap()
+            )
             .collect::<String>();
         // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
         // Visually it makes no difference, but there are extra characters in the output,
@@ -120,7 +137,13 @@ fn format_selected_line(
 
         let matching_part = str_itr
             .by_ref()
-            .take(range.end - range.start)
+            .take(
+                #[expect(
+                    clippy::unwrap_used,
+                    reason = "The range is not supposed to end before it starts. If it happens, it's a bug in the indices grouping code"
+                )]
+                range.end.checked_sub(range.start).unwrap()
+            )
             .collect::<String>();
         result.push_str(&format_one_piece(
             &matching_part,
@@ -189,35 +212,43 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     }
 
     let mut ret = Vec::new();
+    let make_range = |first_idx: usize, last_idx: usize| {
+        #[expect(
+            clippy::expect_used,
+            reason = "We can no longer guarantee that the range starts before it ends otherwise"
+        )]
+        let one_past_last_idx = last_idx
+            .checked_add(1)
+            .expect("Integer overflow occured when constructing a range");
+        Range {
+            start: first_idx,
+            end: one_past_last_idx,
+        }
+    };
     let mut itr = indices.iter();
     #[expect(
         clippy::unwrap_used,
         reason = "The case of an empty input is already handled"
     )]
-    let mut start = *itr.next().unwrap();
-
-    for (i, x) in itr.enumerate() {
+    let mut range_start = *itr.next().unwrap();
+    let mut prev_idx = range_start;
+    for idx in itr {
         #[expect(
-            clippy::indexing_slicing,
-            reason = "The index comes from `enumerate`, so it cannot be out of bounds"
+            clippy::expect_used,
+            reason = "Indices must be monothonic. If they are not, it's a bug in the fuzzy matching lib"
         )]
-        if x - indices[i] != 1 {
-            let end = indices[i];
-            ret.push(Range {
-                start,
-                end: end + 1,
-            });
-            start = *x;
+        let diff = idx.checked_sub(prev_idx).expect(
+            "Indices of matching characters are not monothonic - a bug in `vscode-fuzzy-score-rs`?",
+        );
+        if diff > 1 {
+            ret.push(make_range(range_start, prev_idx));
+            range_start = *idx;
         }
+
+        prev_idx = *idx;
     }
-    ret.push(Range {
-        start,
-        #[expect(
-            clippy::unwrap_used,
-            reason = "The case of an empty input is already handled"
-        )]
-        end: indices.last().unwrap() + 1,
-    });
+
+    ret.push(make_range(range_start, prev_idx));
 
     debug!("Match indices {indices:?} -> ranges {ret:?}");
 
@@ -1242,13 +1273,11 @@ mod test {
                 file_name: Some(String::from("First")),
                 line_number: Some(42),
                 context: Context {
-                    before: vec![
-                        String::from("first_before_one"),
-                        String::from("first_before_two"),
-                    ],
+                    before: vec![String::from("first_before_one")],
                     after: vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
+                        String::from("first_after_three"),
                     ],
                 },
             },
@@ -1261,11 +1290,9 @@ mod test {
                     before: vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
+                        String::from("second_before_three"),
                     ],
-                    after: vec![
-                        String::from("second_after_one"),
-                        String::from("second_after_two"),
-                    ],
+                    after: vec![String::from("second_after_one")],
                 },
             },
             MatchProperties {
@@ -1287,16 +1314,16 @@ mod test {
         ];
         assert_eq!(
             format_results(&results, &Formatting::Off),
-            "First:40:first_before_one\n\
-            First:41:first_before_two\n\
+            "First:41:first_before_one\n\
             First:42:test\n\
             First:43:first_after_one\n\
             First:44:first_after_two\n\
-            Second:100498:second_before_one\n\
-            Second:100499:second_before_two\n\
+            First:45:first_after_three\n\
+            Second:100497:second_before_one\n\
+            Second:100498:second_before_two\n\
+            Second:100499:second_before_three\n\
             Second:100500:test\n\
             Second:100501:second_after_one\n\
-            Second:100502:second_after_two\n\
             Third:11:third_before_one\n\
             Third:12:third_before_two\n\
             Third:13:test\n\
@@ -1314,13 +1341,11 @@ mod test {
                 file_name: Some(String::from("First")),
                 line_number: Some(42),
                 context: Context {
-                    before: vec![
-                        String::from("first_before_one"),
-                        String::from("first_before_two"),
-                    ],
+                    before: vec![String::from("first_before_one")],
                     after: vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
+                        String::from("first_after_three"),
                     ],
                 },
             },
@@ -1333,11 +1358,9 @@ mod test {
                     before: vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
+                        String::from("second_before_three"),
                     ],
-                    after: vec![
-                        String::from("second_after_one"),
-                        String::from("second_after_two"),
-                    ],
+                    after: vec![String::from("second_after_one")],
                 },
             },
             MatchProperties {
@@ -1371,14 +1394,14 @@ mod test {
             ),
             format!(
                 "{}{}{}{}{}\n\
-                {}{}{}{}{}\n\
                 {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
-                {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
@@ -1388,15 +1411,9 @@ mod test {
                 // first before context line
                 "First".cyan(),
                 ':'.fixed(50),
-                "40".cyan(),
-                ':'.fixed(50),
-                "first_before_one".rgb(127, 127, 127).dim(),
-                // second before context line
-                "First".cyan(),
-                ':'.fixed(50),
                 "41".cyan(),
                 ':'.fixed(50),
-                "first_before_two".rgb(127, 127, 127).dim(),
+                "first_before_one".rgb(127, 127, 127).dim(),
                 // selected line
                 "First".cyan(),
                 ':'.fixed(50),
@@ -1416,18 +1433,30 @@ mod test {
                 "44".cyan(),
                 ':'.fixed(50),
                 "first_after_two".rgb(127, 127, 127).dim(),
+                // third after context line
+                "First".cyan(),
+                ':'.fixed(50),
+                "45".cyan(),
+                ':'.fixed(50),
+                "first_after_three".rgb(127, 127, 127).dim(),
                 // first before context line
                 "Second".cyan(),
                 ':'.fixed(50),
-                "100498".cyan(),
+                "100497".cyan(),
                 ':'.fixed(50),
                 "second_before_one".rgb(127, 127, 127).dim(),
                 // second before context line
                 "Second".cyan(),
                 ':'.fixed(50),
-                "100499".cyan(),
+                "100498".cyan(),
                 ':'.fixed(50),
                 "second_before_two".rgb(127, 127, 127).dim(),
+                // third before context line
+                "Second".cyan(),
+                ':'.fixed(50),
+                "100499".cyan(),
+                ':'.fixed(50),
+                "second_before_three".rgb(127, 127, 127).dim(),
                 // selected line
                 "Second".cyan(),
                 ':'.fixed(50),
@@ -1441,12 +1470,6 @@ mod test {
                 "100501".cyan(),
                 ':'.fixed(50),
                 "second_after_one".rgb(127, 127, 127).dim(),
-                // second after context line
-                "Second".cyan(),
-                ':'.fixed(50),
-                "100502".cyan(),
-                ':'.fixed(50),
-                "second_after_two".rgb(127, 127, 127).dim(),
                 // first before context line
                 "Third".cyan(),
                 ':'.fixed(50),
