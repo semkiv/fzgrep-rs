@@ -1,4 +1,7 @@
-use crate::cli::error::{ColorSequenceParsingError, StyleSequenceParsingError};
+pub mod error;
+
+use error::{ColorSequenceParsingError, StyleSequenceParsingError};
+
 use log::warn;
 use yansi::{Color, Style};
 

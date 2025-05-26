@@ -1,8 +1,6 @@
-use std::{
-    fs,
-    io::{self, BufRead, BufReader},
-    path::Path,
-};
+use std::fs;
+use std::io::{self, BufRead, BufReader};
+use std::path::Path;
 
 /// A common abstraction over possible content sources: `stdin` or file on disk.
 ///

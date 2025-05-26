@@ -5,7 +5,8 @@
     reason = "These are integration tests"
 )]
 
-use fzgrep::{MatchCollectionStrategy, cli::args};
+use fzgrep::cli;
+use fzgrep::request::collection_strategy::CollectionStrategy;
 
 #[test]
 fn top_five() {
@@ -19,55 +20,56 @@ fn top_five() {
         "test",
         "resources/tests/top_matches/",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(5));
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+    assert_eq!(
+        request.core.collection_strategy,
+        CollectionStrategy::CollectTop(5)
+    );
 
-    let results =
-        fzgrep::collect_top_matches(&request.query, &request.targets, &request.match_options, 5)
-            .unwrap();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
     assert_eq!(results.len(), 5);
 
     assert_eq!(
-        results[0].file_name.as_ref().unwrap(),
+        results[0].location.source_name.as_ref().unwrap(),
         "resources/tests/top_matches/1.txt"
     );
-    assert_eq!(results[0].line_number.unwrap(), 1);
+    assert_eq!(results[0].location.line_number.unwrap(), 1);
     assert_eq!(results[0].matching_line, String::from("test task"));
     assert_eq!(results[0].fuzzy_match.score(), 46);
     assert_eq!(results[0].fuzzy_match.positions(), &vec![0, 1, 2, 3,]);
 
     assert_eq!(
-        results[1].file_name.as_ref().unwrap(),
+        results[1].location.source_name.as_ref().unwrap(),
         "resources/tests/top_matches/1.txt"
     );
-    assert_eq!(results[1].line_number.unwrap(), 5);
+    assert_eq!(results[1].location.line_number.unwrap(), 5);
     assert_eq!(results[1].matching_line, String::from("tests"));
     assert_eq!(results[1].fuzzy_match.score(), 46);
     assert_eq!(results[1].fuzzy_match.positions(), &vec![0, 1, 2, 3,]);
 
     assert_eq!(
-        results[2].file_name.as_ref().unwrap(),
+        results[2].location.source_name.as_ref().unwrap(),
         "resources/tests/top_matches/2.txt"
     );
-    assert_eq!(results[2].line_number.unwrap(), 4);
+    assert_eq!(results[2].location.line_number.unwrap(), 4);
     assert_eq!(results[2].matching_line, String::from("test"));
     assert_eq!(results[2].fuzzy_match.score(), 46);
     assert_eq!(results[2].fuzzy_match.positions(), &vec![0, 1, 2, 3,]);
 
     assert_eq!(
-        results[3].file_name.as_ref().unwrap(),
+        results[3].location.source_name.as_ref().unwrap(),
         "resources/tests/top_matches/1.txt"
     );
-    assert_eq!(results[3].line_number.unwrap(), 3);
+    assert_eq!(results[3].location.line_number.unwrap(), 3);
     assert_eq!(results[3].matching_line, String::from("Test"));
     assert_eq!(results[3].fuzzy_match.score(), 45);
     assert_eq!(results[3].fuzzy_match.positions(), &vec![0, 1, 2, 3,]);
 
     assert_eq!(
-        results[4].file_name.as_ref().unwrap(),
+        results[4].location.source_name.as_ref().unwrap(),
         "resources/tests/top_matches/2.txt"
     );
-    assert_eq!(results[4].line_number.unwrap(), 5);
+    assert_eq!(results[4].location.line_number.unwrap(), 5);
     assert_eq!(results[4].matching_line, String::from("Test task"));
     assert_eq!(results[4].fuzzy_match.score(), 45);
     assert_eq!(results[4].fuzzy_match.positions(), &vec![0, 1, 2, 3,]);
@@ -86,11 +88,13 @@ fn stability() {
             "test",
             "resources/tests/top_matches/",
         ];
-        let request = args::make_request(cmd.into_iter().map(String::from));
-        assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(5));
+        let request = cli::make_request(cmd.into_iter().map(String::from));
+        assert_eq!(
+            request.core.collection_strategy,
+            CollectionStrategy::CollectTop(5)
+        );
 
-        fzgrep::collect_top_matches(&request.query, &request.targets, &request.match_options, 5)
-            .unwrap()
+        fzgrep::collect_matches(&request.core).unwrap()
     };
 
     let all = {
@@ -102,11 +106,13 @@ fn stability() {
             "test",
             "resources/tests/top_matches/",
         ];
-        let request = args::make_request(cmd.into_iter().map(String::from));
-        assert_eq!(request.strategy, MatchCollectionStrategy::CollectAll);
+        let request = cli::make_request(cmd.into_iter().map(String::from));
+        assert_eq!(
+            request.core.collection_strategy,
+            CollectionStrategy::CollectAll
+        );
 
-        fzgrep::collect_top_matches(&request.query, &request.targets, &request.match_options, 5)
-            .unwrap()
+        fzgrep::collect_matches(&request.core).unwrap()
     };
 
     assert_eq!(top, all.into_iter().take(5).collect::<Vec<_>>());

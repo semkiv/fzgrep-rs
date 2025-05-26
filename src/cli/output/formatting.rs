@@ -27,7 +27,7 @@ pub struct StyleSet {
 
     /// Style of the file name.
     ///
-    pub file_name: Style,
+    pub source_name: Style,
 
     /// Style of the separator between file name/line number/line itself/etc.
     ///
@@ -72,7 +72,7 @@ impl Default for StyleSet {
         Self {
             selected_match: Style::new().red().bold(),
             line_number: Style::new().green(),
-            file_name: Style::new().magenta(),
+            source_name: Style::new().magenta(),
             separator: Style::new().cyan(),
             selected_line: Style::new(),
             context: Style::new(),
@@ -89,7 +89,7 @@ mod test {
         let default = StyleSet::default();
         assert_eq!(default.selected_match, Style::new().red().bold());
         assert_eq!(default.line_number, Style::new().green());
-        assert_eq!(default.file_name, Style::new().magenta());
+        assert_eq!(default.source_name, Style::new().magenta());
         assert_eq!(default.separator, Style::new().cyan());
         assert_eq!(default.selected_line, Style::new());
         assert_eq!(default.context, Style::new());

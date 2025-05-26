@@ -4,7 +4,10 @@
     reason = "These are integration tests"
 )]
 
-use fzgrep::{Filter, Targets, cli::args};
+use fzgrep::cli;
+use fzgrep::request::targets::Targets;
+use fzgrep::request::targets::filter::Filter;
+
 use glob::Pattern;
 use std::path::PathBuf;
 
@@ -17,23 +20,24 @@ fn basic_usage() {
         "recursive",
         "resources/tests/",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![PathBuf::from("resources/tests/")],
             filter: None
         }
     );
-
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -62,23 +66,25 @@ fn basic_usage_no_trailing_slash() {
         "recursive",
         "resources/tests",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![PathBuf::from("resources/tests/")],
             filter: None
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -108,10 +114,12 @@ fn only_files() {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![
                 PathBuf::from("resources/tests/nested/test.txt"),
@@ -121,13 +129,13 @@ fn only_files() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -148,10 +156,12 @@ fn files_and_dirs_mixed() {
         "resources/tests/nested/test.txt",
         "resources/tests/nested/test2.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![
                 PathBuf::from("resources/tests/nested/more_nested/"),
@@ -162,13 +172,13 @@ fn files_and_dirs_mixed() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -197,10 +207,11 @@ fn recursive_with_include_filters() {
         "resources/tests/test.json",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![
                 PathBuf::from("resources/tests/nested/"),
@@ -215,13 +226,13 @@ fn recursive_with_include_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -249,10 +260,12 @@ fn recursive_with_exclude_filters() {
         "resources/tests/test.json",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![
                 PathBuf::from("resources/tests/nested/"),
@@ -268,13 +281,13 @@ fn recursive_with_exclude_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -305,10 +318,12 @@ fn recursive_with_include_and_exclude_filters() {
         "resources/tests/test.json",
         "resources/tests/test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(request.query, "recursive");
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
+    assert_eq!(request.core.query, "recursive");
     assert_eq!(
-        request.targets,
+        request.core.targets,
         Targets::RecursiveEntries {
             paths: vec![
                 PathBuf::from("resources/tests/nested/"),
@@ -329,13 +344,13 @@ fn recursive_with_include_and_exclude_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
