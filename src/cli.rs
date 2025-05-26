@@ -892,7 +892,10 @@ mod tests {
                 PathBuf::from("file3")
             ])
         );
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::On
+        );
     }
 
     #[test]
@@ -907,7 +910,10 @@ mod tests {
                 filter: None
             }
         );
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::On
+        );
     }
 
     #[test]
@@ -921,7 +927,10 @@ mod tests {
             "file3",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::Off);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::Off
+        );
     }
 
     #[test]
@@ -1152,42 +1161,60 @@ mod tests {
     fn make_request_line_number_short() {
         let args = ["fzgrep", "-n", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.line_number_tracking, LineNumberTracking::On);
+        assert_eq!(
+            request.core.match_options.line_number_tracking,
+            LineNumberTracking::On
+        );
     }
 
     #[test]
     fn make_request_line_number_long() {
         let args = ["fzgrep", "--line-number", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.line_number_tracking, LineNumberTracking::On);
+        assert_eq!(
+            request.core.match_options.line_number_tracking,
+            LineNumberTracking::On
+        );
     }
 
     #[test]
     fn make_request_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::On
+        );
     }
 
     #[test]
     fn make_request_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::On
+        );
     }
 
     #[test]
     fn make_request_no_file_name_short() {
         let args = ["fzgrep", "-F", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::Off);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::Off
+        );
     }
 
     #[test]
     fn make_request_no_file_name_long() {
         let args = ["fzgrep", "--no-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.match_options.source_name_tracking, SourceNameTracking::Off);
+        assert_eq!(
+            request.core.match_options.source_name_tracking,
+            SourceNameTracking::Off
+        );
     }
 
     #[test]

@@ -69,7 +69,9 @@ pub fn run(
 ///   * [`io::Error`] if encounters any I/O related issues.
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
-pub fn collect_matches(request: &CoreRequest) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
+pub fn collect_matches(
+    request: &CoreRequest,
+) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
     match request.collection_strategy {
         CollectionStrategy::CollectAll => {
             let mut vec = Vec::new();
@@ -109,6 +111,10 @@ fn collect_matches_into(
     Ok(())
 }
 
+#[expect(
+    clippy::panic_in_result_fn,
+    reason = "There are a couple of cases of logic (i.e. programmer's) errors"
+)]
 fn process_reader(
     reader: Reader,
     query: &str,
@@ -120,6 +126,12 @@ fn process_reader(
     let context_size = options.context_size;
     let lines_after = context_size.lines_after;
     let mut before_context_accumulator = SlidingAccumulator::new(context_size.lines_before);
+
+    // `Option` is purely for technical purposes: `ProspectiveMatchProperties::update` method consumes the item
+    // so there must be something place in its stead. Having `Option` just makes things easiser
+    // (an alternative could be storing items and using `std::mem::take` on the item being updated,
+    // but this requires the items to be dafault-constructible as it leaves a default-constructed item instead,
+    // which, in addition and generally speaking, might not be cheap)
     let mut pending_results =
         VecDeque::<Option<ProspectiveMatchProperties>>::with_capacity(lines_after);
 
@@ -128,7 +140,15 @@ fn process_reader(
         let line_number = index.wrapping_add(1);
 
         for prospective_props in &mut pending_results {
-            *prospective_props = Some(prospective_props.take().unwrap().update(line.clone()));
+            #[expect(
+                clippy::expect_used,
+                reason = "It is a logic error if an actual \"hole\" is found among the pending results.\
+                          They appear only temporary while the actual value is taken for updating."
+            )]
+            let current = prospective_props
+                .take()
+                .expect("Found a \"hole\" when processing current pending match results");
+            *prospective_props = Some(current.update(line.clone()));
         }
 
         // TODO: clarify
@@ -141,7 +161,14 @@ fn process_reader(
                         pending_results.push_front(Some(props));
                     }
                 },
-                None => unreachable!("There should not be any \"holes\" at this point"),
+                #[expect(
+                    clippy::panic,
+                    reason = "It is a logic error if an actual \"hole\" is found among the pending results.\
+                              They appear only temporary while the actual value is taken for updating."
+                )]
+                None => {
+                    panic!("Found a \"hole\" when processing pending results")
+                }
             }
         }
 
@@ -178,236 +205,17 @@ fn process_reader(
     for props in pending_results {
         match props {
             Some(props) => dest.add(props.complete()),
-            None => unreachable!("There should be no \"holes\" at this point"),
+            #[expect(
+                clippy::panic,
+                reason = "It is a logic error if an actual \"hole\" is found among the pending results.\
+                          They appear only temporary while the actual value is taken for updating."
+            )]
+            None => panic!("Found a \"hole\" when completing remaining pending results"),
         }
     }
 
     Ok(())
 }
-
-// // TODO: refactor common pieces
-// // TODO: make temporary result less ad-hoc
-
-// fn process_target_no_context(
-//     target: Reader,
-//     query: &str,
-//     line_number_tracking: LineNumberTracking,
-//     source_name_tracking: SourceNameTracking,
-//     dest: &mut impl ResultsCollection,
-// ) -> Result<(), io::Error> {
-//     let display_name = target.display_name().clone();
-//     let reported_display_name =
-//         (source_name_tracking == SourceNameTracking::On).then(|| display_name.clone());
-
-//     for (index, line) in target.into_source().lines().enumerate() {
-//         let line = line?;
-//         let line_number = index.wrapping_add(1);
-//         let reported_line_number =
-//             (line_number_tracking == LineNumberTracking::On).then_some(line_number);
-
-//         if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-//             let positions = fuzzy_match.positions().clone();
-//             dest.add(MatchProperties {
-//                 matching_line: line,
-//                 fuzzy_match,
-//                 location: Location {
-//                     source_name: reported_display_name.clone(),
-//                     line_number: reported_line_number,
-//                 },
-//                 context: Context {
-//                     before: None,
-//                     after: None,
-//                 },
-//             });
-//             debug!("Found a match in {display_name}, line {line_number}, positions {positions:?}");
-//         }
-//     }
-
-//     Ok(())
-// }
-
-// fn process_target_before_context(
-//     target: Reader,
-//     query: &str,
-//     line_number_tracking: LineNumberTracking,
-//     source_name_tracking: SourceNameTracking,
-//     lines_before: usize,
-//     dest: &mut impl ResultsCollection,
-// ) -> Result<(), io::Error> {
-//     let display_name = target.display_name().clone();
-//     let reported_display_name =
-//         (source_name_tracking == SourceNameTracking::On).then(|| display_name.clone());
-
-//     let mut before_context = VecDeque::with_capacity(lines_before);
-
-//     for (index, line) in target.into_source().lines().enumerate() {
-//         let line = line?;
-//         let line_number = index.wrapping_add(1);
-//         let reported_line_number =
-//             (line_number_tracking == LineNumberTracking::On).then_some(line_number);
-
-//         if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-//             let positions = fuzzy_match.positions().clone();
-//             dest.add(MatchProperties {
-//                 matching_line: line.clone(),
-//                 fuzzy_match,
-//                 location: Location {
-//                     source_name: reported_display_name.clone(),
-//                     line_number: reported_line_number,
-//                 },
-//                 context: Context {
-//                     before: Some(Vec::from(before_context.clone())),
-//                     after: None,
-//                 },
-//             });
-//             debug!("Found a match in {display_name}, line {line_number}, positions {positions:?}");
-//         }
-
-//         if before_context.len() == lines_before {
-//             before_context.pop_front();
-//         }
-//         before_context.push_back(line);
-//     }
-
-//     Ok(())
-// }
-
-// fn process_target_after_context(
-//     target: Reader,
-//     query: &str,
-//     line_number_tracking: LineNumberTracking,
-//     source_name_tracking: SourceNameTracking,
-//     lines_after: usize,
-//     dest: &mut impl ResultsCollection,
-// ) -> Result<(), io::Error> {
-//     let display_name = target.display_name().clone();
-//     let reported_display_name =
-//         (source_name_tracking == SourceNameTracking::On).then(|| display_name.clone());
-
-//     let mut pending_results = VecDeque::<(MatchProperties, usize)>::with_capacity(lines_after);
-
-//     for (index, line) in target.into_source().lines().enumerate() {
-//         let line = line?;
-//         let line_number = index.wrapping_add(1);
-//         let reported_line_number =
-//             (line_number_tracking == LineNumberTracking::On).then_some(line_number);
-
-//         for (props, missing) in &mut pending_results {
-//             props
-//                 .context
-//                 .after
-//                 .as_mut()
-//                 .expect("Encountered a partial result without a context. This is a bug.")
-//                 .push(line.clone());
-//             *missing -= 1;
-//         }
-
-//         while let Some((_, 0)) = pending_results.front() {
-//             let (props, _) = pending_results.pop_front().unwrap();
-//             dest.add(props);
-//         }
-
-//         if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-//             let positions = fuzzy_match.positions().clone();
-
-//             pending_results.push_back((
-//                 MatchProperties {
-//                     matching_line: line.clone(),
-//                     fuzzy_match,
-//                     location: Location {
-//                         source_name: reported_display_name.clone(),
-//                         line_number: reported_line_number,
-//                     },
-//                     context: Context {
-//                         before: None,
-//                         after: Some(Vec::with_capacity(lines_after)),
-//                     },
-//                 },
-//                 lines_after,
-//             ));
-
-//             debug!("Found a match in {display_name}, line {line_number}, positions {positions:?}");
-//         }
-//     }
-
-//     for (props, _) in pending_results {
-//         dest.add(props);
-//     }
-
-//     Ok(())
-// }
-
-// fn process_target_full_context(
-//     target: Reader,
-//     query: &str,
-//     line_number_tracking: LineNumberTracking,
-//     source_name_tracking: SourceNameTracking,
-//     lines_before: usize,
-//     lines_after: usize,
-//     dest: &mut impl ResultsCollection,
-// ) -> Result<(), io::Error> {
-//     let display_name = target.display_name().clone();
-//     let reported_display_name =
-//         (source_name_tracking == SourceNameTracking::On).then(|| display_name.clone());
-
-//     let mut before_context = VecDeque::with_capacity(lines_before);
-//     let mut pending_results = VecDeque::<(MatchProperties, usize)>::with_capacity(lines_after);
-
-//     for (index, line) in target.into_source().lines().enumerate() {
-//         let line = line?;
-//         let line_number = index.wrapping_add(1);
-//         let reported_line_number =
-//             (line_number_tracking == LineNumberTracking::On).then_some(line_number);
-
-//         for (props, missing) in &mut pending_results {
-//             props
-//                 .context
-//                 .after
-//                 .as_mut()
-//                 .expect("Encountered a partial result without a context. This is a bug.")
-//                 .push(line.clone());
-//             *missing -= 1;
-//         }
-
-//         while let Some((_, 0)) = pending_results.front() {
-//             let (props, _) = pending_results.pop_front().unwrap();
-//             dest.add(props);
-//         }
-
-//         if let Some(fuzzy_match) = vscode_fuzzy_score_rs::fuzzy_match(query, &line) {
-//             let positions = fuzzy_match.positions().clone();
-
-//             pending_results.push_back((
-//                 MatchProperties {
-//                     matching_line: line.clone(),
-//                     fuzzy_match,
-//                     location: Location {
-//                         source_name: reported_display_name.clone(),
-//                         line_number: reported_line_number,
-//                     },
-//                     context: Context {
-//                         before: Some(Vec::from(before_context.clone())),
-//                         after: Some(Vec::with_capacity(lines_after)),
-//                     },
-//                 },
-//                 lines_after,
-//             ));
-
-//             debug!("Found a match in {display_name}, line {line_number}, positions {positions:?}");
-//         }
-
-//         if before_context.len() == lines_before {
-//             before_context.pop_front();
-//         }
-//         before_context.push_back(line);
-//     }
-
-//     for (props, _) in pending_results {
-//         dest.add(props);
-//     }
-
-//     Ok(())
-// }
 
 fn make_readers(
     targets: &Targets,

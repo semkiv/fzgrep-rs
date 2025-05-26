@@ -45,8 +45,9 @@ impl ProspectiveMatchProperties {
 
     pub fn update(self, line: String) -> Self {
         match self {
+            #[expect(clippy::panic, reason = "It is a logic error")]
             Self::Ready(_) => {
-                unreachable!("An already complete ProspectiveMatchProperties should not be updated")
+                panic!("A instance of 'ProspectiveMatchProperties' updated after completeion")
             }
             Self::Pending {
                 matching_line,

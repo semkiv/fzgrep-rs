@@ -101,7 +101,7 @@ pub(crate) enum ColorSequenceParsingError {
 impl Display for ColorOverrideParsingError {
     #[expect(
         clippy::min_ident_chars,
-        reason = "Corresponds to the name used in trait"
+        reason = "Corresponds to the name used in the trait"
     )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
@@ -121,7 +121,7 @@ impl Error for ColorOverrideParsingError {}
 impl Display for StyleSequenceParsingError {
     #[expect(
         clippy::min_ident_chars,
-        reason = "Corresponds to the name used in trait"
+        reason = "Corresponds to the name used in the trait"
     )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
@@ -138,7 +138,7 @@ impl Error for StyleSequenceParsingError {}
 impl Display for ColorSequenceParsingError {
     #[expect(
         clippy::min_ident_chars,
-        reason = "Corresponds to the name used in trait"
+        reason = "Corresponds to the name used in the trait"
     )]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {

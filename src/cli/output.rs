@@ -62,8 +62,23 @@ fn format_before_context(
 ) {
     let line_number_generator = match_location.line_number.map(|line_no| {
         |idx| {
-            let offset = ctx.len() - idx;
-            line_no.checked_sub(offset).unwrap()
+            #[expect(
+                clippy::expect_used,
+                reason = "It is a logic error if the context index is greater than the context length.\
+                          If it happens it is a bug in context formatting code."
+            )]
+            let offset = ctx.len().checked_sub(idx).expect(
+                "The context line number offset is negative"
+            );
+            #[expect(
+                clippy::expect_used,
+                reason = "It is a logic error if the offset is greater than the current line number\
+                          (and the context size too).\
+                          If it happens it is a bug in context formatting code."
+            )]
+            line_no.checked_sub(offset).expect(
+                "The context line number is negative."
+            )
         }
     });
     format_context(
@@ -149,9 +164,10 @@ fn format_selected_line(
             .take(
                 #[expect(
                     clippy::unwrap_used,
-                    reason = "The range is not supposed to start before the previous one ends. If it happens, it's a bug in the indices grouping code"
+                    reason = "The range is not supposed to start before the previous one ends.\
+                              If it happens, it's a bug in the indices grouping code."
                 )]
-                range.start.checked_sub(previous_range_end).unwrap()
+                range.start.checked_sub(previous_range_end).unwrap(),
             )
             .collect::<String>();
         // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
@@ -169,9 +185,10 @@ fn format_selected_line(
             .take(
                 #[expect(
                     clippy::unwrap_used,
-                    reason = "The range is not supposed to end before it starts. If it happens, it's a bug in the indices grouping code"
+                    reason = "The range is not supposed to end before it starts.\
+                              If it happens, it's a bug in the indices grouping code."
                 )]
-                range.end.checked_sub(range.start).unwrap()
+                range.end.checked_sub(range.start).unwrap(),
             )
             .collect::<String>();
         result.push_str(&format_one_piece(

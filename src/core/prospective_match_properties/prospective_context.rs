@@ -30,8 +30,9 @@ impl ProspectiveContext {
 
     pub fn update(self, line: String) -> Self {
         match self {
+            #[expect(clippy::panic, reason = "It is a logic error")]
             Self::Ready(_) => {
-                unreachable!("An already completed ProspectiveContext should not be updated");
+                panic!("An instance of 'ProspectiveContext' updated after completion");
             }
             Self::Pending {
                 before_context,

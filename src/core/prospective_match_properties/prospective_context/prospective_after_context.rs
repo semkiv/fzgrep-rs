@@ -21,15 +21,22 @@ impl ProspectiveAfterContext {
 
     pub fn feed(self, line: String) -> Self {
         match self {
+            #[expect(clippy::panic, reason = "It is a logic error")]
             Self::Ready(_) => {
-                unreachable!("An already completed ProspectiveAfterContext should not be fed");
+                panic!("An instance of 'ProspectiveAfterContext' fed after completion");
             }
             Self::Pending {
                 mut collected,
-                mut missing,
+                missing,
             } => {
                 collected.push(line);
-                missing -= 1;
+                #[expect(
+                    clippy::expect_used,
+                    reason = "The missing line count is expected to go down to zero by one at a time"
+                )]
+                missing
+                    .checked_sub(1)
+                    .expect("The missing lines count is negative");
 
                 if missing == 0 {
                     return Self::Ready(Some(collected));
