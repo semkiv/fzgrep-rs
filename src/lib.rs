@@ -8,7 +8,7 @@ mod core;
 use cli::output;
 use cli::output::behavior::Behavior;
 use cli::request::Request as CliRequest;
-use core::context_accumulators::SlidingAccumulator;
+use core::context_accumulators::BeforeContextAccumulator;
 use core::prospective_match_properties::ProspectiveMatchProperties;
 use core::reader::Reader;
 use core::results_collection::ResultsCollection;
@@ -125,7 +125,7 @@ fn process_reader(
 
     let context_size = options.context_size;
     let lines_after = context_size.lines_after;
-    let mut before_context_accumulator = SlidingAccumulator::new(context_size.lines_before);
+    let mut before_context_accumulator = BeforeContextAccumulator::new(context_size.lines_before);
 
     // `Option` is purely for technical purposes: `ProspectiveMatchProperties::update` method consumes the item
     // so there must be something place in its stead. Having `Option` just makes things easiser
@@ -151,12 +151,19 @@ fn process_reader(
             *prospective_props = Some(current.update(line.clone()));
         }
 
-        // TODO: clarify
+        // Since the input is processed line-by-line, at most one pending match can be completed.
+        // Since the pending matches are added in the order they appear in the input
+        // and are removed upon completion (see below) it's only the first pending match
+        // that can become complete at a given step.
         let first = pending_results.pop_front();
+        // If there's anything pending at all...
         if let Some(props) = first {
             match props {
+                // This is purely technical, see the note about using `Option` above.
                 Some(props) => match props {
+                    // The pending match is now complete, move it the results collection.
                     ProspectiveMatchProperties::Ready(props) => dest.add(props),
+                    // The pending match still lacks some context, put it back into the queue.
                     ProspectiveMatchProperties::Pending { .. } => {
                         pending_results.push_front(Some(props));
                     }

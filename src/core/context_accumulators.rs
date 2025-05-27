@@ -1,16 +1,14 @@
 use std::collections::VecDeque;
 
-// TODO: rename?
-
-/// A FIFO-like context accumulator: when at capacity every new line that is fed
+/// A FIFO-like "before" context accumulator: when at capacity every new line that is fed
 /// will pop the oldest line stored in the accumulator.
 ///
 #[derive(Debug)]
-pub struct SlidingAccumulator {
+pub struct BeforeContextAccumulator {
     data: Option<VecDeque<String>>,
 }
 
-impl SlidingAccumulator {
+impl BeforeContextAccumulator {
     /// Creates a new [`SlidingAccumulator`] with capacity `capacity`.
     /// `capacity` can be 0, in which case [`feed`] does nothing.
     ///
@@ -47,20 +45,20 @@ mod test {
 
     #[test]
     fn sliding_accumulator_constructor_zero_capacity() {
-        let acc = SlidingAccumulator::new(0);
+        let acc = BeforeContextAccumulator::new(0);
         assert_eq!(acc.data, None);
     }
 
     #[test]
     fn sliding_accumulator_constructor() {
-        let acc = SlidingAccumulator::new(3);
+        let acc = BeforeContextAccumulator::new(3);
         assert_eq!(acc.data, Some(VecDeque::new()));
         assert_eq!(acc.data.unwrap().capacity(), 3);
     }
 
     #[test]
     fn sliding_accumulator_feed() {
-        let mut acc = SlidingAccumulator::new(3);
+        let mut acc = BeforeContextAccumulator::new(3);
         assert_eq!(acc.data, Some(VecDeque::from([])));
         acc.feed(String::from("one"));
         assert_eq!(acc.data, Some(VecDeque::from([String::from("one")])));
@@ -91,7 +89,7 @@ mod test {
 
     #[test]
     fn sliding_accumulator_feed_zero_capacity() {
-        let mut acc = SlidingAccumulator::new(0);
+        let mut acc = BeforeContextAccumulator::new(0);
         assert_eq!(acc.data, None);
         acc.feed(String::from("something"));
         assert_eq!(acc.data, None);
@@ -99,7 +97,7 @@ mod test {
 
     #[test]
     fn sliding_accumulator_snapshot() {
-        let mut acc = SlidingAccumulator::new(3);
+        let mut acc = BeforeContextAccumulator::new(3);
         assert_eq!(acc.snapshot(), None);
         acc.feed(String::from("one"));
         assert_eq!(acc.snapshot(), Some(vec![String::from("one")]));

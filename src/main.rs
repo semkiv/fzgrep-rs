@@ -7,7 +7,7 @@ fn main() -> process::ExitCode {
     let request = cli::make_request(env::args());
     // initialize logger
     env_logger::Builder::new()
-        .filter_level(request.core.log_verbosity)
+        .filter_level(request.log_verbosity)
         .init();
 
     match fzgrep::run(&request, &mut io::stdout()) {

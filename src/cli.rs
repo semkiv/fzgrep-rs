@@ -24,6 +24,10 @@ use std::env;
 use std::io::{self, IsTerminal as _};
 use std::path::PathBuf;
 
+struct CommandBuilder {
+    command: Command,
+}
+
 /// Sets up a [`Request`] struct based on the program command line arguments
 ///
 /// `args` can technically be any [`String`] iterator but in practice it is expected to be used only with [`std::env::args`].
@@ -386,133 +390,201 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
             targets: targets_from(&matches),
             collection_strategy: strategy_from(&matches),
             match_options: match_options_from(&matches),
-            log_verbosity: log_verbosity_from(&matches),
         },
         output_behavior: output_behavior_from(&matches),
+        log_verbosity: log_verbosity_from(&matches),
     }
 }
 
-// TODO: split the builder
-
-#[expect(clippy::too_many_lines, reason = "Cannot do much about this builder")]
-fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
-    Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
+impl CommandBuilder {
+    fn new() -> Self {
+        let command = Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
+        .next_line_help(true)
         .after_help(
             "With more than one FILEs assume -f.\n\
             Exit status is 0 if any match is found, 1 otherwise; if any error(s) occur, the exit status is 2."
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn pattern(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::PATTERN)
                 .value_name("PATTERN")
                 .required(true)
                 .help("Pattern to match"),
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn target(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::TARGET)
                 .value_name("TARGET")
                 .num_args(0..)
                 .help(
                     "Targets (file or directories) to search in;\n\
                     if none provided uses current working directory with `--recursive`,\n\
-                    and the standard input otherwise"
+                    and the standard input otherwise",
                 ),
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn recursive(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::RECURSIVE)
                 .short('r')
                 .long("recursive")
                 .action(ArgAction::SetTrue)
                 .help("Recurse directories. '--exclude' and '--include' can be used for more fine-grained control")
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn exclude(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::EXCLUDE)
                 .long("exclude")
                 .action(ArgAction::Append)
                 .value_parser(Pattern::new)
                 .help(
                     "A UNIX globs. Files matching this glob will be ignored.\n\
-                    Can be specified multiple times and combined with '--include' option."
-                )
-        )
-        .arg(
+                    Can be specified multiple times and combined with '--include' option.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn include(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::INCLUDE)
                 .long("include")
                 .action(ArgAction::Append)
                 .value_parser(Pattern::new)
                 .help(
                     "A UNIX globs. Files matching this glob will be ignored.\n\
-                    Can be specified multiple times and combined with '--exclude' option."
-                )
-        )
-        .arg(
+                    Can be specified multiple times and combined with '--exclude' option.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn line_number(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::LINE_NUMBER)
                 .short('n')
                 .long("line-number")
                 .action(ArgAction::SetTrue)
                 .help("Print line number with matching lines"),
-        )
-        .arg(
-            Arg::new(option_ids::WITH_FILENAME)
-                .short('f')
-                .long("with-filename")
+        );
+
+        Self { command }
+    }
+
+    fn with_filename(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::LINE_NUMBER)
+                .short('n')
+                .long("line-number")
                 .action(ArgAction::SetTrue)
-                .conflicts_with(option_ids::NO_FILENAME)
-                .help("Print file name with output lines"),
-        )
-        .arg(
+                .help("Print line number with matching lines"),
+        );
+
+        Self { command }
+    }
+
+    fn no_filename(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::NO_FILENAME)
                 .short('F')
                 .long("no-filename")
                 .action(ArgAction::SetTrue)
                 .conflicts_with(option_ids::WITH_FILENAME)
                 .help("Suppress the file name prefix on output"),
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn context(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::CONTEXT)
                 .short('C')
                 .long("context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
                 .conflicts_with_all([option_ids::BEFORE_CONTEXT, option_ids::AFTER_CONTEXT])
-                .help("Print NUM lines of surrounding context")
-        )
-        .arg(
+                .help("Print NUM lines of surrounding context"),
+        );
+
+        Self { command }
+    }
+
+    fn before_context(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::BEFORE_CONTEXT)
                 .short('B')
                 .long("before-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
                 .conflicts_with(option_ids::CONTEXT)
-                .help("Print NUM lines of leading context")
-        )
-        .arg(
+                .help("Print NUM lines of leading context"),
+        );
+
+        Self { command }
+    }
+
+    fn after_context(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::AFTER_CONTEXT)
                 .short('A')
                 .long("after-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
                 .conflicts_with(option_ids::CONTEXT)
-                .help("Print NUM lines of trailing context")
-        )
-        .arg(
+                .help("Print NUM lines of trailing context"),
+        );
+
+        Self { command }
+    }
+
+    fn top(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::TOP)
                 .long("top")
                 .value_name("N")
                 .value_parser(value_parser!(usize))
-                .help("Fetch only top N results")
-        )
-        .arg(
+                .help("Fetch only top N results"),
+        );
+
+        Self { command }
+    }
+
+    fn quiet(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::QUIET)
                 .short('q')
                 .long("quiet")
                 .visible_alias("silent")
                 .action(ArgAction::SetTrue)
                 .conflicts_with(option_ids::VERBOSE)
-                .help("Suppress all output")
-        )
-        .arg(
+                .help("Suppress all output"),
+        );
+
+        Self { command }
+    }
+
+    fn verbose(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::VERBOSE)
                 .short('v')
                 .long("verbose")
@@ -524,10 +596,15 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                     \t'-v' additionally enables warning messages;\n\
                     \t'-vv' additionally enables info messages;\n\
                     \t'-vvv' additionally enables debug messages;\n\
-                    \tand '-vvvv' additionally enables trace messages."
-                )
-        )
-        .arg(
+                    \tand '-vvvv' additionally enables trace messages.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn color(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::COLOR)
                 .long("color")
                 .visible_alias("colour")
@@ -538,8 +615,13 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                     "Display matched strings, lines, context, file names, line numbers and separators in color.\n\
                     With 'auto' the output is colored only when the standard input is connected to a terminal."
                 )
-        )
-        .arg(
+        );
+
+        Self { command }
+    }
+
+    fn color_overrides(self) -> Self {
+        let command = self.command.arg(
             Arg::new(option_ids::COLOR_OVERRIDES)
                 .long("color-overrides")
                 .visible_alias("colour-overrides")
@@ -560,8 +642,35 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                     For more information see 'grep' documentation: https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT\n\
                     and/or ASCII escape codes: https://en.wikipedia.org/wiki/ANSI_escape_code."
                 )
-        )
-        .next_line_help(true)
+        );
+
+        Self { command }
+    }
+
+    fn build(self) -> Command {
+        self.command
+    }
+}
+
+fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
+    CommandBuilder::new()
+        .pattern()
+        .target()
+        .recursive()
+        .exclude()
+        .include()
+        .line_number()
+        .with_filename()
+        .no_filename()
+        .context()
+        .before_context()
+        .after_context()
+        .top()
+        .quiet()
+        .verbose()
+        .color()
+        .color_overrides()
+        .build()
         .get_matches_from(args)
 }
 
@@ -805,13 +914,13 @@ mod tests {
                             lines_after: 0,
                         },
                     },
-                    log_verbosity: LevelFilter::Error,
                 },
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
+                log_verbosity: LevelFilter::Error,
             }
         );
     }
@@ -838,13 +947,13 @@ mod tests {
                             lines_after: 0,
                         },
                     },
-                    log_verbosity: LevelFilter::Error,
                 },
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
+                log_verbosity: LevelFilter::Error,
             }
         );
     }
@@ -868,13 +977,13 @@ mod tests {
                             lines_after: 0,
                         },
                     },
-                    log_verbosity: LevelFilter::Error,
                 },
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
+                log_verbosity: LevelFilter::Error,
             }
         );
     }
@@ -1344,7 +1453,7 @@ mod tests {
         let args = ["fzgrep", "-q", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(request.output_behavior, Behavior::Quiet);
-        assert_eq!(request.core.log_verbosity, LevelFilter::Off);
+        assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
     #[test]
@@ -1352,7 +1461,7 @@ mod tests {
         let args = ["fzgrep", "--quiet", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(request.output_behavior, Behavior::Quiet);
-        assert_eq!(request.core.log_verbosity, LevelFilter::Off);
+        assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
     #[test]
@@ -1360,42 +1469,42 @@ mod tests {
         let args = ["fzgrep", "--silent", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(request.output_behavior, Behavior::Quiet);
-        assert_eq!(request.core.log_verbosity, LevelFilter::Off);
+        assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
     #[test]
     fn make_request_verbose_short() {
         let args = ["fzgrep", "-v", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Warn);
+        assert_eq!(request.log_verbosity, LevelFilter::Warn);
     }
 
     #[test]
     fn make_request_verbose_long() {
         let args = ["fzgrep", "--verbose", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Warn);
+        assert_eq!(request.log_verbosity, LevelFilter::Warn);
     }
 
     #[test]
     fn make_request_verbose_info_short() {
         let args = ["fzgrep", "-vv", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Info);
+        assert_eq!(request.log_verbosity, LevelFilter::Info);
     }
 
     #[test]
     fn make_request_verbose_info_long() {
         let args = ["fzgrep", "--verbose", "--verbose", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Info);
+        assert_eq!(request.log_verbosity, LevelFilter::Info);
     }
 
     #[test]
     fn make_request_verbose_debug_short() {
         let args = ["fzgrep", "-vvv", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Debug);
+        assert_eq!(request.log_verbosity, LevelFilter::Debug);
     }
 
     #[test]
@@ -1409,14 +1518,14 @@ mod tests {
             "file",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Debug);
+        assert_eq!(request.log_verbosity, LevelFilter::Debug);
     }
 
     #[test]
     fn make_request_verbose_trace_short() {
         let args = ["fzgrep", "-vvvv", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Trace);
+        assert_eq!(request.log_verbosity, LevelFilter::Trace);
     }
 
     #[test]
@@ -1431,14 +1540,14 @@ mod tests {
             "file",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Trace);
+        assert_eq!(request.log_verbosity, LevelFilter::Trace);
     }
 
     #[test]
     fn make_request_verbose_extra_short() {
         let args = ["fzgrep", "-vvvvv", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Trace);
+        assert_eq!(request.log_verbosity, LevelFilter::Trace);
     }
 
     #[test]
@@ -1454,7 +1563,7 @@ mod tests {
             "file",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.core.log_verbosity, LevelFilter::Trace);
+        assert_eq!(request.log_verbosity, LevelFilter::Trace);
     }
 
     #[test]
@@ -1717,13 +1826,13 @@ mod tests {
                             lines_after: 2
                         },
                     },
-                    log_verbosity: LevelFilter::Warn,
                 },
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
                     Formatting::Off
                 }),
+                log_verbosity: LevelFilter::Warn,
             }
         );
     }
@@ -1775,12 +1884,12 @@ mod tests {
                             lines_after: 2,
                         },
                     },
-                    log_verbosity: LevelFilter::Warn,
                 },
                 output_behavior: Behavior::Normal(Formatting::On(StyleSet {
                     selected_match: Style::new().blue().blink(),
                     ..Default::default()
                 })),
+                log_verbosity: LevelFilter::Warn,
             }
         );
     }

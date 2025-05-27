@@ -6,8 +6,6 @@ use collection_strategy::CollectionStrategy;
 use match_options::MatchOptions;
 use targets::Targets;
 
-use log::LevelFilter;
-
 /// Represents a run configuration.
 ///
 #[derive(Debug, Eq, PartialEq)]
@@ -27,9 +25,4 @@ pub struct Request {
     /// Additional data about the matches to be collected.
     ///
     pub match_options: MatchOptions,
-
-    /// Control the verbosity of the logs.
-    ///
-    // TODO: move this to cli::Request
-    pub log_verbosity: LevelFilter,
 }
