@@ -1,24 +1,24 @@
-mod prospective_context;
+mod context;
 
-use prospective_context::ProspectiveContext;
+use context::Context;
 
 use vscode_fuzzy_score_rs::FuzzyMatch;
 
-use crate::match_properties::MatchProperties;
+use crate::match_properties::MatchProperties as CompleteMatchProperties;
 use crate::match_properties::location::Location;
 
 // TODO: tests
 
 /// Represents match properties that may or may not have fully accumulated trailing (i.e. "after") context yet.
 ///
-pub enum ProspectiveMatchProperties {
+pub enum MatchProperties {
     /// Match properties whose trailing (i.e. "after") context has already been fully accumulated
-    /// (with an ready-to-use instance of [`MatchProperties`] inside).
+    /// (with an ready-to-use instance of [`crate::match_properties::MatchProperties`] inside).
     ///
-    Ready(MatchProperties),
+    Ready(CompleteMatchProperties),
 
     /// Match properties whose trailing (i.e. "after") context has not yet (or at all) been accumulated.
-    /// The fields mostly repeat those of [`MatchProperties`], except for the context.
+    /// The fields mostly repeat those of [`crate::match_properties::MatchProperties`], except for the context.
     ///
     Pending {
         /// The line that contains the match.
@@ -35,16 +35,16 @@ pub enum ProspectiveMatchProperties {
 
         /// The context surrounding the match, the trailing (i.e. "after") part of which
         /// may or may not be complete at the moment.
-        context: ProspectiveContext,
+        context: Context,
     },
 }
 
-impl ProspectiveMatchProperties {
-    /// Creates a [`ProspectiveMatchProperties`] with the requested properties and "after" context size.
-    /// If and only if `after_context_size` is `0`, returns a [`ProspectiveMatchProperties::Ready`] instance
+impl MatchProperties {
+    /// Creates a [`MatchProperties`] with the requested properties and "after" context size.
+    /// If and only if `after_context_size` is `0`, returns a [`MatchProperties::Ready`] instance
     /// with an empty trailing context.
-    /// Otherwise returns a [`ProspectiveMatchProperties::Pending`] instance with an accordingly constructed
-    /// instance of [`ProspectiveContext`] as the context.
+    /// Otherwise returns a [`MatchProperties::Pending`] instance with an accordingly constructed
+    /// instance of [`Context`] as the context.
     ///
     pub fn new(
         matching_line: String,
@@ -53,15 +53,15 @@ impl ProspectiveMatchProperties {
         before_context: Option<Vec<String>>,
         after_context_size: usize,
     ) -> Self {
-        let context = ProspectiveContext::new(before_context, after_context_size);
+        let context = Context::new(before_context, after_context_size);
         match context {
-            ProspectiveContext::Ready(context) => Self::Ready(MatchProperties {
+            Context::Ready(context) => Self::Ready(CompleteMatchProperties {
                 matching_line,
                 fuzzy_match,
                 location,
                 context,
             }),
-            ProspectiveContext::Pending { .. } => Self::Pending {
+            Context::Pending { .. } => Self::Pending {
                 matching_line,
                 fuzzy_match,
                 location,
@@ -70,21 +70,21 @@ impl ProspectiveMatchProperties {
         }
     }
 
-    /// Updates the current instance of [`ProspectiveMatchProperties`] by accordingly updating
+    /// Updates the current instance of [`MatchProperties`] by accordingly updating
     /// the internal context.
-    /// If the context becomes [`ProspectiveContext::Ready`] after this,
-    /// the current instance itself becomes [`ProspectiveMatchProperties::Ready`].
+    /// If the context becomes [`Context::Ready`] after this,
+    /// the current instance itself becomes [`MatchProperties::Ready`].
     ///
     /// # Panics
     ///
-    ///   * Updating an instance of [`ProspectiveMatchProperties::Ready`] is considered a logic error
+    ///   * Updating an instance of [`MatchProperties::Ready`] is considered a logic error
     ///     and therefore causes a panic.
     ///
     pub fn update(self, line: String) -> Self {
         match self {
             #[expect(clippy::panic, reason = "It is a logic error")]
             Self::Ready(_) => {
-                panic!("A instance of 'ProspectiveMatchProperties' updated after completeion")
+                panic!("A instance of 'MatchProperties' updated after completeion")
             }
             Self::Pending {
                 matching_line,
@@ -94,13 +94,13 @@ impl ProspectiveMatchProperties {
             } => {
                 let context = context.update(line);
                 match context {
-                    ProspectiveContext::Ready(context) => Self::Ready(MatchProperties {
+                    Context::Ready(context) => Self::Ready(CompleteMatchProperties {
                         matching_line,
                         fuzzy_match,
                         location,
                         context,
                     }),
-                    ProspectiveContext::Pending { .. } => Self::Pending {
+                    Context::Pending { .. } => Self::Pending {
                         matching_line,
                         fuzzy_match,
                         location,
@@ -116,18 +116,21 @@ impl ProspectiveMatchProperties {
     ///
     /// # Panics
     ///
-    ///   * Completing an instance of [`ProspectiveMatchProperties::Ready`] is considered a logic error
+    ///   * Completing an instance of [`MatchProperties::Ready`] is considered a logic error
     ///     and therefore causes a panic.
     ///
-    pub fn complete(self) -> MatchProperties {
+    pub fn complete(self) -> CompleteMatchProperties {
         match self {
-            Self::Ready(props) => props,
+            #[expect(clippy::panic, reason = "It is a logic error")]
+            Self::Ready(_) => {
+                panic!("Attempted to complete an already completed instance of 'MatchProperties'")
+            }
             Self::Pending {
                 matching_line,
                 fuzzy_match,
                 location,
                 context,
-            } => MatchProperties {
+            } => CompleteMatchProperties {
                 matching_line,
                 fuzzy_match,
                 location,

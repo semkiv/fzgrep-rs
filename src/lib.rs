@@ -9,7 +9,7 @@ use cli::output;
 use cli::output::behavior::Behavior;
 use cli::request::Request as CliRequest;
 use core::context_accumulators::BeforeContextAccumulator;
-use core::prospective_match_properties::ProspectiveMatchProperties;
+use core::prospective::match_properties::MatchProperties as ProspectiveMatchProperties;
 use core::reader::Reader;
 use core::results_collection::ResultsCollection;
 use core::top_bracket::TopBracket;
