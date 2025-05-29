@@ -111,7 +111,7 @@ impl MatchProperties {
         }
     }
 
-    /// "Completes" an instance of [`ProspectiveMatchProperties::Pending`] by completing
+    /// "Completes" an instance of [`MatchProperties::Pending`] by completing
     /// the internal context and returns the properties with whatever context collected at the time.
     ///
     /// # Panics
