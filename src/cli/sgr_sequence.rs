@@ -11,7 +11,7 @@ use yansi::{Color, Style};
 ///
 /// If the string is not a valid SGR-sequence, raises a [`StyleSequenceParsingError`].
 ///
-pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
+pub fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
     let mut style = Style::new();
     let mut itr = sgr_sequence.split(';');
     while let Some(token) = itr.next() {

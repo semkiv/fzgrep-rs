@@ -46,7 +46,8 @@ impl Formatting {
     /// Converts [`Formatting`] to [`Option<FormattingOptions>`].
     /// If `self` is [`Formatting::On`] returns [`Some`] with the inner options, otherwise [`None`].
     ///
-    pub(crate) const fn options(&self) -> Option<StyleSet> {
+    #[must_use]
+    pub const fn options(&self) -> Option<StyleSet> {
         match self {
             Self::On(options) => Some(*options),
             Self::Off => None,

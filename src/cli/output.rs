@@ -22,7 +22,8 @@ use yansi::{Paint as _, Style};
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub(crate) fn format_results(matches: &[MatchProperties], formatting: &Formatting) -> String {
+#[must_use]
+pub fn format_results(matches: &[MatchProperties], formatting: &Formatting) -> String {
     let mut ret = String::new();
     for match_props in matches {
         let MatchProperties {

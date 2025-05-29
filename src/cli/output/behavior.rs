@@ -36,7 +36,8 @@ impl Behavior {
     /// ```
     ///
     #[cfg(test)]
-    pub(crate) const fn formatting(&self) -> Option<Formatting> {
+    #[must_use]
+    pub const fn formatting(&self) -> Option<Formatting> {
         match self {
             Self::Normal(formatting) => Some(*formatting),
             Self::Quiet => None,
