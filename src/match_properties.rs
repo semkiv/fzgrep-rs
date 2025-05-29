@@ -18,11 +18,11 @@ pub struct MatchProperties {
     ///
     pub fuzzy_match: FuzzyMatch,
 
-    /// Location of the match.
+    /// The location of the match.
     ///
     pub location: Location,
 
-    /// Context surrounding the match.
+    /// The context surrounding the match.
     ///
     pub context: Context,
 }

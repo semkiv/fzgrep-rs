@@ -51,8 +51,8 @@ impl ProspectiveContext {
     ///
     /// # Panics
     ///
-    /// Updating an instance of [`ProspectiveContext::Ready`] is considered a logic error
-    /// and therefore causes a panic.
+    ///   * Updating an instance of [`ProspectiveContext::Ready`] is considered a logic error
+    ///     and therefore causes a panic.
     ///
     pub fn update(self, line: String) -> Self {
         match self {
@@ -84,8 +84,8 @@ impl ProspectiveContext {
     ///
     /// # Panics
     ///
-    /// Completing an instance of [`ProspectiveContext::Ready`] is considered a logic error
-    /// and therefore causes a panic.
+    ///   * Completing an instance of [`ProspectiveContext::Ready`] is considered a logic error
+    ///     and therefore causes a panic.
     ///
     pub fn complete(self) -> Context {
         match self {

@@ -39,8 +39,8 @@ impl ProspectiveAfterContext {
     ///
     /// # Panics
     ///
-    /// Feeding into an instance of [`ProspectiveAfterContext::Ready`] is considered a logic error
-    /// and therefore causes a panic.
+    ///   * Feeding into an instance of [`ProspectiveAfterContext::Ready`] is considered a logic error
+    ///     and therefore causes a panic.
     ///
     pub fn feed(self, line: String) -> Self {
         match self {
@@ -75,8 +75,8 @@ impl ProspectiveAfterContext {
     ///
     /// # Panics
     ///
-    /// Completing an instance of [`ProspectiveAfterContext::Ready`] is considered a logic error
-    /// and therefore causes a panic.
+    ///   * Completing an instance of [`ProspectiveAfterContext::Ready`] is considered a logic error
+    ///     and therefore causes a panic.
     ///
     pub fn complete(self) -> Vec<String> {
         match self {
