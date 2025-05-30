@@ -1,3 +1,5 @@
+pub mod top_bracket;
+
 use crate::match_properties::MatchProperties;
 
 /// A trait that generalizes interface between possible results containers

@@ -8,11 +8,11 @@ mod core;
 use cli::output;
 use cli::output::behavior::Behavior;
 use cli::request::Request as CliRequest;
-use core::context_accumulators::BeforeContextAccumulator;
+use core::sliding_accumulator::SlidingAccumulator;
 use core::prospective::MatchProperties as ProspectiveMatchProperties;
-use core::reader::Reader;
+use core::Reader;
 use core::results_collection::ResultsCollection;
-use core::top_bracket::TopBracket;
+use core::results_collection::top_bracket::TopBracket;
 use match_properties::MatchProperties;
 use match_properties::location::Location;
 use request::Request as CoreRequest;
@@ -126,7 +126,7 @@ fn process_reader(
 
     let context_size = options.context_size;
     let lines_after = context_size.lines_after;
-    let mut before_context_accumulator = BeforeContextAccumulator::new(context_size.lines_before);
+    let mut before_context_accumulator = SlidingAccumulator::new(context_size.lines_before);
 
     // `Option` is purely for technical purposes: `ProspectiveMatchProperties::update` method consumes the item
     // so there must be something place in its stead. Having `Option` just makes things easiser
