@@ -3,6 +3,7 @@ pub mod location;
 
 use context::Context;
 use location::Location;
+
 use std::cmp::Ordering;
 use vscode_fuzzy_score_rs::FuzzyMatch;
 

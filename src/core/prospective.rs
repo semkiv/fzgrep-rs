@@ -2,10 +2,10 @@ mod context;
 
 use context::Context;
 
-use vscode_fuzzy_score_rs::FuzzyMatch;
-
 use crate::match_properties::MatchProperties as CompleteMatchProperties;
 use crate::match_properties::location::Location;
+
+use vscode_fuzzy_score_rs::FuzzyMatch;
 
 // TODO: tests
 

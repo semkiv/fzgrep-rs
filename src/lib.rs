@@ -13,7 +13,6 @@ use core::prospective::MatchProperties as ProspectiveMatchProperties;
 use core::reader::Reader;
 use core::results_collection::ResultsCollection;
 use core::top_bracket::TopBracket;
-use log::debug;
 use match_properties::MatchProperties;
 use match_properties::location::Location;
 use request::Request as CoreRequest;
@@ -21,6 +20,8 @@ use request::collection_strategy::CollectionStrategy;
 use request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
 use request::targets::Targets;
 use request::targets::filter::Filter;
+
+use log::debug;
 use std::collections::VecDeque;
 use std::io::{BufRead as _, Write};
 use std::path::Path;

@@ -1,5 +1,6 @@
+use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::{error::Error, num::ParseIntError};
+use std::num::ParseIntError;
 
 /// Errors that can occur when parsing `grep` formatting sequences.
 /// (see [`grep` documentation](https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT) for more information)

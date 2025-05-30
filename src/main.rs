@@ -1,5 +1,6 @@
 use fzgrep::cli;
 use fzgrep::exit_code;
+
 use log::error;
 use std::{env, io, process};
 
