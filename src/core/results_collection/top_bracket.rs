@@ -66,7 +66,9 @@ impl ResultsCollection for TopBracket<MatchProperties> {
     }
 
     fn into_sorted_vec(self) -> Vec<MatchProperties> {
-        self.into_vec()
+        let mut ret = self.into_vec();
+        ret.sort_by(|a, b| b.cmp(a));
+        ret
     }
 }
 
@@ -185,7 +187,7 @@ mod tests {
 
     #[test]
     fn top_bracket_into_sorted_vec() {
-        let mut results = vec![
+        let results = [
             MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("test", "test").unwrap(),
@@ -260,13 +262,16 @@ mod tests {
             },
         ];
 
-        let mut top_bracket = TopBracket::new(4);
+        let cap = 4;
+        let mut top_bracket = TopBracket::new(cap);
         for res in &results {
             top_bracket.push(res.clone());
         }
 
-        results.sort_by(|a, b| b.cmp(a));
+        let mut expected = results;
+        expected.sort_by(|a, b| b.cmp(a));
+        let expected = expected.into_iter().take(cap).collect::<Vec<_>>();
 
-        assert_eq!(top_bracket.into_sorted_vec(), results);
+        assert_eq!(top_bracket.into_sorted_vec(), expected);
     }
 }

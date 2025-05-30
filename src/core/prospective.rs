@@ -83,7 +83,7 @@ impl MatchProperties {
         match self {
             #[expect(clippy::panic, reason = "It is a logic error")]
             Self::Ready(_) => {
-                panic!("An instance of 'MatchProperties' updated after completeion")
+                panic!("An instance of 'MatchProperties' updated after completion")
             }
             Self::Pending {
                 matching_line,
@@ -159,8 +159,14 @@ mod tests {
         };
         let before_ctx = Some(vec![String::from("before")]);
         let cap = 42;
-        let props = MatchProperties::new(line.clone(), fm.clone(), loc.clone(), before_ctx, cap);
-        match props {
+        let props = MatchProperties::new(
+            line.clone(),
+            fm.clone(),
+            loc.clone(),
+            before_ctx.clone(),
+            cap,
+        );
+        match &props {
             MatchProperties::Ready(_) => unreachable!(),
             MatchProperties::Pending {
                 matching_line,
@@ -168,22 +174,22 @@ mod tests {
                 location,
                 context,
             } => {
-                assert_eq!(matching_line, line);
-                assert_eq!(fuzzy_match, fm);
-                assert_eq!(location, loc);
+                assert_eq!(matching_line, &line);
+                assert_eq!(fuzzy_match, &fm);
+                assert_eq!(location, &loc);
                 match context {
                     Context::Ready(_) => unreachable!(),
                     Context::Pending {
                         before_context,
                         after_context,
                     } => {
-                        assert_eq!(before_context.unwrap(), vec!["before1", "before2"]);
+                        assert_eq!(before_context, &before_ctx);
                         match after_context {
                             AfterContext::Ready(_) => unreachable!(),
                             AfterContext::Pending { collected, missing } => {
                                 assert!(collected.is_empty());
                                 assert_eq!(collected.capacity(), cap);
-                                assert_eq!(missing, cap);
+                                assert_eq!(missing, &cap);
                             }
                         }
                     }

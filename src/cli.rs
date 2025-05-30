@@ -492,11 +492,12 @@ impl CommandBuilder {
 
     fn with_filename(self) -> Self {
         let command = self.command.arg(
-            Arg::new(option_ids::LINE_NUMBER)
-                .short('n')
-                .long("line-number")
+            Arg::new(option_ids::WITH_FILENAME)
+                .short('f')
+                .long("with-filename")
                 .action(ArgAction::SetTrue)
-                .help("Print line number with matching lines"),
+                .conflicts_with(option_ids::NO_FILENAME)
+                .help("Print file name with output lines"),
         );
 
         Self { command }

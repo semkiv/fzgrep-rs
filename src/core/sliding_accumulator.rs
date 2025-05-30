@@ -100,7 +100,7 @@ mod test {
     #[test]
     fn sliding_accumulator_snapshot() {
         let mut acc = SlidingAccumulator::new(3);
-        assert_eq!(acc.snapshot(), None);
+        assert_eq!(acc.snapshot(), Some(Vec::new()));
         acc.feed(String::from("one"));
         assert_eq!(acc.snapshot(), Some(vec![String::from("one")]));
         acc.feed(String::from("two"));

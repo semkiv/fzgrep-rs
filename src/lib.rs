@@ -263,21 +263,21 @@ fn make_recursive_reader_iterator<'item>(
     targets: impl Iterator<Item = impl AsRef<Path> + 'item> + 'item,
     filter: Option<&'item Filter>,
 ) -> Box<dyn Iterator<Item = Result<Reader, Box<dyn error::Error>>> + 'item> {
-    let exclude_pred = move |dir_entry: &DirEntry| {
-        filter.is_some_and(|filter| filter.matches_exclude(dir_entry.path()))
+    let is_not_disallowed = move |dir_entry: &DirEntry| {
+        filter.is_none_or(|filter| !filter.is_disallowed_by_exclude(dir_entry.path()))
     };
-    let include_pred = move |dir_entry: &DirEntry| {
-        filter.is_some_and(|filter| filter.matches_include(dir_entry.path()))
+    let is_allowed = move |dir_entry: &DirEntry| {
+        filter.is_none_or(|filter| filter.is_allowed_by_include(dir_entry.path()))
     };
 
     Box::new(
         targets
-            .flat_map(move |target| WalkDir::new(target).sort_by_file_name().into_iter().filter_entry(exclude_pred))
+            .flat_map(move |target| WalkDir::new(target).sort_by_file_name().into_iter().filter_entry(is_not_disallowed))
             .filter_map(move |item| {
                 item.map_or_else(
                     |err| Some(Err(err.into())),
                     |entry| {
-                        if include_pred(&entry) {
+                        if !is_allowed(&entry) {
                             return None;
                         }
 

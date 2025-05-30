@@ -159,7 +159,7 @@ mod tests {
             3,
         );
 
-        let ctx = ctx.update(String::from("line1"));
+        let ctx = ctx.update(String::from("after1"));
         match &ctx {
             Context::Ready(_) => unreachable!(),
             Context::Pending {

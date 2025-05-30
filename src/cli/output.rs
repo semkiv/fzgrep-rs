@@ -1304,26 +1304,21 @@ mod test {
             format_results(&results, &Formatting::On(StyleSet::default())),
             format!(
                 "{}{}{}{}first_before_one\n\
-                {}{}{}{}first_before_two\n\
                 {}{}{}{}{}st\n\
                 {}{}{}{}first_after_one\n\
                 {}{}{}{}first_after_two\n\
+                {}{}{}{}first_after_three\n\
                 {}{}{}{}second_before_one\n\
                 {}{}{}{}second_before_two\n\
+                {}{}{}{}second_before_three\n\
                 {}{}{}{}tes{}\n\
                 {}{}{}{}second_after_one\n\
-                {}{}{}{}second_after_two\n\
                 {}{}{}{}third_before_one\n\
                 {}{}{}{}third_before_two\n\
                 {}{}{}{}{}s{}\n\
                 {}{}{}{}third_after_one\n\
                 {}{}{}{}third_after_two\n",
                 // first before context line
-                "First".magenta(),
-                ':'.cyan(),
-                "40".green(),
-                ':'.cyan(),
-                // second before context line
                 "First".magenta(),
                 ':'.cyan(),
                 "41".green(),
@@ -1344,12 +1339,22 @@ mod test {
                 ':'.cyan(),
                 "44".green(),
                 ':'.cyan(),
+                // third after context line
+                "First".magenta(),
+                ':'.cyan(),
+                "45".green(),
+                ':'.cyan(),
                 // first before context line
+                "Second".magenta(),
+                ':'.cyan(),
+                "100497".green(),
+                ':'.cyan(),
+                // second before context line
                 "Second".magenta(),
                 ':'.cyan(),
                 "100498".green(),
                 ':'.cyan(),
-                // second before context line
+                // third before context line
                 "Second".magenta(),
                 ':'.cyan(),
                 "100499".green(),
@@ -1364,11 +1369,6 @@ mod test {
                 "Second".magenta(),
                 ':'.cyan(),
                 "100501".green(),
-                ':'.cyan(),
-                // second after context line
-                "Second".magenta(),
-                ':'.cyan(),
-                "100502".green(),
                 ':'.cyan(),
                 // first before context line
                 "Third".magenta(),

@@ -57,7 +57,7 @@ impl AfterContext {
                     clippy::expect_used,
                     reason = "The missing line count is expected to go down to zero by one at a time"
                 )]
-                missing
+                let missing = missing
                     .checked_sub(1)
                     .expect("The missing lines count is negative");
 

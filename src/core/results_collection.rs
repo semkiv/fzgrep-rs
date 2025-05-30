@@ -22,7 +22,7 @@ impl ResultsCollection for Vec<MatchProperties> {
     }
 
     fn into_sorted_vec(mut self) -> Vec<MatchProperties> {
-        self.sort();
+        self.sort_by(|a, b| b.cmp(a));
         self
     }
 }

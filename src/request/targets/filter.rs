@@ -55,9 +55,10 @@ impl Filter {
     /// Otherwise returns `false`.
     ///
     #[must_use]
-    pub fn matches(&self, path: &Path) -> bool {
+    pub fn is_allowed(&self, path: &Path) -> bool {
         let normalized = path.to_slash_lossy();
-        !self.matches_exclude_str(&normalized) && self.matches_include_str(&normalized)
+        !self.is_disallowed_by_exclude_str(&normalized)
+            && self.is_allowed_by_include_str(&normalized)
     }
 
     /// Test `path` against the list of include globs.
@@ -65,9 +66,9 @@ impl Filter {
     /// or the list of include globs is empty. Otherise returns `false`.
     ///
     #[must_use]
-    pub fn matches_include(&self, path: &Path) -> bool {
+    pub fn is_allowed_by_include(&self, path: &Path) -> bool {
         let normalized = path.to_slash_lossy();
-        self.matches_include_str(&normalized)
+        self.is_allowed_by_include_str(&normalized)
     }
 
     /// Test `path` against the list of exclude globs.
@@ -75,19 +76,19 @@ impl Filter {
     /// one pattern. Otherwise returns `false`.
     ///
     #[must_use]
-    pub fn matches_exclude(&self, path: &Path) -> bool {
+    pub fn is_disallowed_by_exclude(&self, path: &Path) -> bool {
         let normalized = path.to_slash_lossy();
-        self.matches_exclude_str(&normalized)
+        self.is_disallowed_by_exclude_str(&normalized)
     }
 
-    fn matches_include_str(&self, path_str: &str) -> bool {
+    fn is_allowed_by_include_str(&self, path_str: &str) -> bool {
         self.include.as_ref().is_none_or(|incl| {
             incl.iter()
                 .any(|pattern| pattern.matches_with(path_str, MATCH_OPTIONS))
         })
     }
 
-    fn matches_exclude_str(&self, path_str: &str) -> bool {
+    fn is_disallowed_by_exclude_str(&self, path_str: &str) -> bool {
         self.exclude.as_ref().is_some_and(|excl| {
             excl.iter()
                 .any(|pattern| pattern.matches_with(path_str, MATCH_OPTIONS))
@@ -155,25 +156,25 @@ mod tests {
     }
 
     #[test]
-    fn matches_single_include() {
+    fn is_allowed_single_include() {
         let filter = Filter {
             include: Some(vec![Pattern::new("*.txt").unwrap()]),
             exclude: None,
         };
 
         let path = Path::new("test.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_multiple_include() {
+    fn is_allowed_multiple_include() {
         let filter = Filter {
             include: Some(vec![
                 Pattern::new("*.txt").unwrap(),
@@ -183,46 +184,46 @@ mod tests {
         };
 
         let path = Path::new("test.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("main.rs");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("src/main.rs");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_single_exclude() {
+    fn is_allowed_single_exclude() {
         let filter = Filter {
             include: None,
             exclude: Some(vec![Pattern::new("*.txt").unwrap()]),
         };
 
         let path = Path::new("test.txt");
-        assert!(!filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_multiple_exclude() {
+    fn is_allowed_multiple_exclude() {
         let filter = Filter {
             include: None,
             exclude: Some(vec![
@@ -232,23 +233,23 @@ mod tests {
         };
 
         let path = Path::new("test.txt");
-        assert!(!filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("build/whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_mixed_include_exclude() {
+    fn is_allowed_mixed_include_exclude() {
         let filter = Filter {
             include: Some(vec![
                 Pattern::new("*.txt").unwrap(),
@@ -261,139 +262,139 @@ mod tests {
         };
 
         let path = Path::new("test.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("main.rs");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("src/main.rs");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("tests/test.txt");
-        assert!(!filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("build/main.rs");
-        assert!(!filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("/home/user/whatever/whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_unix_paths() {
+    fn is_allowed_unix_paths() {
         let filter = Filter {
             include: Some(vec![Pattern::new("**/*.txt").unwrap()]),
             exclude: Some(vec![Pattern::new("**/*test*").unwrap()]),
         };
 
         let path = Path::new("whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("whatever/whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("/home/user/whatever/whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("whatever/whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("/home/user/whatever/whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("whatever/test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("/home/user/whatever/test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
     }
 
     #[test]
-    fn matches_windows_paths() {
+    fn is_allowed_windows_paths() {
         let filter = Filter {
             include: Some(vec![Pattern::new("**/*.txt").unwrap()]),
             exclude: Some(vec![Pattern::new("**/*test*").unwrap()]),
         };
 
         let path = Path::new("whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new(r"whatever\whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new(r"C:\Users\user\whatever\whatever.txt");
-        assert!(filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(filter.is_allowed(path));
 
         let path = Path::new("whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new(r"whatever\whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new(r"C:\Users\user\whatever\whatever.json");
-        assert!(!filter.matches_include(path));
-        assert!(!filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(!filter.is_allowed_by_include(path));
+        assert!(!filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new("test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new(r"whatever\test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
 
         let path = Path::new(r"C:\Users\user\whatever\test.txt");
-        assert!(filter.matches_include(path));
-        assert!(filter.matches_exclude(path));
-        assert!(!filter.matches(path));
+        assert!(filter.is_allowed_by_include(path));
+        assert!(filter.is_disallowed_by_exclude(path));
+        assert!(!filter.is_allowed(path));
     }
 }
