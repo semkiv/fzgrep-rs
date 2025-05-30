@@ -8,6 +8,7 @@ use targets::Targets;
 
 /// Represents a run configuration.
 ///
+// TODO: extract query, targets and match_options into smth like IndividualRequest
 #[derive(Debug, Eq, PartialEq)]
 pub struct Request {
     /// The query to match against.

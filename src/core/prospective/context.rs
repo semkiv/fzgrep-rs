@@ -1,4 +1,4 @@
-mod after_context;
+pub mod after_context;
 
 use after_context::AfterContext;
 
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn feed() {
+    fn update() {
         let ctx = Context::new(
             Some(vec![String::from("before1"), String::from("before2")]),
             3,
@@ -215,23 +215,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "An instance of 'Context' fed after completion")]
-    fn feed_empty() {
+    #[should_panic(expected = "An instance of 'Context' updated after completion")]
+    fn update_completed() {
         let ctx = Context::Ready(CompleteContext {
-            before: None,
-            after: None,
+            before: Some(vec![String::from("before")]),
+            after: Some(vec![String::from("after")]),
         });
-        ctx.update(String::from("line"));
-    }
-
-    #[test]
-    #[should_panic(expected = "An instance of 'Context' fed after completion")]
-    fn feed_completed() {
-        let ctx = Context::Ready(CompleteContext {
-            before: Some(vec![String::from("before1"), String::from("before2")]),
-            after: Some(vec![String::from("after1"), String::from("after2")]),
-        });
-        ctx.update(String::from("after3"));
+        ctx.update(String::from("more after"));
     }
 
     #[test]

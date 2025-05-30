@@ -1,6 +1,6 @@
 /// A location data of the line (if available).
 ///
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Location {
     /// An optional source (file or stdin) name (if file names tracking was requested).
     ///

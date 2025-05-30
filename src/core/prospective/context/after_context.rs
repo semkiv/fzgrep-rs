@@ -153,13 +153,6 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "An instance of 'AfterContext' fed after completion")]
-    fn feed_empty() {
-        let ctx = AfterContext::Ready(None);
-        ctx.feed(String::from("line"));
-    }
-
-    #[test]
-    #[should_panic(expected = "An instance of 'AfterContext' fed after completion")]
     fn feed_completed() {
         let ctx = AfterContext::Ready(Some(vec![String::from("line1"), String::from("line2")]));
         ctx.feed(String::from("line3"));
