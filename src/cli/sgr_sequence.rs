@@ -1,6 +1,7 @@
-pub mod error;
+pub mod errors;
 
-use error::{ColorSequenceParsingError, StyleSequenceParsingError};
+use errors::style_sequence_parsing_error::color_sequence_parsing_error::ColorSequenceParsingError;
+use errors::style_sequence_parsing_error::StyleSequenceParsingError;
 
 use log::warn;
 use yansi::{Color, Style};

@@ -7,7 +7,7 @@ mod sgr_sequence;
 use output::behavior::Behavior;
 use output::formatting::{Formatting, StyleSet};
 use request::Request;
-use sgr_sequence::error::ColorOverrideParsingError;
+use sgr_sequence::errors::ColorOverrideParsingError;
 
 use crate::request::Request as CoreRequest;
 use crate::request::collection_strategy::CollectionStrategy;
