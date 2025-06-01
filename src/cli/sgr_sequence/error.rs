@@ -132,6 +132,12 @@ impl Display for ColorOverrideParsingError {
 
 impl Error for ColorOverrideParsingError {}
 
+impl From<StyleSequenceParsingError> for ColorOverrideParsingError {
+    fn from(value: StyleSequenceParsingError) -> Self {
+        Self::BadStyleSequence(value)
+    }
+}
+
 impl Display for StyleSequenceParsingError {
     #[expect(
         clippy::min_ident_chars,
@@ -148,6 +154,12 @@ impl Display for StyleSequenceParsingError {
 }
 
 impl Error for StyleSequenceParsingError {}
+
+impl From<ColorSequenceParsingError> for StyleSequenceParsingError {
+    fn from(value: ColorSequenceParsingError) -> Self {
+        Self::BadColorSequence(value)
+    }
+}
 
 impl Display for ColorSequenceParsingError {
     #[expect(

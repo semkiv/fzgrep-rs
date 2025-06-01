@@ -682,28 +682,22 @@ fn color_overrides_parser(grep_sequence: &str) -> Result<StyleSet, ColorOverride
         if let Some((cap, sgr)) = token.split_once('=') {
             match cap {
                 "ms" => {
-                    options.selected_match = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.selected_match = sgr_sequence::style_from(sgr)?;
                 }
                 "ln" => {
-                    options.line_number = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.line_number = sgr_sequence::style_from(sgr)?;
                 }
                 "fn" => {
-                    options.source_name = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.source_name = sgr_sequence::style_from(sgr)?;
                 }
                 "se" => {
-                    options.separator = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.separator = sgr_sequence::style_from(sgr)?;
                 }
                 "sl" => {
-                    options.selected_line = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.selected_line = sgr_sequence::style_from(sgr)?;
                 }
                 "cx" => {
-                    options.context = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?;
+                    options.context = sgr_sequence::style_from(sgr)?;
                 }
                 "bn" | "mt" => {
                     return Err(ColorOverrideParsingError::UnsupportedCapability(
