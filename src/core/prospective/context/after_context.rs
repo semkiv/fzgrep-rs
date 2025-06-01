@@ -1,7 +1,10 @@
 /// Represents a trailing (i.e. "after") context that may or may not have been fully accumulated yet.
 ///
 pub enum AfterContext {
-    /// A context that has already been fully accumulated (with the accumulated lines inside).
+    /// A context that has already been fully accumulated.
+    ///
+    /// # Fields
+    ///   * the accumulated lines
     ///
     Ready(Option<Vec<String>>),
 

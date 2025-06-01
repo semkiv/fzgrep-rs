@@ -6,6 +6,9 @@ use crate::output::formatting::Formatting;
 pub enum Behavior {
     /// Output normally.
     ///
+    /// # Fields
+    ///   * the formatting to use to decorate the output
+    ///
     Normal(Formatting),
 
     /// Output is suppressed, return code can be used to categorize the run results.

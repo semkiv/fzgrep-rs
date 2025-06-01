@@ -10,8 +10,10 @@ use vscode_fuzzy_score_rs::FuzzyMatch;
 /// Represents match properties that may or may not have fully accumulated trailing (i.e. "after") context yet.
 ///
 pub enum MatchProperties {
-    /// Match properties whose trailing (i.e. "after") context has already been fully accumulated
-    /// (with an ready-to-use instance of [`crate::match_properties::MatchProperties`] inside).
+    /// Match properties whose trailing (i.e. "after") context has already been fully accumulated.
+    ///
+    /// # Fields
+    ///   * a ready-to-use instance of [`crate::match_properties::MatchProperties`]
     ///
     Ready(CompleteMatchProperties),
 
@@ -33,6 +35,7 @@ pub enum MatchProperties {
 
         /// The context surrounding the match, the trailing (i.e. "after") part of which
         /// may or may not be complete at the moment.
+        ///
         context: Context,
     },
 }

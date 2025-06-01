@@ -7,8 +7,10 @@ use crate::match_properties::context::Context as CompleteContext;
 /// Represents a context that may or may not have fully accumulated trailing (i.e. "after") context yet.
 ///
 pub enum Context {
-    /// A context that has already been fully accumulated
-    /// (with an ready-to-use instance of [`crate::match_properties::context::Context`] inside).
+    /// A context that has already been fully accumulated.
+    ///
+    /// # Fields
+    ///   * a ready-to-use instance of [`crate::match_properties::context::Context`]
     ///
     Ready(CompleteContext),
 

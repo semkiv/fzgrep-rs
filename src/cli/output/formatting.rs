@@ -6,6 +6,9 @@ use yansi::Style;
 pub enum Formatting {
     /// Request the output text to be formatted according to the supplied options.
     ///
+    /// # Fileds
+    ///   * the style set to use to decorate the output
+    ///
     On(StyleSet),
 
     /// Request formatting to be disabled and the output to be just plain text.

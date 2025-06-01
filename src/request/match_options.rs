@@ -4,13 +4,23 @@ use context_size::ContextSize;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LineNumberTracking {
+    /// Enable tracking of line numbers.
+    ///
     On,
+
+    /// Disable tracking of line numbers.
+    ///
     Off,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SourceNameTracking {
+    /// Enable tracking of source (usually file) names.
+    ///
     On,
+
+    /// Disable tracking of source (usually file) names.
+    ///
     Off,
 }
 

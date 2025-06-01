@@ -13,5 +13,8 @@ pub enum CollectionStrategy {
     /// so it might even turn out to be slower than collecting all matches
     /// if the total number of matches is relatively low.
     ///
+    /// # Fields
+    ///   * the number of top matches
+    ///
     CollectTop(usize),
 }
