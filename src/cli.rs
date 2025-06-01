@@ -43,13 +43,13 @@ struct CommandBuilder {
 /// // basic usage
 /// use fzgrep::cli;
 /// use fzgrep::cli::output::formatting::Formatting;
-/// use fzgrep::cli::output::formatting::styleset::StyleSet;
-/// use fzgrep::cli::request::output_behavior::OutputBehavior;
+/// use fzgrep::cli::output::formatting::StyleSet;
+/// use fzgrep::cli::output::behavior::Behavior;
 /// use fzgrep::cli::request::Request;
-/// use fzgrep::cli::request::targets::Targets;
 /// use fzgrep::request::collection_strategy::CollectionStrategy;
-/// use fzgrep::request::match_options::MatchOptions;
+/// use fzgrep::request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
 /// use fzgrep::request::match_options::context_size::ContextSize;
+/// use fzgrep::request::targets::Targets;
 ///
 /// use log::LevelFilter;
 /// use std::io::{self, IsTerminal};
@@ -62,10 +62,10 @@ struct CommandBuilder {
 ///     Request {
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
-///         collection_strategy: CollectionStrategy::CollectAll,
-///         match_options: MatchOptions {
-///             track_line_numbers: false,
-///             track_source_names: false,
+///         strategy: CollectionStrategy::CollectAll,
+///         options: MatchOptions {
+///             line_number_tracking: LineNumberTracking::Off,
+///             source_name_tracking: SourceNameTracking::Off,
 ///             context_size: ContextSize {
 ///                 lines_before: 0,
 ///                 lines_after: 0,
@@ -112,6 +112,8 @@ struct CommandBuilder {
 /// // multiple input files
 /// use fzgrep::cli;
 /// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::match_options::SourceNameTracking;
+///
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
@@ -125,7 +127,7 @@ struct CommandBuilder {
 ///     ])
 /// );
 /// // with more than one input file `--with-filename` is assumed
-/// assert!(request.match_options.track_source_names);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
 /// ```
 ///
 /// ```
@@ -147,7 +149,10 @@ struct CommandBuilder {
 ///
 /// ```
 /// // recursive mode, including only `.txt` files
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -164,7 +169,10 @@ struct CommandBuilder {
 ///
 /// ```
 /// // recursive mode, excluding files in `build` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -188,7 +196,10 @@ struct CommandBuilder {
 ///
 /// ```
 /// // recursive mode, including only `.txt` files except for those in `tests` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -259,25 +270,28 @@ struct CommandBuilder {
 /// ```
 /// // request line numbers to be printed
 /// use fzgrep::cli;
+/// use fzgrep::request::match_options::LineNumberTracking;
 ///
 /// let args = ["fzgrep", "--line-number", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
-/// assert!(request.match_options.track_line_numbers);
+/// assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
 /// ```
 ///
 /// ```
 /// // request file names to be printed
 /// use fzgrep::cli;
+/// use fzgrep::request::match_options::SourceNameTracking;
 ///
 /// let args = ["fzgrep", "--with-filename", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
-/// assert!(request.match_options.track_source_names);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
 /// ```
 ///
 /// ```
 /// // with more than one input file `--with-filename` is assumed
 /// // it is possible to override this by specifically opting out like so
 /// use fzgrep::cli;
+/// use fzgrep::request::match_options::SourceNameTracking;
 /// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
@@ -287,17 +301,18 @@ struct CommandBuilder {
 ///     request.targets,
 ///     Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")])
 /// );
-/// assert!(!request.match_options.track_source_names);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::Off);
 /// ```
 ///
 /// ```
 /// // symmetric context
-/// use fzgrep::{cli::args, ContextSize};
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::context_size::ContextSize;
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.match_options.context_size,
+///     request.options.context_size,
 ///     ContextSize {
 ///         lines_before: 2,
 ///         lines_after: 2,
@@ -307,7 +322,8 @@ struct CommandBuilder {
 ///
 /// ```
 /// // asymmetric context
-/// use fzgrep::{cli::args, ContextSize};
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::context_size::ContextSize;
 ///
 /// let args = [
 ///     "fzgrep",
@@ -320,7 +336,7 @@ struct CommandBuilder {
 /// ];
 /// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.match_options.context_size,
+///     request.options.context_size,
 ///     ContextSize {
 ///         lines_before: 1,
 ///         lines_after: 2,
@@ -330,7 +346,8 @@ struct CommandBuilder {
 ///
 /// ```
 /// // collect only top 5 matches
-/// use fzgrep::{cli::args, MatchCollectionStrategy};
+/// use fzgrep::cli;
+/// use fzgrep::request::collection_strategy::CollectionStrategy;
 ///
 /// let args = ["fzgrep", "--top", "5", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
@@ -339,7 +356,8 @@ struct CommandBuilder {
 ///
 /// ```
 /// // silence the output
-/// use fzgrep::{cli::args, OutputBehavior};
+/// use fzgrep::cli;
+/// use fzgrep::cli::output::behavior::Behavior;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--quiet", "query", "file"];

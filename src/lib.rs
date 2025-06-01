@@ -34,7 +34,7 @@ use walkdir::{DirEntry, WalkDir};
 ///
 /// The `main` function is merely a `run` call.
 ///
-/// The configuration is passed in `request`.
+/// The configuration is passed in `cli_request`.
 /// If no input files are specified in `request`, the standard input is used.
 ///
 /// # Errors
@@ -67,7 +67,7 @@ pub fn run(
     Ok(results)
 }
 
-/// Find fuzzy matches of `query` in `targets` using the configuration supplied `options`.
+/// Find fuzzy matches using the configuration passed as `request`.
 ///
 /// # Errors
 ///
