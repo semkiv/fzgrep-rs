@@ -130,7 +130,18 @@ impl Display for ColorOverrideParsingError {
     }
 }
 
-impl Error for ColorOverrideParsingError {}
+impl Error for ColorOverrideParsingError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::BadStyleSequence(style_sequence_parsing_error) => {
+                Some(style_sequence_parsing_error)
+            }
+            Self::UnsupportedCapability(_) | Self::NotAnOverride(_) | Self::BadCapability(_) => {
+                None
+            }
+        }
+    }
+}
 
 impl From<StyleSequenceParsingError> for ColorOverrideParsingError {
     fn from(value: StyleSequenceParsingError) -> Self {
@@ -153,7 +164,17 @@ impl Display for StyleSequenceParsingError {
     }
 }
 
-impl Error for StyleSequenceParsingError {}
+impl Error for StyleSequenceParsingError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::NotACode(_, parse_int_error) => Some(parse_int_error),
+            Self::BadColorSequence(color_sequence_parsing_error) => {
+                Some(color_sequence_parsing_error)
+            }
+            Self::UnsupportedCode(_) | Self::BadCode(_) => None,
+        }
+    }
+}
 
 impl From<ColorSequenceParsingError> for StyleSequenceParsingError {
     fn from(value: ColorSequenceParsingError) -> Self {
