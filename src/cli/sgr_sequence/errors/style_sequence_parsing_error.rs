@@ -8,7 +8,7 @@ use std::num::ParseIntError;
 
 /// Errors that might occur when parsing ASCII SGR style sequences.
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StyleSequenceParsingError {
     /// Given token is not a code. Codes are expected to be 8-bit unsigned integers (see ASCII SGR sequence).
     /// When a token cannot be parsed as such, this error is raised.
@@ -73,5 +73,96 @@ impl Error for StyleSequenceParsingError {
 impl From<ColorSequenceParsingError> for StyleSequenceParsingError {
     fn from(value: ColorSequenceParsingError) -> Self {
         Self::BadColorSequence(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fmt_bad_code() {
+        let bad_code = 200;
+        let err = StyleSequenceParsingError::BadCode(bad_code);
+        assert_eq!(format!("{err}"), format!("Code '{bad_code}' is invalid"));
+    }
+
+    #[test]
+    fn fmt_bad_color_sequence() {
+        let color_seq_err = ColorSequenceParsingError::BadFixedColor;
+        let err = StyleSequenceParsingError::BadColorSequence(color_seq_err.clone());
+        assert_eq!(
+            format!("{err}"),
+            format!("Invalid color sequence: {color_seq_err}")
+        );
+    }
+
+    #[test]
+    fn fmt_not_a_code() {
+        let bad_str = "Test";
+        let parse_int_err = bad_str.parse::<u8>().err().unwrap();
+        let err = StyleSequenceParsingError::NotACode(String::from(bad_str), parse_int_err.clone());
+        assert_eq!(
+            format!("{err}"),
+            format!("'{bad_str}' is not an 8-bit code: {parse_int_err}")
+        );
+    }
+
+    #[test]
+    fn fmt_unsupported_code() {
+        let unsupported_code = 100;
+        let err = StyleSequenceParsingError::UnsupportedCode(unsupported_code);
+        assert_eq!(
+            format!("{err}"),
+            format!("Code '{unsupported_code} is unsupported")
+        );
+    }
+
+    #[test]
+    fn source_bad_code() {
+        let err = StyleSequenceParsingError::BadCode(200);
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn source_bad_color_sequence() {
+        let color_seq_err = ColorSequenceParsingError::BadFixedColor;
+        let err = StyleSequenceParsingError::BadColorSequence(color_seq_err.clone());
+        assert_eq!(
+            err.source()
+                .unwrap()
+                .downcast_ref::<ColorSequenceParsingError>()
+                .unwrap(),
+            &color_seq_err
+        );
+    }
+
+    #[test]
+    fn source_not_a_code() {
+        let bad_str = "Test";
+        let parse_int_err = bad_str.parse::<u8>().err().unwrap();
+        let err = StyleSequenceParsingError::NotACode(String::from(bad_str), parse_int_err.clone());
+        assert_eq!(
+            err.source()
+                .unwrap()
+                .downcast_ref::<ParseIntError>()
+                .unwrap(),
+            &parse_int_err
+        );
+    }
+
+    #[test]
+    fn source_unsupported_code() {
+        let err = StyleSequenceParsingError::UnsupportedCode(100);
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn from_style_sequence_parsing_error() {
+        let err = ColorSequenceParsingError::BadFixedColor;
+        assert_eq!(
+            StyleSequenceParsingError::from(err.clone()),
+            StyleSequenceParsingError::BadColorSequence(err)
+        );
     }
 }

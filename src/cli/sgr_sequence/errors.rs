@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 /// Errors that can occur when parsing `grep` formatting sequences.
 /// (see [`grep` documentation](https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT) for more information)
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ColorOverrideParsingError {
     /// Raised if the given string is not a valid override (i.e. a '<capability>=<formatting>' pair).
     ///
@@ -77,4 +77,78 @@ impl From<StyleSequenceParsingError> for ColorOverrideParsingError {
     }
 }
 
-// TODO: test for trait impls
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fmt_bad_capability() {
+        let err = ColorOverrideParsingError::BadCapability(String::from("Test"));
+        assert_eq!(format!("{err}"), "Invalid capability 'Test'");
+    }
+
+    #[test]
+    fn fmt_bad_style_sequence() {
+        let bad_style_seq_err = StyleSequenceParsingError::BadCode(100);
+        let err = ColorOverrideParsingError::BadStyleSequence(bad_style_seq_err.clone());
+        assert_eq!(
+            format!("{err}"),
+            format!("Invalid style sequence: {bad_style_seq_err}")
+        );
+    }
+
+    #[test]
+    fn fmt_not_an_override() {
+        let err = ColorOverrideParsingError::NotAnOverride(String::from("Test"));
+        assert_eq!(
+            format!("{err}"),
+            "Incorrect format: expected '<capability>=<sgr_sequence>', got 'Test'"
+        );
+    }
+
+    #[test]
+    fn fmt_unsupported_capability() {
+        let err = ColorOverrideParsingError::UnsupportedCapability(String::from("Test"));
+        assert_eq!(format!("{err}"), "Capability 'Test' is not supported");
+    }
+
+    #[test]
+    fn source_bad_capability() {
+        let err = ColorOverrideParsingError::BadCapability(String::from("Test"));
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn source_bad_style_sequence() {
+        let source_err = StyleSequenceParsingError::BadCode(200);
+        let err = ColorOverrideParsingError::BadStyleSequence(source_err.clone());
+        assert_eq!(
+            err.source()
+                .unwrap()
+                .downcast_ref::<StyleSequenceParsingError>()
+                .unwrap(),
+            &source_err
+        );
+    }
+
+    #[test]
+    fn source_not_an_override() {
+        let err = ColorOverrideParsingError::NotAnOverride(String::from("Test"));
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn source_unsupported_capability() {
+        let err = ColorOverrideParsingError::UnsupportedCapability(String::from("Test"));
+        assert!(err.source().is_none());
+    }
+
+    #[test]
+    fn from_style_sequence_parsing_error() {
+        let err = StyleSequenceParsingError::BadCode(200);
+        assert_eq!(
+            ColorOverrideParsingError::from(err.clone()),
+            ColorOverrideParsingError::BadStyleSequence(err)
+        );
+    }
+}

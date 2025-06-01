@@ -4,7 +4,7 @@ use std::num::ParseIntError;
 
 /// Errors that might occur when parsing ASCII SGR color sequences.
 ///
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ColorSequenceParsingError {
     /// Given token is not a code. Codes are expected to be 8-bit unsigned integers (see ASCII SGR sequence).
     /// When a token cannot be parsed as such, this error is raised.
@@ -69,3 +69,55 @@ impl Display for ColorSequenceParsingError {
 }
 
 impl Error for ColorSequenceParsingError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fmt_bad_fixed_color() {
+        let err = ColorSequenceParsingError::BadFixedColor;
+        assert_eq!(
+            format!("{err}"),
+            "Code '5' (fixed 8-bit color) is expected to be followed by a color code, but there is none"
+        );
+    }
+
+    #[test]
+    fn fmt_bad_true_color() {
+        let err = ColorSequenceParsingError::BadTrueColor;
+        assert_eq!(
+            format!("{err}"),
+            "Code '2' (true 24-bit color) is expected to be followed by 3 color components, but there too few"
+        );
+    }
+
+    #[test]
+    fn fmt_incomplete_sequence() {
+        let err = ColorSequenceParsingError::IncompleteSequence;
+        assert_eq!(
+            format!("{err}"),
+            "Code '8' (non-standard color) is expected to be followed by a type code, but there is none"
+        );
+    }
+
+    #[test]
+    fn fmt_bad_color_type() {
+        let err = ColorSequenceParsingError::BadColorType(42);
+        assert_eq!(
+            format!("{err}"),
+            "Code '42' is not a valid non-standard color type. Either '2' or '5' is expected"
+        );
+    }
+
+    #[test]
+    fn fmt_not_a_code() {
+        let bad_str = "Test";
+        let parse_int_err = bad_str.parse::<u8>().err().unwrap();
+        let err = ColorSequenceParsingError::NotACode(String::from(bad_str), parse_int_err.clone());
+        assert_eq!(
+            format!("{err}"),
+            format!("'{bad_str}' is not an 8-bit code: {parse_int_err}")
+        );
+    }
+}
