@@ -71,7 +71,7 @@ pub fn run(
 ///
 /// # Errors
 ///
-///   * [`io::Error`] if encounters any I/O related issues.
+///   * [`std::io::Error`] if encounters any I/O related issues.
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
 pub fn collect_matches(
