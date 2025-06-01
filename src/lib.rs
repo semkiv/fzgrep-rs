@@ -9,6 +9,8 @@ use cli::output;
 use cli::output::behavior::Behavior;
 use cli::request::Request as CliRequest;
 use core::Reader;
+use core::basic::MatchProperties as BasicMatchProperties;
+use core::basic::Request as BasicRequest;
 use core::prospective::MatchProperties as ProspectiveMatchProperties;
 use core::results_collection::ResultsCollection;
 use core::results_collection::top_bracket::TopBracket;
@@ -42,14 +44,16 @@ use walkdir::{DirEntry, WalkDir};
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
 pub fn run(
-    cli_request: &CliRequest,
+    cli_request: CliRequest,
     output_dest: &mut impl Write,
 ) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
     debug!("Running with the following configuration: {cli_request:?}");
 
-    let results = collect_matches(&cli_request.core)?;
+    let output_behavior = cli_request.output_behavior;
 
-    match cli_request.output_behavior {
+    let results = collect_matches(cli_request.into())?;
+
+    match output_behavior {
         Behavior::Normal(formatting) => {
             write!(
                 output_dest,
@@ -71,43 +75,30 @@ pub fn run(
 ///   * [`walkdir::Error`] if any errors related to recursive processing occur
 ///
 pub fn collect_matches(
-    request: &CoreRequest,
+    request: CoreRequest,
 ) -> Result<Vec<MatchProperties>, Box<dyn error::Error>> {
-    match request.collection_strategy {
+    match request.strategy {
         CollectionStrategy::CollectAll => {
             let mut vec = Vec::new();
-            collect_matches_into(
-                &request.query,
-                &request.targets,
-                &request.match_options,
-                &mut vec,
-            )?;
+            collect_matches_into(&request.into(), &mut vec)?;
             Ok(vec.into_sorted_vec())
         }
         CollectionStrategy::CollectTop(n) => {
             let mut top_bracket = TopBracket::new(n);
-            collect_matches_into(
-                &request.query,
-                &request.targets,
-                &request.match_options,
-                &mut top_bracket,
-            )?;
+            collect_matches_into(&request.into(), &mut top_bracket)?;
             Ok(top_bracket.into_sorted_vec())
         }
     }
 }
 
-// TODO: make this take core::Request?
 fn collect_matches_into(
-    query: &str,
-    targets: &Targets,
-    options: &MatchOptions,
+    request: &BasicRequest,
     dest: &mut impl ResultsCollection,
 ) -> Result<(), Box<dyn error::Error>> {
-    for reader in make_readers(targets) {
+    for reader in make_readers(&request.targets) {
         let reader = reader?;
         debug!("Processing {}.", reader.display_name());
-        process_reader(reader, query, options, dest)?;
+        process_reader(reader, &request.query, &request.options, dest)?;
     }
     Ok(())
 }
@@ -189,10 +180,13 @@ fn process_reader(
                 line_number: (options.line_number_tracking == LineNumberTracking::On)
                     .then_some(line_number),
             };
-            let prospective_props = ProspectiveMatchProperties::new(
-                line.clone(),
+            let basic_props = BasicMatchProperties {
+                matching_line: line.clone(),
                 fuzzy_match,
-                match_location,
+                location: match_location,
+            };
+            let prospective_props = ProspectiveMatchProperties::new(
+                basic_props,
                 before_context_accumulator.snapshot(),
                 lines_after,
             );

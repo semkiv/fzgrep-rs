@@ -21,12 +21,9 @@ fn top_five() {
         "resources/tests/top_matches/",
     ];
     let request = cli::make_request(cmd.into_iter().map(String::from));
-    assert_eq!(
-        request.core.collection_strategy,
-        CollectionStrategy::CollectTop(5)
-    );
+    assert_eq!(request.strategy, CollectionStrategy::CollectTop(5));
 
-    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
     assert_eq!(results.len(), 5);
 
     assert_eq!(
@@ -89,12 +86,9 @@ fn stability() {
             "resources/tests/top_matches/",
         ];
         let request = cli::make_request(cmd.into_iter().map(String::from));
-        assert_eq!(
-            request.core.collection_strategy,
-            CollectionStrategy::CollectTop(5)
-        );
+        assert_eq!(request.strategy, CollectionStrategy::CollectTop(5));
 
-        fzgrep::collect_matches(&request.core).unwrap()
+        fzgrep::collect_matches(request.into()).unwrap()
     };
 
     let all = {
@@ -107,12 +101,9 @@ fn stability() {
             "resources/tests/top_matches/",
         ];
         let request = cli::make_request(cmd.into_iter().map(String::from));
-        assert_eq!(
-            request.core.collection_strategy,
-            CollectionStrategy::CollectAll
-        );
+        assert_eq!(request.strategy, CollectionStrategy::CollectAll);
 
-        fzgrep::collect_matches(&request.core).unwrap()
+        fzgrep::collect_matches(request.into()).unwrap()
     };
 
     assert_eq!(top, all.into_iter().take(5).collect::<Vec<_>>());

@@ -11,7 +11,7 @@ fn main() -> process::ExitCode {
         .filter_level(request.log_verbosity)
         .init();
 
-    match fzgrep::run(&request, &mut io::stdout()) {
+    match fzgrep::run(request, &mut io::stdout()) {
         Ok(matches) => {
             if matches.is_empty() {
                 process::ExitCode::from(exit_code::NO_MATCHES)

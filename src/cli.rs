@@ -9,7 +9,6 @@ use output::formatting::{Formatting, StyleSet};
 use request::Request;
 use sgr_sequence::errors::ColorOverrideParsingError;
 
-use crate::request::Request as CoreRequest;
 use crate::request::collection_strategy::CollectionStrategy;
 use crate::request::match_options::context_size::ContextSize;
 use crate::request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
@@ -42,21 +41,22 @@ struct CommandBuilder {
 ///
 /// ```
 /// // basic usage
-/// use fzgrep::{
-///     cli::{
-///         args,
-///         formatting::{Formatting, StyleSet},
-///     },
-///     ContextSize, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
-/// };
+/// use fzgrep::cli;
+/// use fzgrep::cli::output::formatting::Formatting;
+/// use fzgrep::cli::output::formatting::styleset::StyleSet;
+/// use fzgrep::cli::request::output_behavior::OutputBehavior;
+/// use fzgrep::cli::request::Request;
+/// use fzgrep::cli::request::targets::Targets;
+/// use fzgrep::request::collection_strategy::CollectionStrategy;
+/// use fzgrep::request::match_options::MatchOptions;
+/// use fzgrep::request::match_options::context_size::ContextSize;
+///
 /// use log::LevelFilter;
-/// use std::{
-///     io::{self, IsTerminal},
-///     path::PathBuf,
-/// };
+/// use std::io::{self, IsTerminal};
+/// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request,
 ///     Request {
@@ -83,20 +83,22 @@ struct CommandBuilder {
 ///
 /// ```
 /// // no input files - use the standard input
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 ///
 /// let args = ["fzgrep", "query"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.targets, Targets::Stdin);
 /// ```
 ///
 /// ```
 /// // no input files and `--recursive` flag - use current directory///
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::{env, path::PathBuf};
 ///
 /// let args = ["fzgrep", "--recursive", "query"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -108,11 +110,12 @@ struct CommandBuilder {
 ///
 /// ```
 /// // multiple input files
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::Files(vec![
@@ -127,11 +130,12 @@ struct CommandBuilder {
 ///
 /// ```
 /// // recursive mode
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "query", "."];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -148,7 +152,7 @@ struct CommandBuilder {
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "--include", "*.txt", "query", "."];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -172,7 +176,7 @@ struct CommandBuilder {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -198,7 +202,7 @@ struct CommandBuilder {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -213,7 +217,9 @@ struct CommandBuilder {
 ///
 /// ```
 /// // recursive mode, including only `.txt` and `.json` files except for those in `build` or `tests` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -231,7 +237,7 @@ struct CommandBuilder {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -252,30 +258,31 @@ struct CommandBuilder {
 ///
 /// ```
 /// // request line numbers to be printed
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 ///
 /// let args = ["fzgrep", "--line-number", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert!(request.match_options.track_line_numbers);
 /// ```
 ///
 /// ```
 /// // request file names to be printed
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 ///
 /// let args = ["fzgrep", "--with-filename", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert!(request.match_options.track_source_names);
 /// ```
 ///
 /// ```
 /// // with more than one input file `--with-filename` is assumed
 /// // it is possible to override this by specifically opting out like so
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")])
@@ -288,7 +295,7 @@ struct CommandBuilder {
 /// use fzgrep::{cli::args, ContextSize};
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.match_options.context_size,
 ///     ContextSize {
@@ -311,7 +318,7 @@ struct CommandBuilder {
 ///     "query",
 ///     "file",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.match_options.context_size,
 ///     ContextSize {
@@ -326,7 +333,7 @@ struct CommandBuilder {
 /// use fzgrep::{cli::args, MatchCollectionStrategy};
 ///
 /// let args = ["fzgrep", "--top", "5", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.strategy, CollectionStrategy::CollectTop(5));
 /// ```
 ///
@@ -336,48 +343,48 @@ struct CommandBuilder {
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--quiet", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.output_behavior, Behavior::Quiet);
 /// assert_eq!(request.log_verbosity, LevelFilter::Off);
 /// ```
 ///
 /// ```
 /// // activate warn log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--verbose", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Warn);
 /// ```
 ///
 /// ```
 /// // activate warn and info log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Info);
 /// ```
 ///
 /// ```
 /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Debug);
 /// ```
 ///
 /// ```
 /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvvv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Trace);
 /// ```
 ///
@@ -385,12 +392,10 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     let matches = match_command_line(args);
 
     Request {
-        core: CoreRequest {
-            query: query_from(&matches),
-            targets: targets_from(&matches),
-            collection_strategy: strategy_from(&matches),
-            match_options: match_options_from(&matches),
-        },
+        query: query_from(&matches),
+        targets: targets_from(&matches),
+        options: match_options_from(&matches),
+        strategy: strategy_from(&matches),
         output_behavior: output_behavior_from(&matches),
         log_verbosity: log_verbosity_from(&matches),
     }
@@ -897,19 +902,17 @@ mod tests {
         assert_eq!(
             request,
             Request {
-                core: CoreRequest {
-                    query: String::from("query"),
-                    targets: Targets::Stdin,
-                    collection_strategy: CollectionStrategy::CollectAll,
-                    match_options: MatchOptions {
-                        line_number_tracking: LineNumberTracking::Off,
-                        source_name_tracking: SourceNameTracking::Off,
-                        context_size: ContextSize {
-                            lines_before: 0,
-                            lines_after: 0,
-                        },
+                query: String::from("query"),
+                targets: Targets::Stdin,
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking::Off,
+                    source_name_tracking: SourceNameTracking::Off,
+                    context_size: ContextSize {
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
+                strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
@@ -927,22 +930,20 @@ mod tests {
         assert_eq!(
             request,
             Request {
-                core: CoreRequest {
-                    query: String::from("query"),
-                    targets: Targets::RecursiveEntries {
-                        paths: vec![env::current_dir().unwrap()],
-                        filter: None
-                    },
-                    collection_strategy: CollectionStrategy::CollectAll,
-                    match_options: MatchOptions {
-                        line_number_tracking: LineNumberTracking::Off,
-                        source_name_tracking: SourceNameTracking::On,
-                        context_size: ContextSize {
-                            lines_before: 0,
-                            lines_after: 0,
-                        },
+                query: String::from("query"),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![env::current_dir().unwrap()],
+                    filter: None
+                },
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking::Off,
+                    source_name_tracking: SourceNameTracking::On,
+                    context_size: ContextSize {
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
+                strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
@@ -960,19 +961,17 @@ mod tests {
         assert_eq!(
             request,
             Request {
-                core: CoreRequest {
-                    query: String::from("query"),
-                    targets: Targets::Files(vec![PathBuf::from("file")]),
-                    collection_strategy: CollectionStrategy::CollectAll,
-                    match_options: MatchOptions {
-                        line_number_tracking: LineNumberTracking::Off,
-                        source_name_tracking: SourceNameTracking::Off,
-                        context_size: ContextSize {
-                            lines_before: 0,
-                            lines_after: 0,
-                        },
+                query: String::from("query"),
+                targets: Targets::Files(vec![PathBuf::from("file")]),
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking::Off,
+                    source_name_tracking: SourceNameTracking::Off,
+                    context_size: ContextSize {
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
+                strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
@@ -989,17 +988,14 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
 
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::Files(vec![
                 PathBuf::from("file1"),
                 PathBuf::from("file2"),
                 PathBuf::from("file3")
             ])
         );
-        assert_eq!(
-            request.core.match_options.source_name_tracking,
-            SourceNameTracking::On
-        );
+        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
     }
 
     #[test]
@@ -1008,16 +1004,13 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
 
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from(".")],
                 filter: None
             }
         );
-        assert_eq!(
-            request.core.match_options.source_name_tracking,
-            SourceNameTracking::On
-        );
+        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
     }
 
     #[test]
@@ -1032,7 +1025,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.source_name_tracking,
+            request.options.source_name_tracking,
             SourceNameTracking::Off
         );
     }
@@ -1042,9 +1035,9 @@ mod tests {
         let args = ["fzgrep", "🐣🦀", "file1", "👨‍🔬.txt", "file3"];
         let request = make_request(args.into_iter().map(String::from));
 
-        assert_eq!(request.core.query, "🐣🦀");
+        assert_eq!(request.query, "🐣🦀");
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::Files(vec![
                 PathBuf::from("file1"),
                 PathBuf::from("👨‍🔬.txt"),
@@ -1058,9 +1051,9 @@ mod tests {
         let args = ["fzgrep", "тест", "file1", "тест.txt", "file3"];
         let request = make_request(args.into_iter().map(String::from));
 
-        assert_eq!(request.core.query, "тест");
+        assert_eq!(request.query, "тест");
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::Files(vec![
                 PathBuf::from("file1"),
                 PathBuf::from("тест.txt"),
@@ -1074,9 +1067,9 @@ mod tests {
         let args = ["fzgrep", "打电", "file1", "测试.txt", "file3"];
         let request = make_request(args.into_iter().map(String::from));
 
-        assert_eq!(request.core.query, "打电");
+        assert_eq!(request.query, "打电");
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::Files(vec![
                 PathBuf::from("file1"),
                 PathBuf::from("测试.txt"),
@@ -1090,7 +1083,7 @@ mod tests {
         let args = ["fzgrep", "-r", "query", "dir"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: None
@@ -1103,7 +1096,7 @@ mod tests {
         let args = ["fzgrep", "--recursive", "query", "dir"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: None
@@ -1123,7 +1116,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::with_include(vec![Pattern::new("*.txt").unwrap()]))
@@ -1145,7 +1138,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::with_include(vec![
@@ -1168,7 +1161,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::with_exclude(vec![Pattern::new("build/*").unwrap()]))
@@ -1190,7 +1183,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::with_exclude(vec![
@@ -1215,7 +1208,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::new(
@@ -1244,7 +1237,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.targets,
+            request.targets,
             Targets::RecursiveEntries {
                 paths: vec![PathBuf::from("dir")],
                 filter: Some(Filter::new(
@@ -1265,40 +1258,28 @@ mod tests {
     fn make_request_line_number_short() {
         let args = ["fzgrep", "-n", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(
-            request.core.match_options.line_number_tracking,
-            LineNumberTracking::On
-        );
+        assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
     }
 
     #[test]
     fn make_request_line_number_long() {
         let args = ["fzgrep", "--line-number", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(
-            request.core.match_options.line_number_tracking,
-            LineNumberTracking::On
-        );
+        assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
     }
 
     #[test]
     fn make_request_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(
-            request.core.match_options.source_name_tracking,
-            SourceNameTracking::On
-        );
+        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
     }
 
     #[test]
     fn make_request_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(
-            request.core.match_options.source_name_tracking,
-            SourceNameTracking::On
-        );
+        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
     }
 
     #[test]
@@ -1306,7 +1287,7 @@ mod tests {
         let args = ["fzgrep", "-F", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.source_name_tracking,
+            request.options.source_name_tracking,
             SourceNameTracking::Off
         );
     }
@@ -1316,7 +1297,7 @@ mod tests {
         let args = ["fzgrep", "--no-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.source_name_tracking,
+            request.options.source_name_tracking,
             SourceNameTracking::Off
         );
     }
@@ -1326,7 +1307,7 @@ mod tests {
         let args = ["fzgrep", "-C", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 2,
                 lines_after: 2,
@@ -1339,7 +1320,7 @@ mod tests {
         let args = ["fzgrep", "--context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 2,
                 lines_after: 2,
@@ -1352,7 +1333,7 @@ mod tests {
         let args = ["fzgrep", "-B", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 2,
                 lines_after: 0,
@@ -1365,7 +1346,7 @@ mod tests {
         let args = ["fzgrep", "--before-context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 2,
                 lines_after: 0,
@@ -1378,7 +1359,7 @@ mod tests {
         let args = ["fzgrep", "-A", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 0,
                 lines_after: 2,
@@ -1391,7 +1372,7 @@ mod tests {
         let args = ["fzgrep", "--after-context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 0,
                 lines_after: 2,
@@ -1404,7 +1385,7 @@ mod tests {
         let args = ["fzgrep", "-B", "1", "-A", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 1,
                 lines_after: 2,
@@ -1425,7 +1406,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.core.match_options.context_size,
+            request.options.context_size,
             ContextSize {
                 lines_before: 1,
                 lines_after: 2,
@@ -1437,10 +1418,7 @@ mod tests {
     fn make_request_top() {
         let args = ["fzgrep", "--top", "10", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(
-            request.core.collection_strategy,
-            CollectionStrategy::CollectTop(10)
-        );
+        assert_eq!(request.strategy, CollectionStrategy::CollectTop(10));
     }
 
     #[test]
@@ -1806,22 +1784,20 @@ mod tests {
         assert_eq!(
             request,
             Request {
-                core: CoreRequest {
-                    query: String::from("query"),
-                    targets: Targets::RecursiveEntries {
-                        paths: vec![PathBuf::from("file")],
-                        filter: None
-                    },
-                    collection_strategy: CollectionStrategy::CollectAll,
-                    match_options: MatchOptions {
-                        line_number_tracking: LineNumberTracking::On,
-                        source_name_tracking: SourceNameTracking::On,
-                        context_size: ContextSize {
-                            lines_before: 1,
-                            lines_after: 2
-                        },
+                query: String::from("query"),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![PathBuf::from("file")],
+                    filter: None
+                },
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking::On,
+                    source_name_tracking: SourceNameTracking::On,
+                    context_size: ContextSize {
+                        lines_before: 1,
+                        lines_after: 2
                     },
                 },
+                strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
                     Formatting::On(StyleSet::default())
                 } else {
@@ -1861,25 +1837,23 @@ mod tests {
         assert_eq!(
             request,
             Request {
-                core: CoreRequest {
-                    query: String::from("query"),
-                    targets: Targets::RecursiveEntries {
-                        paths: vec![PathBuf::from("file")],
-                        filter: Some(Filter::new(
-                            vec![Pattern::new("*.txt").unwrap(),],
-                            vec![Pattern::new("tests/*").unwrap()]
-                        ))
-                    },
-                    collection_strategy: CollectionStrategy::CollectTop(10),
-                    match_options: MatchOptions {
-                        line_number_tracking: LineNumberTracking::On,
-                        source_name_tracking: SourceNameTracking::On,
-                        context_size: ContextSize {
-                            lines_before: 1,
-                            lines_after: 2,
-                        },
+                query: String::from("query"),
+                targets: Targets::RecursiveEntries {
+                    paths: vec![PathBuf::from("file")],
+                    filter: Some(Filter::new(
+                        vec![Pattern::new("*.txt").unwrap(),],
+                        vec![Pattern::new("tests/*").unwrap()]
+                    ))
+                },
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking::On,
+                    source_name_tracking: SourceNameTracking::On,
+                    context_size: ContextSize {
+                        lines_before: 1,
+                        lines_after: 2,
                     },
                 },
+                strategy: CollectionStrategy::CollectTop(10),
                 output_behavior: Behavior::Normal(Formatting::On(StyleSet {
                     selected_match: Style::new().blue().blink(),
                     ..Default::default()

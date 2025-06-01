@@ -40,7 +40,7 @@ fn default_single_file() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -121,7 +121,7 @@ fn default_multiple_files() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -154,7 +154,7 @@ fn line_number_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -187,7 +187,7 @@ fn line_number_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -220,7 +220,7 @@ fn with_filename_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -253,7 +253,7 @@ fn with_filename_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -274,7 +274,7 @@ fn no_filename_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -295,7 +295,7 @@ fn no_filename_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -319,7 +319,7 @@ fn no_filename_multiple_files() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -352,7 +352,7 @@ fn before_context_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -385,7 +385,7 @@ fn before_context_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -419,7 +419,7 @@ fn after_context_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -453,7 +453,7 @@ fn after_context_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -475,7 +475,7 @@ fn formatting_color_always() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -513,7 +513,7 @@ fn formatting_color_auto() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -531,7 +531,7 @@ fn formatting_color_never() {
     let request = cli::make_request(cmd.into_iter().map(String::from));
     let expected = ["contiguous\n", "Contiguous\n"].concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -561,7 +561,7 @@ fn formatting_override_selected_match() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -596,7 +596,7 @@ fn formatting_override_line_number() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -631,7 +631,7 @@ fn formatting_override_file_name() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -671,7 +671,7 @@ fn formatting_override_separator() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -703,7 +703,7 @@ fn formatting_override_selected_line() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -749,7 +749,7 @@ fn formatting_override_context() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -870,7 +870,7 @@ fn all_options_short() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -952,7 +952,7 @@ fn all_options_long() {
     ]
     .concat();
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), expected);
 }
 
@@ -961,7 +961,7 @@ fn no_matches_default_single_file() {
     let cmd = ["fzgrep", "nomatch", "resources/tests/test.txt"];
     let request = cli::make_request(cmd.into_iter().map(String::from));
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), "");
 }
 
@@ -980,6 +980,6 @@ fn no_matches_all_options_long() {
     ];
     let request = cli::make_request(cmd.into_iter().map(String::from));
     let mut buf = Vec::new();
-    fzgrep::run(&request, &mut buf).unwrap();
+    fzgrep::run(request, &mut buf).unwrap();
     assert_eq!(str::from_utf8(&buf).unwrap(), "");
 }

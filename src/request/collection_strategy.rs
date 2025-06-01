@@ -1,6 +1,6 @@
 /// Matches collection behavior.
 ///
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CollectionStrategy {
     /// All matches must be kept.
     ///

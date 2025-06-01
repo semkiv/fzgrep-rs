@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 /// Possible categories of input targets.
 ///
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Targets {
     /// A bunch of individual files.
     ///

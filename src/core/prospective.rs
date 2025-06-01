@@ -5,6 +5,8 @@ use context::Context;
 use crate::match_properties::MatchProperties as CompleteMatchProperties;
 use crate::match_properties::location::Location;
 
+use crate::core::basic::MatchProperties as BasicMatchProperties;
+
 use vscode_fuzzy_score_rs::FuzzyMatch;
 
 /// Represents match properties that may or may not have fully accumulated trailing (i.e. "after") context yet.
@@ -47,14 +49,16 @@ impl MatchProperties {
     /// Otherwise returns a [`MatchProperties::Pending`] instance with an accordingly constructed
     /// instance of [`Context`] as the context.
     ///
-    // TODO: have smth like CoreProps and change the signature to (CoreProps, before, after_size)?
     pub fn new(
-        matching_line: String,
-        fuzzy_match: FuzzyMatch,
-        location: Location,
+        basic_properties: BasicMatchProperties,
         before_context: Option<Vec<String>>,
         after_context_size: usize,
     ) -> Self {
+        let BasicMatchProperties {
+            matching_line,
+            fuzzy_match,
+            location,
+        } = basic_properties;
         let context = Context::new(before_context, after_context_size);
         match context {
             Context::Ready(context) => Self::Ready(CompleteMatchProperties {
@@ -160,15 +164,14 @@ mod tests {
             source_name: None,
             line_number: Some(42),
         };
+        let basic_props = BasicMatchProperties {
+            matching_line: line.clone(),
+            fuzzy_match: fm.clone(),
+            location: loc.clone(),
+        };
         let before_ctx = Some(vec![String::from("before")]);
         let cap = 42;
-        let props = MatchProperties::new(
-            line.clone(),
-            fm.clone(),
-            loc.clone(),
-            before_ctx.clone(),
-            cap,
-        );
+        let props = MatchProperties::new(basic_props, before_ctx.clone(), cap);
         match &props {
             MatchProperties::Ready(_) => unreachable!(),
             MatchProperties::Pending {
@@ -209,9 +212,13 @@ mod tests {
             source_name: None,
             line_number: Some(42),
         };
+        let basic_props = BasicMatchProperties {
+            matching_line: line.clone(),
+            fuzzy_match: fm.clone(),
+            location: loc.clone(),
+        };
         let before_ctx = Some(vec![String::from("before")]);
-        let props =
-            MatchProperties::new(line.clone(), fm.clone(), loc.clone(), before_ctx.clone(), 0);
+        let props = MatchProperties::new(basic_props, before_ctx.clone(), 0);
         match props {
             MatchProperties::Ready(props) => {
                 assert_eq!(

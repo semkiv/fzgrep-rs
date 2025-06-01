@@ -65,7 +65,7 @@ impl Default for StyleSet {
     /// # Examples
     ///
     /// ```
-    /// use fzgrep::cli::formatting::StyleSet;
+    /// use fzgrep::cli::output::formatting::StyleSet;
     /// use yansi::Style;
     ///
     /// let default = StyleSet::default();

@@ -25,7 +25,7 @@ pub enum SourceNameTracking {
 }
 
 /// Represents a set of options that control how the additional data about matches is collected.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MatchOptions {
     /// Determines whether the numbers of matching lines are of interest and should be tracked during processing.
     ///

@@ -76,3 +76,5 @@ impl From<StyleSequenceParsingError> for ColorOverrideParsingError {
         Self::BadStyleSequence(value)
     }
 }
+
+// TODO: test for trait impls

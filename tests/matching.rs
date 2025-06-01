@@ -24,7 +24,7 @@ fn ascii_query() {
     ];
 
     let request = cli::make_request(cmd.into_iter().map(String::from));
-    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
 
     assert_eq!(results.len(), 10);
 
@@ -164,7 +164,7 @@ fn emoji_query() {
     ];
 
     let request = cli::make_request(cmd.into_iter().map(String::from));
-    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
 
     assert_eq!(results.len(), 5);
 
@@ -229,7 +229,7 @@ fn cyrillic_query() {
     ];
 
     let request = cli::make_request(cmd.into_iter().map(String::from));
-    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
 
     assert_eq!(results.len(), 10);
 
@@ -339,7 +339,7 @@ fn chinese_query() {
     ];
 
     let request = cli::make_request(cmd.into_iter().map(String::from));
-    let results = fzgrep::collect_matches(&request.core).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
 
     assert_eq!(results.len(), 5);
 

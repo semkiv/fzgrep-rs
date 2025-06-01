@@ -2,7 +2,7 @@ use crate::output::formatting::Formatting;
 
 /// Behavior of the program with respect to the output
 ///
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Behavior {
     /// Output normally.
     ///
