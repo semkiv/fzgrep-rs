@@ -32,10 +32,10 @@ fn basic_usage() {
         }
     );
 
-    let results = fzgrep::collect_all_matches(request.into()).unwrap();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
     let mut results = results
         .into_iter()
-        .map(|x| x.flocation.source_name.unwrap())
+        .map(|x| x.location.source_name.unwrap())
         .collect::<Vec<_>>();
     results.sort();
 
