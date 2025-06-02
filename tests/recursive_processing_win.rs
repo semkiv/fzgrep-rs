@@ -4,7 +4,10 @@
     reason = "These are integration tests"
 )]
 
-use fzgrep::{Filter, Targets, cli::args};
+use fzgrep::cli;
+use fzgrep::request::targets::Targets;
+use fzgrep::request::targets::filter::Filter;
+
 use glob::Pattern;
 use std::path::PathBuf;
 
@@ -17,7 +20,9 @@ fn basic_usage() {
         "recursive",
         "resources\\tests\\",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -27,13 +32,13 @@ fn basic_usage() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_all_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.flocation.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -62,7 +67,9 @@ fn basic_usage_no_trailing_slash() {
         "recursive",
         "resources\\tests",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -72,13 +79,13 @@ fn basic_usage_no_trailing_slash() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -108,7 +115,9 @@ fn only_files() {
         "resources\\tests\\nested\\test.txt",
         "resources\\tests\\nested\\test2.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -121,13 +130,13 @@ fn only_files() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -148,7 +157,9 @@ fn files_and_dirs_mixed() {
         "resources\\tests\\nested\\test.txt",
         "resources\\tests\\nested\\test2.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -162,13 +173,13 @@ fn files_and_dirs_mixed() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -197,7 +208,8 @@ fn recursive_with_include_filters() {
         "resources\\tests\\test.json",
         "resources\\tests\\test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -215,13 +227,13 @@ fn recursive_with_include_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -249,7 +261,9 @@ fn recursive_with_exclude_filters() {
         "resources\\tests\\test.json",
         "resources\\tests\\test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -268,13 +282,13 @@ fn recursive_with_exclude_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [
@@ -305,7 +319,9 @@ fn recursive_with_include_and_exclude_filters() {
         "resources\\tests\\test.json",
         "resources\\tests\\test.txt",
     ];
-    let request = args::make_request(cmd.into_iter().map(String::from));
+
+    let request = cli::make_request(cmd.into_iter().map(String::from));
+
     assert_eq!(request.query, "recursive");
     assert_eq!(
         request.targets,
@@ -329,13 +345,13 @@ fn recursive_with_include_and_exclude_filters() {
         }
     );
 
-    let mut results =
-        fzgrep::collect_all_matches(&request.query, &request.targets, &request.match_options)
-            .unwrap()
-            .into_iter()
-            .map(|x| x.file_name.unwrap())
-            .collect::<Vec<_>>();
+    let results = fzgrep::collect_matches(request.into()).unwrap();
+    let mut results = results
+        .into_iter()
+        .map(|x| x.location.source_name.unwrap())
+        .collect::<Vec<_>>();
     results.sort();
+
     assert_eq!(
         results,
         [

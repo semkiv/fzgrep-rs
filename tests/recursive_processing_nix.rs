@@ -31,6 +31,7 @@ fn basic_usage() {
             filter: None
         }
     );
+
     let results = fzgrep::collect_matches(request.into()).unwrap();
     let mut results = results
         .into_iter()
