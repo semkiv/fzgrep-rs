@@ -76,8 +76,8 @@ mod tests {
         let query = String::from("test");
         let targets = Targets::Files(vec![PathBuf::from("test.txt")]);
         let options = MatchOptions {
-            line_number_tracking: LineNumberTracking::Off,
-            source_name_tracking: SourceNameTracking::Off,
+            line_number_tracking: LineNumberTracking(false),
+            source_name_tracking: SourceNameTracking(false),
             context_size: ContextSize {
                 lines_before: 1,
                 lines_after: 2,

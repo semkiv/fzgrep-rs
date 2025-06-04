@@ -50,7 +50,7 @@ impl Ord for MatchProperties {
 
 #[cfg(test)]
 mod test {
-    #![expect(clippy::min_ident_chars, reason = "It's tests, who cares?")]
+    #![expect(clippy::min_ident_chars, reason = "It's tests")]
 
     use super::*;
 

@@ -2,27 +2,21 @@ pub mod context_size;
 
 use context_size::ContextSize;
 
+/// A newtype wrapper that determines if the line numbers should be tracked and reported.
+///
+/// # Fields
+///   * a boolean; if `true` the numbers of the matching lines will be tracked
+///
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum LineNumberTracking {
-    /// Enable tracking of line numbers.
-    ///
-    On,
+pub struct LineNumberTracking(pub bool);
 
-    /// Disable tracking of line numbers.
-    ///
-    Off,
-}
-
+/// A newtype wrapper that determines if the source names should be tracked and reported.
+///
+/// # Fields
+///   * a boolean; if `true` the names of the matching sources will be tracked
+///
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SourceNameTracking {
-    /// Enable tracking of source (usually file) names.
-    ///
-    On,
-
-    /// Disable tracking of source (usually file) names.
-    ///
-    Off,
-}
+pub struct SourceNameTracking(pub bool);
 
 /// Represents a set of options that control how the additional data about matches is collected.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

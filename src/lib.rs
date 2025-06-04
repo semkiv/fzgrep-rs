@@ -3,23 +3,23 @@ pub mod exit_code;
 pub mod match_properties;
 pub mod request;
 
-mod core;
+mod details;
 
 use cli::output;
 use cli::output::behavior::Behavior;
 use cli::request::Request as CliRequest;
-use core::Reader;
-use core::basic::MatchProperties as BasicMatchProperties;
-use core::basic::Request as BasicRequest;
-use core::prospective::MatchProperties as ProspectiveMatchProperties;
-use core::results_collection::ResultsCollection;
-use core::results_collection::top_bracket::TopBracket;
-use core::sliding_accumulator::SlidingAccumulator;
+use details::Reader;
+use details::basic::MatchProperties as BasicMatchProperties;
+use details::basic::Request as BasicRequest;
+use details::prospective::MatchProperties as ProspectiveMatchProperties;
+use details::results_collection::ResultsCollection;
+use details::results_collection::top_bracket::TopBracket;
+use details::sliding_accumulator::SlidingAccumulator;
 use match_properties::MatchProperties;
 use match_properties::location::Location;
 use request::Request as CoreRequest;
 use request::collection_strategy::CollectionStrategy;
-use request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
+use request::match_options::MatchOptions;
 use request::targets::Targets;
 use request::targets::filter::Filter;
 
@@ -175,10 +175,8 @@ fn process_reader(
             let positions = fuzzy_match.positions().clone();
 
             let match_location = Location {
-                source_name: (options.source_name_tracking == SourceNameTracking::On)
-                    .then(|| display_name.clone()),
-                line_number: (options.line_number_tracking == LineNumberTracking::On)
-                    .then_some(line_number),
+                source_name: options.source_name_tracking.0.then(|| display_name.clone()),
+                line_number: options.line_number_tracking.0.then_some(line_number),
             };
             let basic_props = BasicMatchProperties {
                 matching_line: line.clone(),

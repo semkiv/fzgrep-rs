@@ -5,7 +5,7 @@ use context::Context;
 use crate::match_properties::MatchProperties as CompleteMatchProperties;
 use crate::match_properties::location::Location;
 
-use crate::core::basic::MatchProperties as BasicMatchProperties;
+use crate::details::basic::MatchProperties as BasicMatchProperties;
 
 use vscode_fuzzy_score_rs::FuzzyMatch;
 
@@ -148,9 +148,9 @@ impl MatchProperties {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::min_ident_chars, reason = "It's tests, who cares?")]
-    #![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
-    #![expect(clippy::unreachable, reason = "It's tests, who cares?")]
+    #![expect(clippy::min_ident_chars, reason = "It's tests")]
+    #![expect(clippy::too_many_lines, reason = "It's tests")]
+    #![expect(clippy::unreachable, reason = "It's tests")]
 
     use super::*;
     use crate::match_properties::context::Context as CompleteContext;

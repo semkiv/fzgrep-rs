@@ -300,7 +300,7 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
 
 #[cfg(test)]
 mod test {
-    #![expect(clippy::too_many_lines, reason = "It's tests, who cares?")]
+    #![expect(clippy::too_many_lines, reason = "It's tests")]
 
     use super::*;
     use crate::cli::output::formatting::StyleSet;
@@ -348,7 +348,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -402,7 +402,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "test\n\
             test\n\
             test\n"
@@ -452,7 +452,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -510,7 +510,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -564,7 +564,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "test\n\
             test\n\
             test\n"
@@ -614,7 +614,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     selected_line: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -675,7 +675,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -735,7 +735,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "42:test\n\
             100500:test\n\
             13:test\n"
@@ -785,7 +785,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     line_number: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -849,7 +849,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -909,7 +909,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "First:test\n\
             Second:test\n\
             Third:test\n"
@@ -959,7 +959,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     source_name: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -1041,7 +1041,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "first_before_one\n\
                 first_before_two\n\
@@ -1125,7 +1125,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "first_before_one\n\
             first_before_two\n\
             test\n\
@@ -1205,7 +1205,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     context: Style::new().rgb(127, 127, 127).dim(),
                     ..Default::default()
                 })
@@ -1301,7 +1301,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}{}first_before_one\n\
                 {}{}{}{}{}st\n\
@@ -1456,7 +1456,7 @@ mod test {
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "First:41:first_before_one\n\
             First:42:test\n\
             First:43:first_after_one\n\
@@ -1532,7 +1532,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().yellow().italic(),
                     line_number: Style::new().cyan(),
                     source_name: Style::new().cyan(),
@@ -1659,7 +1659,7 @@ mod test {
     fn no_results_output_default() {
         let results = vec![];
         assert_eq!(
-            format_results(&results, &Formatting::On(StyleSet::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             ""
         );
     }
@@ -1667,7 +1667,7 @@ mod test {
     #[test]
     fn no_results_output_off() {
         let results = vec![];
-        assert_eq!(format_results(&results, &Formatting::Off), "");
+        assert_eq!(format_results(&results, &Formatting::Disabled), "");
     }
 
     #[test]
@@ -1676,7 +1676,7 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(StyleSet {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().green(),
                     line_number: Style::new().cyan(),
                     source_name: Style::new().cyan(),

@@ -109,7 +109,7 @@ impl Context {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unreachable, reason = "It's tests, who cares?")]
+    #![expect(clippy::unreachable, reason = "It's tests")]
 
     use super::*;
 

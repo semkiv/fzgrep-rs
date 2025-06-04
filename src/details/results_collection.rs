@@ -29,7 +29,7 @@ impl ResultsCollection for Vec<MatchProperties> {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::min_ident_chars, reason = "It's tests, who cares?")]
+    #![expect(clippy::min_ident_chars, reason = "It's tests")]
 
     use super::*;
     use crate::match_properties::context::Context;

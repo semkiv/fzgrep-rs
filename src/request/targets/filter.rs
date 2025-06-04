@@ -98,8 +98,8 @@ impl Filter {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::cognitive_complexity, reason = "It's tests, who cares?")]
-    #![expect(clippy::shadow_unrelated, reason = "It's tests, who cares?")]
+    #![expect(clippy::cognitive_complexity, reason = "It's tests")]
+    #![expect(clippy::shadow_unrelated, reason = "It's tests")]
 
     use super::*;
 

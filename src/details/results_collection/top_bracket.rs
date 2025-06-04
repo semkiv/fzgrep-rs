@@ -1,4 +1,4 @@
-use crate::core::results_collection::ResultsCollection;
+use crate::details::results_collection::ResultsCollection;
 use crate::match_properties::MatchProperties;
 
 /// A container that store up to a max count (capacity) of items sorted in descending order.
@@ -74,8 +74,8 @@ impl ResultsCollection for TopBracket<MatchProperties> {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::default_numeric_fallback, reason = "It's tests, who cares?")]
-    #![expect(clippy::shadow_unrelated, reason = "It's tests, who cares?")]
+    #![expect(clippy::default_numeric_fallback, reason = "It's tests")]
+    #![expect(clippy::shadow_unrelated, reason = "It's tests")]
 
     use super::*;
     use crate::match_properties::context::Context;

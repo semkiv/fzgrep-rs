@@ -64,17 +64,17 @@ struct CommandBuilder {
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
 ///         strategy: CollectionStrategy::CollectAll,
 ///         options: MatchOptions {
-///             line_number_tracking: LineNumberTracking::Off,
-///             source_name_tracking: SourceNameTracking::Off,
+///             line_number_tracking: LineNumberTracking(false),
+///             source_name_tracking: SourceNameTracking(false),
 ///             context_size: ContextSize {
 ///                 lines_before: 0,
 ///                 lines_after: 0,
 ///             },
 ///         },
 ///         output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
-///             Formatting::On(StyleSet::default())
+///             Formatting::Enabled(StyleSet::default())
 ///         } else {
-///             Formatting::Off
+///             Formatting::Disabled
 ///         }),
 ///         log_verbosity: LevelFilter::Error,
 ///     }
@@ -127,7 +127,7 @@ struct CommandBuilder {
 ///     ])
 /// );
 /// // with more than one input file `--with-filename` is assumed
-/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(true));
 /// ```
 ///
 /// ```
@@ -274,7 +274,7 @@ struct CommandBuilder {
 ///
 /// let args = ["fzgrep", "--line-number", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
+/// assert_eq!(request.options.line_number_tracking, LineNumberTracking(true));
 /// ```
 ///
 /// ```
@@ -284,7 +284,7 @@ struct CommandBuilder {
 ///
 /// let args = ["fzgrep", "--with-filename", "query", "file"];
 /// let request = cli::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(true));
 /// ```
 ///
 /// ```
@@ -301,7 +301,7 @@ struct CommandBuilder {
 ///     request.targets,
 ///     Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")])
 /// );
-/// assert_eq!(request.options.source_name_tracking, SourceNameTracking::Off);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(false));
 /// ```
 ///
 /// ```
@@ -800,11 +800,7 @@ fn strategy_from(matches: &ArgMatches) -> CollectionStrategy {
 
 fn match_options_from(matches: &ArgMatches) -> MatchOptions {
     MatchOptions {
-        line_number_tracking: if matches.get_flag(option_ids::LINE_NUMBER) {
-            LineNumberTracking::On
-        } else {
-            LineNumberTracking::Off
-        },
+        line_number_tracking: LineNumberTracking(matches.get_flag(option_ids::LINE_NUMBER)),
         source_name_tracking: track_source_name_from(matches),
         context_size: context_size_from(matches),
     }
@@ -813,16 +809,16 @@ fn match_options_from(matches: &ArgMatches) -> MatchOptions {
 fn track_source_name_from(matches: &ArgMatches) -> SourceNameTracking {
     // `--with-filename` flag has been specified -> file names *should* be tracked
     if matches.get_flag(option_ids::WITH_FILENAME) {
-        return SourceNameTracking::On;
+        return SourceNameTracking(true);
     }
     // `--no-filename` flag has been specified -> file names *should not* be tracked
     if matches.get_flag(option_ids::NO_FILENAME) {
-        return SourceNameTracking::Off;
+        return SourceNameTracking(false);
     }
 
     // `--recursive` flag has been specified -> file names *should* be tracked
     if matches.get_flag(option_ids::RECURSIVE) {
-        return SourceNameTracking::On;
+        return SourceNameTracking(true);
     }
 
     // no flags specified, but there are multiple input files -> file names *should* be tracked
@@ -830,10 +826,10 @@ fn track_source_name_from(matches: &ArgMatches) -> SourceNameTracking {
         .get_many::<String>(option_ids::TARGET)
         .is_some_and(|targets| targets.len() > 1)
     {
-        return SourceNameTracking::On;
+        return SourceNameTracking(true);
     }
     // default case -> file names *should not* be tracked
-    SourceNameTracking::Off
+    SourceNameTracking(false)
 }
 
 fn context_size_from(matches: &ArgMatches) -> ContextSize {
@@ -869,15 +865,15 @@ fn formatting_from(matches: &ArgMatches) -> Formatting {
     matches
         .get_one::<ColorChoice>(option_ids::COLOR)
         .map_or_else(
-            || Formatting::On(StyleSet::default()),
+            || Formatting::Enabled(StyleSet::default()),
             |choice| match choice {
-                ColorChoice::Always => Formatting::On(styleset_from(matches)),
-                ColorChoice::Never => Formatting::Off,
+                ColorChoice::Always => Formatting::Enabled(styleset_from(matches)),
+                ColorChoice::Never => Formatting::Disabled,
                 ColorChoice::Auto => {
                     if io::stdout().is_terminal() {
-                        Formatting::On(styleset_from(matches))
+                        Formatting::Enabled(styleset_from(matches))
                     } else {
-                        Formatting::Off
+                        Formatting::Disabled
                     }
                 }
             },
@@ -908,10 +904,19 @@ fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::non_ascii_literal, reason = "It's tests, who cares?")]
+    #![expect(clippy::non_ascii_literal, reason = "It's tests")]
+    #![expect(clippy::unreachable, reason = "It's tests")]
 
     use super::*;
+
     use yansi::Style;
+
+    fn extract_formatting_options(request: &Request) -> StyleSet {
+        match request.output_behavior {
+            Behavior::Normal(formatting) => formatting.options().unwrap(),
+            Behavior::Quiet => unreachable!(),
+        }
+    }
 
     #[test]
     fn make_request_no_targets() {
@@ -923,8 +928,8 @@ mod tests {
                 query: String::from("query"),
                 targets: Targets::Stdin,
                 options: MatchOptions {
-                    line_number_tracking: LineNumberTracking::Off,
-                    source_name_tracking: SourceNameTracking::Off,
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(false),
                     context_size: ContextSize {
                         lines_before: 0,
                         lines_after: 0,
@@ -932,9 +937,9 @@ mod tests {
                 },
                 strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(StyleSet::default())
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -954,8 +959,8 @@ mod tests {
                     filter: None
                 },
                 options: MatchOptions {
-                    line_number_tracking: LineNumberTracking::Off,
-                    source_name_tracking: SourceNameTracking::On,
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(true),
                     context_size: ContextSize {
                         lines_before: 0,
                         lines_after: 0,
@@ -963,9 +968,9 @@ mod tests {
                 },
                 strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(StyleSet::default())
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -982,8 +987,8 @@ mod tests {
                 query: String::from("query"),
                 targets: Targets::Files(vec![PathBuf::from("file")]),
                 options: MatchOptions {
-                    line_number_tracking: LineNumberTracking::Off,
-                    source_name_tracking: SourceNameTracking::Off,
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(false),
                     context_size: ContextSize {
                         lines_before: 0,
                         lines_after: 0,
@@ -991,9 +996,9 @@ mod tests {
                 },
                 strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(StyleSet::default())
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -1013,7 +1018,10 @@ mod tests {
                 PathBuf::from("file3")
             ])
         );
-        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
@@ -1028,7 +1036,10 @@ mod tests {
                 filter: None
             }
         );
-        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
@@ -1044,7 +1055,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.options.source_name_tracking,
-            SourceNameTracking::Off
+            SourceNameTracking(false)
         );
     }
 
@@ -1276,28 +1287,40 @@ mod tests {
     fn make_request_line_number_short() {
         let args = ["fzgrep", "-n", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
+        assert_eq!(
+            request.options.line_number_tracking,
+            LineNumberTracking(true)
+        );
     }
 
     #[test]
     fn make_request_line_number_long() {
         let args = ["fzgrep", "--line-number", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.options.line_number_tracking, LineNumberTracking::On);
+        assert_eq!(
+            request.options.line_number_tracking,
+            LineNumberTracking(true)
+        );
     }
 
     #[test]
     fn make_request_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
     fn make_request_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.options.source_name_tracking, SourceNameTracking::On);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
@@ -1306,7 +1329,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.options.source_name_tracking,
-            SourceNameTracking::Off
+            SourceNameTracking(false)
         );
     }
 
@@ -1316,7 +1339,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.options.source_name_tracking,
-            SourceNameTracking::Off
+            SourceNameTracking(false)
         );
     }
 
@@ -1564,9 +1587,9 @@ mod tests {
         assert_eq!(
             request.output_behavior,
             Behavior::Normal(if io::stdout().is_terminal() {
-                Formatting::On(StyleSet::default())
+                Formatting::Enabled(StyleSet::default())
             } else {
-                Formatting::Off
+                Formatting::Disabled
             })
         );
     }
@@ -1577,7 +1600,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            Behavior::Normal(Formatting::On(StyleSet::default()))
+            Behavior::Normal(Formatting::Enabled(StyleSet::default()))
         );
     }
 
@@ -1585,7 +1608,10 @@ mod tests {
     fn make_request_color_never() {
         let args = ["fzgrep", "--color", "never", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.output_behavior, Behavior::Normal(Formatting::Off));
+        assert_eq!(
+            request.output_behavior,
+            Behavior::Normal(Formatting::Disabled)
+        );
     }
 
     #[test]
@@ -1600,7 +1626,10 @@ mod tests {
             "file",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.output_behavior, Behavior::Normal(Formatting::Off));
+        assert_eq!(
+            request.output_behavior,
+            Behavior::Normal(Formatting::Disabled)
+        );
     }
 
     #[test]
@@ -1616,13 +1645,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .selected_match,
+            extract_formatting_options(&request).selected_match,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1640,13 +1663,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .line_number,
+            extract_formatting_options(&request).line_number,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1664,13 +1681,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .source_name,
+            extract_formatting_options(&request).source_name,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1688,13 +1699,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .separator,
+            extract_formatting_options(&request).separator,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1712,13 +1717,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .selected_line,
+            extract_formatting_options(&request).selected_line,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1736,13 +1735,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .context,
+            extract_formatting_options(&request).context,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1761,7 +1754,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            Behavior::Normal(Formatting::On(StyleSet {
+            Behavior::Normal(Formatting::Enabled(StyleSet {
                 selected_match: Style::new().green().on_yellow().bold(),
                 line_number: Style::new().yellow().on_blue().dim(),
                 source_name: Style::new().blue().on_magenta().italic(),
@@ -1784,7 +1777,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            Behavior::Normal(Formatting::On(StyleSet {
+            Behavior::Normal(Formatting::Enabled(StyleSet {
                 selected_match: Style::new().blue().on_yellow().bold(),
                 selected_line: Style::new().white().dim(),
                 context: Style::new().white().dim(),
@@ -1808,8 +1801,8 @@ mod tests {
                     filter: None
                 },
                 options: MatchOptions {
-                    line_number_tracking: LineNumberTracking::On,
-                    source_name_tracking: SourceNameTracking::On,
+                    line_number_tracking: LineNumberTracking(true),
+                    source_name_tracking: SourceNameTracking(true),
                     context_size: ContextSize {
                         lines_before: 1,
                         lines_after: 2
@@ -1817,9 +1810,9 @@ mod tests {
                 },
                 strategy: CollectionStrategy::CollectAll,
                 output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(StyleSet::default())
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Warn,
             }
@@ -1864,15 +1857,15 @@ mod tests {
                     ))
                 },
                 options: MatchOptions {
-                    line_number_tracking: LineNumberTracking::On,
-                    source_name_tracking: SourceNameTracking::On,
+                    line_number_tracking: LineNumberTracking(true),
+                    source_name_tracking: SourceNameTracking(true),
                     context_size: ContextSize {
                         lines_before: 1,
                         lines_after: 2,
                     },
                 },
                 strategy: CollectionStrategy::CollectTop(10),
-                output_behavior: Behavior::Normal(Formatting::On(StyleSet {
+                output_behavior: Behavior::Normal(Formatting::Enabled(StyleSet {
                     selected_match: Style::new().blue().blink(),
                     ..Default::default()
                 })),

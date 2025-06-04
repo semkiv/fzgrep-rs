@@ -9,11 +9,11 @@ pub enum Formatting {
     /// # Fileds
     ///   * the style set to use to decorate the output
     ///
-    On(StyleSet),
+    Enabled(StyleSet),
 
     /// Request formatting to be disabled and the output to be just plain text.
     ///
-    Off,
+    Disabled,
 }
 
 /// Holds formatting options
@@ -47,13 +47,13 @@ pub struct StyleSet {
 
 impl Formatting {
     /// Converts [`Formatting`] to [`Option<FormattingOptions>`].
-    /// If `self` is [`Formatting::On`] returns [`Some`] with the inner options, otherwise [`None`].
+    /// If `self` is [`Formatting::Enabled`] returns [`Some`] with the inner options, otherwise [`None`].
     ///
     #[must_use]
     pub const fn options(&self) -> Option<StyleSet> {
         match self {
-            Self::On(options) => Some(*options),
-            Self::Off => None,
+            Self::Enabled(options) => Some(*options),
+            Self::Disabled => None,
         }
     }
 }
@@ -101,7 +101,7 @@ mod test {
 
     #[test]
     fn formatting_on_options() {
-        let formatting = Formatting::On(StyleSet {
+        let formatting = Formatting::Enabled(StyleSet {
             selected_match: Style::new().blue().bold(),
             ..Default::default()
         });
@@ -113,7 +113,7 @@ mod test {
 
     #[test]
     fn formatting_off_options() {
-        let formatting = Formatting::Off;
+        let formatting = Formatting::Disabled;
         assert_eq!(formatting.options(), None);
     }
 }
