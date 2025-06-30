@@ -1,11 +1,17 @@
-use crate::{
-    cli::formatting::Formatting,
-    matching_results::result::{Context, MatchingResult},
-};
+pub mod behavior;
+pub mod formatting;
+
+mod location_ref;
+
+use formatting::Formatting;
+use location_ref::LocationRef;
+
+use crate::match_properties::MatchProperties;
+
 use log::debug;
 use std::ops::Range;
 use vscode_fuzzy_score_rs::FuzzyMatch;
-use yansi::{Paint, Style};
+use yansi::{Paint as _, Style};
 
 /// Formats supplied `matches` into a rich text string.
 ///
@@ -16,71 +22,123 @@ use yansi::{Paint, Style};
 /// where `colored-matching-line` is a matching line with matching characters painted blue.
 /// Whether `<filename>` and `<line-number>` are printed depends on `options`.
 ///
-pub(crate) fn format_results(matches: &[MatchingResult], formatting: &Formatting) -> String {
+#[must_use]
+pub fn format_results(matches: &[MatchProperties], formatting: &Formatting) -> String {
     let mut ret = String::new();
-    for m in matches.iter() {
-        let MatchingResult {
+    for match_props in matches {
+        let MatchProperties {
             matching_line,
             fuzzy_match,
-            file_name,
-            line_number,
-            context:
-                Context {
-                    before: context_before,
-                    after: context_after,
-                },
-        } = m;
+            location,
+            context,
+        } = match_props;
 
-        for (index, context_line) in context_before.iter().enumerate() {
-            let line_number = line_number.and_then(|l| Some(l - matches.len() + index + 1));
-            ret.push_str(&format_context_line(
-                context_line,
-                file_name,
-                &line_number,
-                formatting,
-            ));
-            ret.push('\n');
+        let match_location = LocationRef::new(location);
+
+        if let Some(ctx) = &context.before {
+            format_before_context(ctx, formatting, &match_location, &mut ret);
         }
 
         ret.push_str(&format_selected_line(
             matching_line,
             fuzzy_match,
-            file_name,
-            line_number,
+            &match_location,
             formatting,
         ));
         ret.push('\n');
 
-        for (index, context_line) in context_after.iter().enumerate() {
-            let line_number = line_number.and_then(|l| Some(l + index + 1));
-            ret.push_str(&format_context_line(
-                context_line,
-                file_name,
-                &line_number,
-                formatting,
-            ));
-            ret.push('\n');
+        if let Some(ctx) = &context.after {
+            format_after_context(ctx, formatting, &match_location, &mut ret);
         }
     }
 
     ret
 }
 
-fn format_context_line(
-    content: &str,
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
+fn format_before_context(
+    ctx: &[String],
     formatting: &Formatting,
-) -> String {
+    match_location: &LocationRef,
+    dest: &mut String,
+) {
+    let line_number_generator = match_location.line_number.map(|line_no| {
+        |idx| {
+            #[expect(
+                clippy::expect_used,
+                reason = "It is a logic error if the context index is greater than the context length.\
+                          If it happens it is a bug in context formatting code."
+            )]
+            let offset = ctx.len().checked_sub(idx).expect(
+                "The context line number offset is negative"
+            );
+            #[expect(
+                clippy::expect_used,
+                reason = "It is a logic error if the offset is greater than the current line number\
+                          (and the context size too).\
+                          If it happens it is a bug in context formatting code."
+            )]
+            line_no.checked_sub(offset).expect(
+                "The context line number is negative."
+            )
+        }
+    });
+    format_context(
+        ctx,
+        formatting,
+        match_location.source_name,
+        line_number_generator.as_ref(),
+        dest,
+    );
+}
+
+fn format_after_context(
+    ctx: &[String],
+    formatting: &Formatting,
+    match_location: &LocationRef,
+    dest: &mut String,
+) {
+    let line_number_generator = match_location
+        .line_number
+        .map(|line_no| |idx| line_no.wrapping_add(idx).wrapping_add(1));
+    format_context(
+        ctx,
+        formatting,
+        match_location.source_name,
+        line_number_generator.as_ref(),
+        dest,
+    );
+}
+
+fn format_context(
+    ctx: &[String],
+    formatting: &Formatting,
+    source_name: Option<&str>,
+    line_number_generator: Option<&impl Fn(usize) -> usize>,
+    dest: &mut String,
+) {
+    for (index, context_line) in ctx.iter().enumerate() {
+        let context_line_number = line_number_generator
+            .as_ref()
+            .map(|generator| generator(index));
+        let location = LocationRef {
+            source_name,
+            line_number: context_line_number.as_ref(),
+        };
+        dest.push_str(&format_context_line(context_line, &location, formatting));
+        dest.push('\n');
+    }
+}
+
+fn format_context_line(content: &str, location: &LocationRef, formatting: &Formatting) -> String {
     let mut result = String::new();
 
-    if let Some(prefix) = format_line_prefix(file_name, line_number, formatting) {
+    if let Some(prefix) = format_match_location(location, formatting) {
         result.push_str(&prefix);
     }
 
     result.push_str(&format_one_piece(
         content,
-        formatting.options().map(|o| o.context),
+        formatting.options().map(|styleset| styleset.context),
     ));
 
     result
@@ -89,13 +147,12 @@ fn format_context_line(
 fn format_selected_line(
     content: &str,
     fuzzy_match: &FuzzyMatch,
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
+    location: &LocationRef,
     formatting: &Formatting,
 ) -> String {
     let mut result = String::new();
 
-    if let Some(prefix) = format_line_prefix(file_name, line_number, formatting) {
+    if let Some(prefix) = format_match_location(location, formatting) {
         result.push_str(&prefix);
     }
 
@@ -105,7 +162,14 @@ fn format_selected_line(
     for range in group_indices(fuzzy_match.positions()) {
         let preceding_non_match = str_itr
             .by_ref()
-            .take(range.start - previous_range_end)
+            .take(
+                #[expect(
+                    clippy::unwrap_used,
+                    reason = "The range is not supposed to start before the previous one ends.\
+                              If it happens, it's a bug in the indices grouping code."
+                )]
+                range.start.checked_sub(previous_range_end).unwrap(),
+            )
             .collect::<String>();
         // The check is needed because `yansi::Paint` inserts formatting sequence even for empty strings.
         // Visually it makes no difference, but there are extra characters in the output,
@@ -113,17 +177,24 @@ fn format_selected_line(
         if !preceding_non_match.is_empty() {
             result.push_str(&format_one_piece(
                 &preceding_non_match,
-                options.map(|o| o.selected_line),
-            ))
+                options.map(|styleset| styleset.selected_line),
+            ));
         }
 
         let matching_part = str_itr
             .by_ref()
-            .take(range.end - range.start)
+            .take(
+                #[expect(
+                    clippy::unwrap_used,
+                    reason = "The range is not supposed to end before it starts.\
+                              If it happens, it's a bug in the indices grouping code."
+                )]
+                range.end.checked_sub(range.start).unwrap(),
+            )
             .collect::<String>();
         result.push_str(&format_one_piece(
             &matching_part,
-            options.map(|o| o.selected_match),
+            options.map(|styleset| styleset.selected_match),
         ));
 
         previous_range_end = range.end;
@@ -136,44 +207,46 @@ fn format_selected_line(
     if !remaining_non_match.is_empty() {
         result.push_str(&format_one_piece(
             &remaining_non_match,
-            options.map(|o| o.selected_line),
+            options.map(|styleset| styleset.selected_line),
         ));
     }
 
     result
 }
 
-fn format_line_prefix(
-    file_name: &Option<String>,
-    line_number: &Option<usize>,
-    formatting: &Formatting,
-) -> Option<String> {
+fn format_match_location(location: &LocationRef, formatting: &Formatting) -> Option<String> {
     let mut result = None;
     let options = formatting.options();
 
-    if let Some(file_name) = file_name {
+    if let Some(source_name) = location.source_name {
         let result = result.get_or_insert(String::new());
-        result.push_str(&format_one_piece(file_name, options.map(|o| o.file_name)));
-        result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
+        result.push_str(&format_one_piece(
+            source_name,
+            options.map(|styleset| styleset.source_name),
+        ));
+        result.push_str(&format_one_piece(
+            ":",
+            options.map(|styleset| styleset.separator),
+        ));
     }
 
-    if let Some(line_number) = line_number {
+    if let Some(line_number) = location.line_number {
         let result = result.get_or_insert(String::new());
         result.push_str(&format_one_piece(
             &line_number.to_string(),
-            options.map(|o| o.line_number),
+            options.map(|styleset| styleset.line_number),
         ));
-        result.push_str(&format_one_piece(":", options.map(|o| o.separator)));
+        result.push_str(&format_one_piece(
+            ":",
+            options.map(|styleset| styleset.separator),
+        ));
     }
 
     result
 }
 
-fn format_one_piece(s: &str, style: Option<Style>) -> String {
-    match style {
-        Some(style) => s.paint(style).to_string(),
-        None => s.to_string(),
-    }
+fn format_one_piece(piece: &str, style: Option<Style>) -> String {
+    style.map_or_else(|| piece.to_owned(), |style| piece.paint(style).to_string())
 }
 
 fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
@@ -182,72 +255,100 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     }
 
     let mut ret = Vec::new();
-    let mut itr = indices.iter();
-    // we've already handled the case of an empty input, it is safe to unwrap
-    let mut start = *itr.next().unwrap();
-
-    for (i, x) in itr.enumerate() {
-        if x - indices[i] != 1 {
-            let end = indices[i];
-            ret.push(Range {
-                start,
-                end: end + 1,
-            });
-            start = *x;
+    let make_range = |first_idx: usize, last_idx: usize| {
+        #[expect(
+            clippy::expect_used,
+            reason = "We can no longer guarantee that the range starts before it ends otherwise"
+        )]
+        let one_past_last_idx = last_idx
+            .checked_add(1)
+            .expect("Integer overflow occured when constructing a range");
+        Range {
+            start: first_idx,
+            end: one_past_last_idx,
         }
-    }
-    // again, the case of an empty input is already handled so it is safe to unwrap here too
-    ret.push(Range {
-        start,
-        end: indices.last().unwrap() + 1,
-    });
+    };
+    let mut itr = indices.iter();
+    #[expect(
+        clippy::unwrap_used,
+        reason = "The case of an empty input is already handled"
+    )]
+    let mut range_start = *itr.next().unwrap();
+    let mut prev_idx = range_start;
+    for idx in itr {
+        #[expect(
+            clippy::expect_used,
+            reason = "Indices must be monothonic. If they are not, it's a bug in the fuzzy matching lib"
+        )]
+        let diff = idx.checked_sub(prev_idx).expect(
+            "Indices of matching characters are not monothonic - a bug in `vscode-fuzzy-score-rs`?",
+        );
+        if diff > 1 {
+            ret.push(make_range(range_start, prev_idx));
+            range_start = *idx;
+        }
 
-    debug!("Match indices {:?} -> ranges {:?}", indices, ret);
+        prev_idx = *idx;
+    }
+
+    ret.push(make_range(range_start, prev_idx));
+
+    debug!("Match indices {indices:?} -> ranges {ret:?}");
 
     ret
 }
 
 #[cfg(test)]
 mod test {
+    #![expect(clippy::too_many_lines, reason = "It's tests")]
+
     use super::*;
-    use crate::cli::formatting::FormattingOptions;
+    use crate::cli::output::formatting::StyleSet;
+    use crate::match_properties::context::Context;
+    use crate::match_properties::location::Location;
 
     #[test]
     fn results_output_selected_match_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -257,89 +358,101 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_selected_match_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "test\n\
             test\n\
             test\n"
-        )
+        );
     }
 
     #[test]
     fn results_output_selected_match_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -353,45 +466,51 @@ mod test {
                 "te".yellow(),
                 't'.yellow(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_selected_line_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}st\n\
                 tes{}\n\
@@ -401,89 +520,101 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_selected_line_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "test\n\
             test\n\
             test\n"
-        )
+        );
     }
 
     #[test]
     fn results_output_selected_line_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     selected_line: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -500,45 +631,51 @@ mod test {
                 's'.yellow(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_line_number_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: Some(42),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: Some(100500),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: Some(13),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -554,89 +691,101 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold()
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_line_number_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: Some(42),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: Some(100500),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: Some(13),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "42:test\n\
             100500:test\n\
             13:test\n"
-        )
+        );
     }
 
     #[test]
     fn results_output_line_number_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: Some(42),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: Some(100500),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: Some(13),
+                location: Location {
+                    source_name: None,
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     line_number: Style::new().yellow(),
                     ..Default::default()
                 })
@@ -656,45 +805,51 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold()
             )
-        )
+        );
     }
 
     #[test]
-    fn results_output_file_name_default() {
+    fn results_output_source_name_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}st\n\
                 {}{}tes{}\n\
@@ -710,90 +865,102 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
-    fn results_output_file_name_off() {
+    fn results_output_source_name_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "First:test\n\
             Second:test\n\
             Third:test\n"
-        )
+        );
     }
 
     #[test]
-    fn results_output_file_name_custom() {
+    fn results_output_source_name_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: None,
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![],
-                    after: vec![],
+                    before: None,
+                    after: None,
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
-                    file_name: Style::new().yellow(),
+                &Formatting::Enabled(StyleSet {
+                    source_name: Style::new().yellow(),
                     ..Default::default()
                 })
             ),
@@ -812,63 +979,69 @@ mod test {
                 "te".red().bold(),
                 't'.red().bold(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_context_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("first_before_one"),
                         String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("second_after_one"),
                         String::from("second_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "first_before_one\n\
                 first_before_two\n\
@@ -896,57 +1069,63 @@ mod test {
     #[test]
     fn results_output_context_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("first_before_one"),
                         String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("second_after_one"),
                         String::from("second_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
+            format_results(&results, &Formatting::Disabled),
             "first_before_one\n\
             first_before_two\n\
             test\n\
@@ -962,65 +1141,71 @@ mod test {
             test\n\
             third_after_one\n\
             third_after_two\n",
-        )
+        );
     }
 
     #[test]
     fn results_output_context_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("first_before_one"),
                         String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("second_after_one"),
                         String::from("second_after_two"),
-                    ],
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: None,
-                line_number: None,
+                location: Location {
+                    source_name: None,
+                    line_number: None,
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     context: Style::new().rgb(127, 127, 127).dim(),
                     ..Default::default()
                 })
@@ -1058,85 +1243,82 @@ mod test {
                 "third_after_one".rgb(127, 127, 127).dim(),
                 "third_after_two".rgb(127, 127, 127).dim(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_all_default() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: Some(42),
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![
-                        String::from("first_before_one"),
-                        String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    before: Some(vec![String::from("first_before_one")]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                        String::from("first_after_three"),
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
-                        String::from("second_after_one"),
-                        String::from("second_after_two"),
-                    ],
+                        String::from("second_before_three"),
+                    ]),
+                    after: Some(vec![String::from("second_after_one")]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: Some(13),
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             format!(
                 "{}{}{}{}first_before_one\n\
-                {}{}{}{}first_before_two\n\
                 {}{}{}{}{}st\n\
                 {}{}{}{}first_after_one\n\
                 {}{}{}{}first_after_two\n\
+                {}{}{}{}first_after_three\n\
                 {}{}{}{}second_before_one\n\
                 {}{}{}{}second_before_two\n\
+                {}{}{}{}second_before_three\n\
                 {}{}{}{}tes{}\n\
                 {}{}{}{}second_after_one\n\
-                {}{}{}{}second_after_two\n\
                 {}{}{}{}third_before_one\n\
                 {}{}{}{}third_before_two\n\
                 {}{}{}{}{}s{}\n\
                 {}{}{}{}third_after_one\n\
                 {}{}{}{}third_after_two\n",
                 // first before context line
-                "First".magenta(),
-                ':'.cyan(),
-                "40".green(),
-                ':'.cyan(),
-                // second before context line
                 "First".magenta(),
                 ':'.cyan(),
                 "41".green(),
@@ -1157,12 +1339,22 @@ mod test {
                 ':'.cyan(),
                 "44".green(),
                 ':'.cyan(),
+                // third after context line
+                "First".magenta(),
+                ':'.cyan(),
+                "45".green(),
+                ':'.cyan(),
                 // first before context line
+                "Second".magenta(),
+                ':'.cyan(),
+                "100497".green(),
+                ':'.cyan(),
+                // second before context line
                 "Second".magenta(),
                 ':'.cyan(),
                 "100498".green(),
                 ':'.cyan(),
-                // second before context line
+                // third before context line
                 "Second".magenta(),
                 ':'.cyan(),
                 "100499".green(),
@@ -1177,11 +1369,6 @@ mod test {
                 "Second".magenta(),
                 ':'.cyan(),
                 "100501".green(),
-                ':'.cyan(),
-                // second after context line
-                "Second".magenta(),
-                ':'.cyan(),
-                "100502".green(),
                 ':'.cyan(),
                 // first before context line
                 "Third".magenta(),
@@ -1211,140 +1398,144 @@ mod test {
                 "15".green(),
                 ':'.cyan(),
             )
-        )
+        );
     }
 
     #[test]
     fn results_output_all_off() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: Some(42),
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![
-                        String::from("first_before_one"),
-                        String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    before: Some(vec![String::from("first_before_one")]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                        String::from("first_after_three"),
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
-                        String::from("second_after_one"),
-                        String::from("second_after_two"),
-                    ],
+                        String::from("second_before_three"),
+                    ]),
+                    after: Some(vec![String::from("second_after_one")]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: Some(13),
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
-            format_results(&results, &Formatting::Off),
-            "First:40:first_before_one\n\
-            First:41:first_before_two\n\
+            format_results(&results, &Formatting::Disabled),
+            "First:41:first_before_one\n\
             First:42:test\n\
             First:43:first_after_one\n\
             First:44:first_after_two\n\
-            Second:100498:second_before_one\n\
-            Second:100499:second_before_two\n\
+            First:45:first_after_three\n\
+            Second:100497:second_before_one\n\
+            Second:100498:second_before_two\n\
+            Second:100499:second_before_three\n\
             Second:100500:test\n\
             Second:100501:second_after_one\n\
-            Second:100502:second_after_two\n\
             Third:11:third_before_one\n\
             Third:12:third_before_two\n\
             Third:13:test\n\
             Third:14:third_after_one\n\
             Third:15:third_after_two\n"
-        )
+        );
     }
 
     #[test]
     fn results_output_all_custom() {
         let results = vec![
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("te", "test").unwrap(),
-                file_name: Some(String::from("First")),
-                line_number: Some(42),
+                location: Location {
+                    source_name: Some(String::from("First")),
+                    line_number: Some(42),
+                },
                 context: Context {
-                    before: vec![
-                        String::from("first_before_one"),
-                        String::from("first_before_two"),
-                    ],
-                    after: vec![
+                    before: Some(vec![String::from("first_before_one")]),
+                    after: Some(vec![
                         String::from("first_after_one"),
                         String::from("first_after_two"),
-                    ],
+                        String::from("first_after_three"),
+                    ]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("t", "test").unwrap(),
-                file_name: Some(String::from("Second")),
-                line_number: Some(100500),
+                location: Location {
+                    source_name: Some(String::from("Second")),
+                    line_number: Some(100_500),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("second_before_one"),
                         String::from("second_before_two"),
-                    ],
-                    after: vec![
-                        String::from("second_after_one"),
-                        String::from("second_after_two"),
-                    ],
+                        String::from("second_before_three"),
+                    ]),
+                    after: Some(vec![String::from("second_after_one")]),
                 },
             },
-            MatchingResult {
+            MatchProperties {
                 matching_line: String::from("test"),
                 fuzzy_match: vscode_fuzzy_score_rs::fuzzy_match("tet", "test").unwrap(),
-                file_name: Some(String::from("Third")),
-                line_number: Some(13),
+                location: Location {
+                    source_name: Some(String::from("Third")),
+                    line_number: Some(13),
+                },
                 context: Context {
-                    before: vec![
+                    before: Some(vec![
                         String::from("third_before_one"),
                         String::from("third_before_two"),
-                    ],
-                    after: vec![
+                    ]),
+                    after: Some(vec![
                         String::from("third_after_one"),
                         String::from("third_after_two"),
-                    ],
+                    ]),
                 },
             },
         ];
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().yellow().italic(),
                     line_number: Style::new().cyan(),
-                    file_name: Style::new().cyan(),
+                    source_name: Style::new().cyan(),
                     separator: Style::new().fixed(50),
                     selected_line: Style::new().rgb(127, 127, 127).dim(),
                     context: Style::new().rgb(127, 127, 127).dim(),
@@ -1352,14 +1543,14 @@ mod test {
             ),
             format!(
                 "{}{}{}{}{}\n\
-                {}{}{}{}{}\n\
                 {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
-                {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
+                {}{}{}{}{}\n\
+                {}{}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
                 {}{}{}{}{}\n\
@@ -1369,15 +1560,9 @@ mod test {
                 // first before context line
                 "First".cyan(),
                 ':'.fixed(50),
-                "40".cyan(),
-                ':'.fixed(50),
-                "first_before_one".rgb(127, 127, 127).dim(),
-                // second before context line
-                "First".cyan(),
-                ':'.fixed(50),
                 "41".cyan(),
                 ':'.fixed(50),
-                "first_before_two".rgb(127, 127, 127).dim(),
+                "first_before_one".rgb(127, 127, 127).dim(),
                 // selected line
                 "First".cyan(),
                 ':'.fixed(50),
@@ -1397,18 +1582,30 @@ mod test {
                 "44".cyan(),
                 ':'.fixed(50),
                 "first_after_two".rgb(127, 127, 127).dim(),
+                // third after context line
+                "First".cyan(),
+                ':'.fixed(50),
+                "45".cyan(),
+                ':'.fixed(50),
+                "first_after_three".rgb(127, 127, 127).dim(),
                 // first before context line
                 "Second".cyan(),
                 ':'.fixed(50),
-                "100498".cyan(),
+                "100497".cyan(),
                 ':'.fixed(50),
                 "second_before_one".rgb(127, 127, 127).dim(),
                 // second before context line
                 "Second".cyan(),
                 ':'.fixed(50),
-                "100499".cyan(),
+                "100498".cyan(),
                 ':'.fixed(50),
                 "second_before_two".rgb(127, 127, 127).dim(),
+                // third before context line
+                "Second".cyan(),
+                ':'.fixed(50),
+                "100499".cyan(),
+                ':'.fixed(50),
+                "second_before_three".rgb(127, 127, 127).dim(),
                 // selected line
                 "Second".cyan(),
                 ':'.fixed(50),
@@ -1422,12 +1619,6 @@ mod test {
                 "100501".cyan(),
                 ':'.fixed(50),
                 "second_after_one".rgb(127, 127, 127).dim(),
-                // second after context line
-                "Second".cyan(),
-                ':'.fixed(50),
-                "100502".cyan(),
-                ':'.fixed(50),
-                "second_after_two".rgb(127, 127, 127).dim(),
                 // first before context line
                 "Third".cyan(),
                 ':'.fixed(50),
@@ -1461,14 +1652,14 @@ mod test {
                 ':'.fixed(50),
                 "third_after_two".rgb(127, 127, 127).dim(),
             )
-        )
+        );
     }
 
     #[test]
     fn no_results_output_default() {
         let results = vec![];
         assert_eq!(
-            format_results(&results, &Formatting::On(FormattingOptions::default())),
+            format_results(&results, &Formatting::Enabled(StyleSet::default())),
             ""
         );
     }
@@ -1476,7 +1667,7 @@ mod test {
     #[test]
     fn no_results_output_off() {
         let results = vec![];
-        assert_eq!(format_results(&results, &Formatting::Off), "");
+        assert_eq!(format_results(&results, &Formatting::Disabled), "");
     }
 
     #[test]
@@ -1485,16 +1676,16 @@ mod test {
         assert_eq!(
             format_results(
                 &results,
-                &Formatting::On(FormattingOptions {
+                &Formatting::Enabled(StyleSet {
                     selected_match: Style::new().green(),
                     line_number: Style::new().cyan(),
-                    file_name: Style::new().cyan(),
+                    source_name: Style::new().cyan(),
                     separator: Style::new().fixed(50),
                     selected_line: Style::new().rgb(127, 127, 127).dim(),
                     context: Style::new().rgb(127, 127, 127).dim(),
                 })
             ),
             ""
-        )
+        );
     }
 }

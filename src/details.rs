@@ -1,12 +1,15 @@
-use std::{
-    fs,
-    io::{self, BufRead, BufReader},
-    path::Path,
-};
+pub mod basic;
+pub mod prospective;
+pub mod results_collection;
+pub mod sliding_accumulator;
+
+use std::fs;
+use std::io::{self, BufRead, BufReader};
+use std::path::Path;
 
 /// A common abstraction over possible content sources: `stdin` or file on disk.
 ///
-pub(crate) struct Reader {
+pub struct Reader {
     displayed_name: String,
     source: Box<dyn BufRead>,
 }
@@ -17,7 +20,7 @@ impl Reader {
     /// # Errors:
     ///   * [`std::io::Error`] in case of any I/O errors.
     ///
-    pub(crate) fn file_reader(path: impl AsRef<Path>) -> Result<Self, io::Error> {
+    pub fn file_reader(path: impl AsRef<Path>) -> Result<Self, io::Error> {
         let file = fs::File::open(&path)?;
         let reader = Box::new(BufReader::new(file));
         Ok(Self {
@@ -28,7 +31,7 @@ impl Reader {
 
     /// Creates a [`Reader`] that reads from the standard input.
     ///
-    pub(crate) fn stdin_reader() -> Self {
+    pub fn stdin_reader() -> Self {
         Self {
             displayed_name: String::from("(standard input)"),
             source: Box::new(BufReader::new(io::stdin())),
@@ -37,13 +40,13 @@ impl Reader {
 
     /// Just a getter for the display name, which is used to differentiate the readers (primarily when logging).
     ///
-    pub(crate) const fn display_name(&self) -> &String {
+    pub const fn display_name(&self) -> &String {
         &self.displayed_name
     }
 
     /// Just a getter that returns the underlying source.
     ///
-    pub(crate) fn into_source(self) -> Box<dyn BufRead> {
+    pub fn into_source(self) -> Box<dyn BufRead> {
         self.source
     }
 }

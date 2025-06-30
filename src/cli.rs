@@ -1,45 +1,30 @@
-use crate::{
-    cli::{
-        error::ColorOverrideParsingError,
-        formatting::{Formatting, FormattingOptions},
-        sgr_sequence,
-    },
-    core::{
-        file_filtering::Filter,
-        request::{
-            ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request,
-            Targets,
-        },
-    },
-};
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+pub mod output;
+pub mod request;
+
+mod option_ids;
+mod sgr_sequence;
+
+use output::behavior::Behavior;
+use output::formatting::{Formatting, StyleSet};
+use request::Request;
+use sgr_sequence::errors::ColorOverrideParsingError;
+
+use crate::request::collection_strategy::CollectionStrategy;
+use crate::request::match_options::context_size::ContextSize;
+use crate::request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
+use crate::request::targets::Targets;
+use crate::request::targets::filter::Filter;
+
+use clap::builder::EnumValueParser;
+use clap::{Arg, ArgAction, ArgMatches, ColorChoice, Command, value_parser};
 use glob::Pattern;
 use log::LevelFilter;
-use std::{
-    env,
-    io::{self, IsTerminal},
-    path::PathBuf,
-};
+use std::env;
+use std::io::{self, IsTerminal as _};
+use std::path::PathBuf;
 
-struct OptionId;
-
-impl OptionId {
-    const PATTERN: &'static str = "pattern";
-    const TARGET: &'static str = "target";
-    const RECURSIVE: &'static str = "recursive";
-    const EXCLUDE: &'static str = "exclude";
-    const INCLUDE: &'static str = "include";
-    const LINE_NUMBER: &'static str = "line_number";
-    const WITH_FILENAME: &'static str = "with_filename";
-    const NO_FILENAME: &'static str = "no_filename";
-    const CONTEXT: &'static str = "context";
-    const BEFORE_CONTEXT: &'static str = "before_context";
-    const AFTER_CONTEXT: &'static str = "after_context";
-    const TOP: &'static str = "top";
-    const QUIET: &'static str = "quiet";
-    const VERBOSE: &'static str = "verbose";
-    const COLOR: &'static str = "color";
-    const COLOR_OVERRIDES: &'static str = "color_overrides";
+struct CommandBuilder {
+    command: Command,
 }
 
 /// Sets up a [`Request`] struct based on the program command line arguments
@@ -56,39 +41,40 @@ impl OptionId {
 ///
 /// ```
 /// // basic usage
-/// use fzgrep::{
-///     cli::{
-///         args,
-///         formatting::{Formatting, FormattingOptions},
-///     },
-///     ContextSize, Lines, MatchCollectionStrategy, MatchOptions, OutputBehavior, Request, Targets,
-/// };
+/// use fzgrep::cli;
+/// use fzgrep::cli::output::formatting::Formatting;
+/// use fzgrep::cli::output::formatting::StyleSet;
+/// use fzgrep::cli::output::behavior::Behavior;
+/// use fzgrep::cli::request::Request;
+/// use fzgrep::request::collection_strategy::CollectionStrategy;
+/// use fzgrep::request::match_options::{LineNumberTracking, MatchOptions, SourceNameTracking};
+/// use fzgrep::request::match_options::context_size::ContextSize;
+/// use fzgrep::request::targets::Targets;
+///
 /// use log::LevelFilter;
-/// use std::{
-///     io::{self, IsTerminal},
-///     path::PathBuf,
-/// };
+/// use std::io::{self, IsTerminal};
+/// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request,
 ///     Request {
 ///         query: String::from("query"),
 ///         targets: Targets::Files(vec![PathBuf::from("file")]),
-///         strategy: MatchCollectionStrategy::CollectAll,
-///         match_options: MatchOptions {
-///             track_line_numbers: false,
-///             track_file_names: false,
+///         strategy: CollectionStrategy::CollectAll,
+///         options: MatchOptions {
+///             line_number_tracking: LineNumberTracking(false),
+///             source_name_tracking: SourceNameTracking(false),
 ///             context_size: ContextSize {
-///                 before: Lines(0),
-///                 after: Lines(0),
+///                 lines_before: 0,
+///                 lines_after: 0,
 ///             },
 ///         },
-///         output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-///             Formatting::On(FormattingOptions::default())
+///         output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
+///             Formatting::Enabled(StyleSet::default())
 ///         } else {
-///             Formatting::Off
+///             Formatting::Disabled
 ///         }),
 ///         log_verbosity: LevelFilter::Error,
 ///     }
@@ -97,20 +83,22 @@ impl OptionId {
 ///
 /// ```
 /// // no input files - use the standard input
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 ///
 /// let args = ["fzgrep", "query"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.targets, Targets::Stdin);
 /// ```
 ///
 /// ```
 /// // no input files and `--recursive` flag - use current directory///
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::{env, path::PathBuf};
 ///
 /// let args = ["fzgrep", "--recursive", "query"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -122,11 +110,14 @@ impl OptionId {
 ///
 /// ```
 /// // multiple input files
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::match_options::SourceNameTracking;
+///
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "query", "file1", "file2", "file3"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::Files(vec![
@@ -136,16 +127,17 @@ impl OptionId {
 ///     ])
 /// );
 /// // with more than one input file `--with-filename` is assumed
-/// assert!(request.match_options.track_file_names);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(true));
 /// ```
 ///
 /// ```
 /// // recursive mode
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "query", "."];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -157,12 +149,15 @@ impl OptionId {
 ///
 /// ```
 /// // recursive mode, including only `.txt` files
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--recursive", "--include", "*.txt", "query", "."];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -174,7 +169,10 @@ impl OptionId {
 ///
 /// ```
 /// // recursive mode, excluding files in `build` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -186,7 +184,7 @@ impl OptionId {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -198,7 +196,10 @@ impl OptionId {
 ///
 /// ```
 /// // recursive mode, including only `.txt` files except for those in `tests` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
+///
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -212,7 +213,7 @@ impl OptionId {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -227,7 +228,9 @@ impl OptionId {
 ///
 /// ```
 /// // recursive mode, including only `.txt` and `.json` files except for those in `build` or `tests` directory
-/// use fzgrep::{cli::args, Filter, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::targets::Targets;
+/// use fzgrep::request::targets::filter::Filter;
 /// use glob::Pattern;
 /// use std::path::PathBuf;
 ///
@@ -245,7 +248,7 @@ impl OptionId {
 ///     "query",
 ///     ".",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::RecursiveEntries {
@@ -266,55 +269,61 @@ impl OptionId {
 ///
 /// ```
 /// // request line numbers to be printed
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::LineNumberTracking;
 ///
 /// let args = ["fzgrep", "--line-number", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
-/// assert!(request.match_options.track_line_numbers);
+/// let request = cli::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.options.line_number_tracking, LineNumberTracking(true));
 /// ```
 ///
 /// ```
 /// // request file names to be printed
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::SourceNameTracking;
 ///
 /// let args = ["fzgrep", "--with-filename", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
-/// assert!(request.match_options.track_file_names);
+/// let request = cli::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(true));
 /// ```
 ///
 /// ```
 /// // with more than one input file `--with-filename` is assumed
 /// // it is possible to override this by specifically opting out like so
-/// use fzgrep::{cli::args, Targets};
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::SourceNameTracking;
+/// use fzgrep::request::targets::Targets;
 /// use std::path::PathBuf;
 ///
 /// let args = ["fzgrep", "--no-filename", "query", "file1", "file2"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
 ///     request.targets,
 ///     Targets::Files(vec![PathBuf::from("file1"), PathBuf::from("file2")])
 /// );
-/// assert!(!request.match_options.track_file_names);
+/// assert_eq!(request.options.source_name_tracking, SourceNameTracking(false));
 /// ```
 ///
 /// ```
 /// // symmetric context
-/// use fzgrep::{cli::args, ContextSize, Lines};
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::context_size::ContextSize;
 ///
 /// let args = ["fzgrep", "--context", "2", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.match_options.context_size,
+///     request.options.context_size,
 ///     ContextSize {
-///         before: Lines(2),
-///         after: Lines(2),
+///         lines_before: 2,
+///         lines_after: 2,
 ///     }
 /// );
 /// ```
 ///
 /// ```
 /// // asymmetric context
-/// use fzgrep::{cli::args, ContextSize, Lines};
+/// use fzgrep::cli;
+/// use fzgrep::request::match_options::context_size::ContextSize;
 ///
 /// let args = [
 ///     "fzgrep",
@@ -325,73 +334,75 @@ impl OptionId {
 ///     "query",
 ///     "file",
 /// ];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(
-///     request.match_options.context_size,
+///     request.options.context_size,
 ///     ContextSize {
-///         before: Lines(1),
-///         after: Lines(2),
+///         lines_before: 1,
+///         lines_after: 2,
 ///     }
 /// );
 /// ```
 ///
 /// ```
 /// // collect only top 5 matches
-/// use fzgrep::{cli::args, MatchCollectionStrategy};
+/// use fzgrep::cli;
+/// use fzgrep::request::collection_strategy::CollectionStrategy;
 ///
 /// let args = ["fzgrep", "--top", "5", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(5));
+/// let request = cli::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.strategy, CollectionStrategy::CollectTop(5));
 /// ```
 ///
 /// ```
 /// // silence the output
-/// use fzgrep::{cli::args, OutputBehavior};
+/// use fzgrep::cli;
+/// use fzgrep::cli::output::behavior::Behavior;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--quiet", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
-/// assert_eq!(request.output_behavior, OutputBehavior::Quiet);
+/// let request = cli::make_request(args.into_iter().map(String::from));
+/// assert_eq!(request.output_behavior, Behavior::Quiet);
 /// assert_eq!(request.log_verbosity, LevelFilter::Off);
 /// ```
 ///
 /// ```
 /// // activate warn log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "--verbose", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Warn);
 /// ```
 ///
 /// ```
 /// // activate warn and info log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Info);
 /// ```
 ///
 /// ```
 /// // activate warn, info and debug log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Debug);
 /// ```
 ///
 /// ```
 /// // activate warn, info, debug and trace log messages (in addition to error messages enabled by default)
-/// use fzgrep::cli::args;
+/// use fzgrep::cli;
 /// use log::LevelFilter;
 ///
 /// let args = ["fzgrep", "-vvvv", "query", "file"];
-/// let request = args::make_request(args.into_iter().map(String::from));
+/// let request = cli::make_request(args.into_iter().map(String::from));
 /// assert_eq!(request.log_verbosity, LevelFilter::Trace);
 /// ```
 ///
@@ -401,159 +412,241 @@ pub fn make_request(args: impl Iterator<Item = String>) -> Request {
     Request {
         query: query_from(&matches),
         targets: targets_from(&matches),
+        options: match_options_from(&matches),
         strategy: strategy_from(&matches),
-        match_options: match_options_from(&matches),
         output_behavior: output_behavior_from(&matches),
         log_verbosity: log_verbosity_from(&matches),
     }
 }
 
-fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
-    Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
+impl CommandBuilder {
+    fn new() -> Self {
+        let command = Command::new(option_env!("CARGO_NAME").unwrap_or("fzgrep"))
         .version(option_env!("CARGO_PKG_VERSION").unwrap_or("unknown"))
         .author(option_env!("CARGO_EMAIL").unwrap_or("Andrii Semkiv <semkiv@gmail.com>"))
+        .next_line_help(true)
         .after_help(
             "With more than one FILEs assume -f.\n\
             Exit status is 0 if any match is found, 1 otherwise; if any error(s) occur, the exit status is 2."
-        )
-        .arg(
-            Arg::new(OptionId::PATTERN)
+        );
+
+        Self { command }
+    }
+
+    fn pattern(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::PATTERN)
                 .value_name("PATTERN")
                 .required(true)
                 .help("Pattern to match"),
-        )
-        .arg(
-            Arg::new(OptionId::TARGET)
+        );
+
+        Self { command }
+    }
+
+    fn target(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::TARGET)
                 .value_name("TARGET")
                 .num_args(0..)
                 .help(
                     "Targets (file or directories) to search in;\n\
                     if none provided uses current working directory with `--recursive`,\n\
-                    and the standard input otherwise"
+                    and the standard input otherwise",
                 ),
-        )
-        .arg(
-            Arg::new(OptionId::RECURSIVE)
+        );
+
+        Self { command }
+    }
+
+    fn recursive(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::RECURSIVE)
                 .short('r')
                 .long("recursive")
                 .action(ArgAction::SetTrue)
                 .help("Recurse directories. '--exclude' and '--include' can be used for more fine-grained control")
-        )
-        .arg(
-            Arg::new(OptionId::EXCLUDE)
+        );
+
+        Self { command }
+    }
+
+    fn exclude(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::EXCLUDE)
                 .long("exclude")
                 .action(ArgAction::Append)
                 .value_parser(Pattern::new)
                 .help(
                     "A UNIX globs. Files matching this glob will be ignored.\n\
-                    Can be specified multiple times and combined with '--include' option."
-                )
-        )
-        .arg(
-            Arg::new(OptionId::INCLUDE)
+                    Can be specified multiple times and combined with '--include' option.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn include(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::INCLUDE)
                 .long("include")
                 .action(ArgAction::Append)
                 .value_parser(Pattern::new)
                 .help(
                     "A UNIX globs. Files matching this glob will be ignored.\n\
-                    Can be specified multiple times and combined with '--exclude' option."
-                )
-        )
-        .arg(
-            Arg::new(OptionId::LINE_NUMBER)
+                    Can be specified multiple times and combined with '--exclude' option.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn line_number(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::LINE_NUMBER)
                 .short('n')
                 .long("line-number")
                 .action(ArgAction::SetTrue)
                 .help("Print line number with matching lines"),
-        )
-        .arg(
-            Arg::new(OptionId::WITH_FILENAME)
+        );
+
+        Self { command }
+    }
+
+    fn with_filename(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::WITH_FILENAME)
                 .short('f')
                 .long("with-filename")
                 .action(ArgAction::SetTrue)
-                .conflicts_with(OptionId::NO_FILENAME)
+                .conflicts_with(option_ids::NO_FILENAME)
                 .help("Print file name with output lines"),
-        )
-        .arg(
-            Arg::new(OptionId::NO_FILENAME)
+        );
+
+        Self { command }
+    }
+
+    fn no_filename(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::NO_FILENAME)
                 .short('F')
                 .long("no-filename")
                 .action(ArgAction::SetTrue)
-                .conflicts_with(OptionId::WITH_FILENAME)
+                .conflicts_with(option_ids::WITH_FILENAME)
                 .help("Suppress the file name prefix on output"),
-        )
-        .arg(
-            Arg::new(OptionId::CONTEXT)
+        );
+
+        Self { command }
+    }
+
+    fn context(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::CONTEXT)
                 .short('C')
                 .long("context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with_all([OptionId::BEFORE_CONTEXT, OptionId::AFTER_CONTEXT])
-                .help("Print NUM lines of surrounding context")
-        )
-        .arg(
-            Arg::new(OptionId::BEFORE_CONTEXT)
+                .conflicts_with_all([option_ids::BEFORE_CONTEXT, option_ids::AFTER_CONTEXT])
+                .help("Print NUM lines of surrounding context"),
+        );
+
+        Self { command }
+    }
+
+    fn before_context(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::BEFORE_CONTEXT)
                 .short('B')
                 .long("before-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with(OptionId::CONTEXT)
-                .help("Print NUM lines of leading context")
-        )
-        .arg(
-            Arg::new(OptionId::AFTER_CONTEXT)
+                .conflicts_with(option_ids::CONTEXT)
+                .help("Print NUM lines of leading context"),
+        );
+
+        Self { command }
+    }
+
+    fn after_context(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::AFTER_CONTEXT)
                 .short('A')
                 .long("after-context")
                 .value_name("NUM")
                 .value_parser(value_parser!(usize))
-                .conflicts_with(OptionId::CONTEXT)
-                .help("Print NUM lines of trailing context")
-        )
-        .arg(
-            Arg::new(OptionId::TOP)
+                .conflicts_with(option_ids::CONTEXT)
+                .help("Print NUM lines of trailing context"),
+        );
+
+        Self { command }
+    }
+
+    fn top(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::TOP)
                 .long("top")
                 .value_name("N")
                 .value_parser(value_parser!(usize))
-                .help("Fetch only top N results")
-        )
-        .arg(
-            Arg::new(OptionId::QUIET)
+                .help("Fetch only top N results"),
+        );
+
+        Self { command }
+    }
+
+    fn quiet(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::QUIET)
                 .short('q')
                 .long("quiet")
                 .visible_alias("silent")
                 .action(ArgAction::SetTrue)
-                .conflicts_with(OptionId::VERBOSE)
-                .help("Suppress all output")
-        )
-        .arg(
-            Arg::new(OptionId::VERBOSE)
+                .conflicts_with(option_ids::VERBOSE)
+                .help("Suppress all output"),
+        );
+
+        Self { command }
+    }
+
+    fn verbose(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::VERBOSE)
                 .short('v')
                 .long("verbose")
                 .action(ArgAction::Count)
-                .conflicts_with(OptionId::QUIET)
+                .conflicts_with(option_ids::QUIET)
                 .help(
                     "Verbose output. Specify multiple times to increase verbosity.\n\
                     Without the switch only errors are reported (unless '-q' is specified);\n\
                     \t'-v' additionally enables warning messages;\n\
                     \t'-vv' additionally enables info messages;\n\
                     \t'-vvv' additionally enables debug messages;\n\
-                    \tand '-vvvv' additionally enables trace messages."
-                )
-        )
-        .arg(
-            Arg::new(OptionId::COLOR)
+                    \tand '-vvvv' additionally enables trace messages.",
+                ),
+        );
+
+        Self { command }
+    }
+
+    fn color(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::COLOR)
                 .long("color")
                 .visible_alias("colour")
                 .value_name("WHEN")
-                .value_parser(["always", "auto", "never"])
+                .value_parser(EnumValueParser::<ColorChoice>::new())
                 .default_value("auto")
                 .help(
                     "Display matched strings, lines, context, file names, line numbers and separators in color.\n\
                     With 'auto' the output is colored only when the standard input is connected to a terminal."
                 )
-        )
-        .arg(
-            Arg::new(OptionId::COLOR_OVERRIDES)
+        );
+
+        Self { command }
+    }
+
+    fn color_overrides(self) -> Self {
+        let command = self.command.arg(
+            Arg::new(option_ids::COLOR_OVERRIDES)
                 .long("color-overrides")
                 .visible_alias("colour-overrides")
                 .value_name("CAPS")
@@ -573,54 +666,73 @@ fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
                     For more information see 'grep' documentation: https://man7.org/linux/man-pages/man1/grep.1.html#ENVIRONMENT\n\
                     and/or ASCII escape codes: https://en.wikipedia.org/wiki/ANSI_escape_code."
                 )
-        )
-        .next_line_help(true)
+        );
+
+        Self { command }
+    }
+
+    fn build(self) -> Command {
+        self.command
+    }
+}
+
+fn match_command_line(args: impl Iterator<Item = String>) -> ArgMatches {
+    CommandBuilder::new()
+        .pattern()
+        .target()
+        .recursive()
+        .exclude()
+        .include()
+        .line_number()
+        .with_filename()
+        .no_filename()
+        .context()
+        .before_context()
+        .after_context()
+        .top()
+        .quiet()
+        .verbose()
+        .color()
+        .color_overrides()
+        .build()
         .get_matches_from(args)
 }
 
-fn color_overrides_parser(
-    grep_sequence: &str,
-) -> Result<FormattingOptions, ColorOverrideParsingError> {
-    let mut options = FormattingOptions::default();
+fn color_overrides_parser(grep_sequence: &str) -> Result<StyleSet, ColorOverrideParsingError> {
+    let mut options = StyleSet::default();
 
     for token in grep_sequence.split(':') {
         if let Some((cap, sgr)) = token.split_once('=') {
             match cap {
                 "ms" => {
-                    options.selected_match = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.selected_match = sgr_sequence::style_from(sgr)?;
                 }
                 "ln" => {
-                    options.line_number = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.line_number = sgr_sequence::style_from(sgr)?;
                 }
                 "fn" => {
-                    options.file_name = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.source_name = sgr_sequence::style_from(sgr)?;
                 }
                 "se" => {
-                    options.separator = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.separator = sgr_sequence::style_from(sgr)?;
                 }
                 "sl" => {
-                    options.selected_line = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.selected_line = sgr_sequence::style_from(sgr)?;
                 }
                 "cx" => {
-                    options.context = sgr_sequence::style_from(sgr)
-                        .map_err(ColorOverrideParsingError::BadStyleSequence)?
+                    options.context = sgr_sequence::style_from(sgr)?;
                 }
                 "bn" | "mt" => {
                     return Err(ColorOverrideParsingError::UnsupportedCapability(
-                        cap.to_string(),
+                        cap.to_owned(),
                     ));
                 }
                 _ => {
-                    return Err(ColorOverrideParsingError::BadCapability(cap.to_string()));
+                    return Err(ColorOverrideParsingError::BadCapability(cap.to_owned()));
                 }
             }
         } else {
-            return Err(ColorOverrideParsingError::NotAnOverride(token.to_string()));
+            return Err(ColorOverrideParsingError::NotAnOverride(token.to_owned()));
         }
     }
 
@@ -628,17 +740,31 @@ fn color_overrides_parser(
 }
 
 fn query_from(matches: &ArgMatches) -> String {
+    #[expect(
+        clippy::expect_used,
+        reason = "QUERY argument is required, it cannot be empty, `clap` should've taken care of this"
+    )]
     let query = matches
-        .get_one::<String>(OptionId::PATTERN)
-        .expect("QUERY argument is required, it cannot be empty");
+        .get_one::<String>(option_ids::PATTERN)
+        .expect("QUERY argument is required, but is missing - a bug in `clap`?");
     query.clone()
 }
 
 fn targets_from(matches: &ArgMatches) -> Targets {
-    match matches.get_many::<String>(OptionId::TARGET) {
-        Some(targets) => {
+    matches.get_many::<String>(option_ids::TARGET).map_or_else(
+        || {
+            if matches.get_flag(option_ids::RECURSIVE) {
+                Targets::RecursiveEntries {
+                    paths: vec![env::current_dir().unwrap_or_else(|_| PathBuf::from("."))],
+                    filter: filter_from(matches),
+                }
+            } else {
+                Targets::Stdin
+            }
+        },
+        |targets| {
             let targets = targets.map(PathBuf::from).collect::<Vec<_>>();
-            if matches.get_flag(OptionId::RECURSIVE) {
+            if matches.get_flag(option_ids::RECURSIVE) {
                 Targets::RecursiveEntries {
                     paths: targets,
                     filter: filter_from(matches),
@@ -646,23 +772,13 @@ fn targets_from(matches: &ArgMatches) -> Targets {
             } else {
                 Targets::Files(targets)
             }
-        }
-        None => {
-            if matches.get_flag(OptionId::RECURSIVE) {
-                Targets::RecursiveEntries {
-                    paths: vec![env::current_dir().unwrap_or(PathBuf::from("."))],
-                    filter: filter_from(matches),
-                }
-            } else {
-                Targets::Stdin
-            }
-        }
-    }
+        },
+    )
 }
 
 fn filter_from(matches: &ArgMatches) -> Option<Filter> {
-    let exclude_globs = matches.get_many(OptionId::EXCLUDE);
-    let include_globs = matches.get_many(OptionId::INCLUDE);
+    let exclude_globs = matches.get_many(option_ids::EXCLUDE);
+    let include_globs = matches.get_many(option_ids::INCLUDE);
     match (exclude_globs, include_globs) {
         (Some(excl), Some(incl)) => Some(Filter::new(
             incl.cloned().collect(),
@@ -674,98 +790,110 @@ fn filter_from(matches: &ArgMatches) -> Option<Filter> {
     }
 }
 
-fn strategy_from(matches: &ArgMatches) -> MatchCollectionStrategy {
-    match matches.get_one::<usize>(OptionId::TOP) {
-        Some(cap) => MatchCollectionStrategy::CollectTop(*cap),
-        None => MatchCollectionStrategy::CollectAll,
-    }
+fn strategy_from(matches: &ArgMatches) -> CollectionStrategy {
+    matches
+        .get_one::<usize>(option_ids::TOP)
+        .map_or(CollectionStrategy::CollectAll, |cap| {
+            CollectionStrategy::CollectTop(*cap)
+        })
 }
 
 fn match_options_from(matches: &ArgMatches) -> MatchOptions {
     MatchOptions {
-        track_line_numbers: matches.get_flag(OptionId::LINE_NUMBER),
-        track_file_names: track_file_name_from(matches),
+        line_number_tracking: LineNumberTracking(matches.get_flag(option_ids::LINE_NUMBER)),
+        source_name_tracking: track_source_name_from(matches),
         context_size: context_size_from(matches),
     }
 }
 
-fn track_file_name_from(matches: &ArgMatches) -> bool {
+fn track_source_name_from(matches: &ArgMatches) -> SourceNameTracking {
     // `--with-filename` flag has been specified -> file names *should* be tracked
-    if matches.get_flag(OptionId::WITH_FILENAME) {
-        return true;
+    if matches.get_flag(option_ids::WITH_FILENAME) {
+        return SourceNameTracking(true);
     }
     // `--no-filename` flag has been specified -> file names *should not* be tracked
-    if matches.get_flag(OptionId::NO_FILENAME) {
-        return false;
+    if matches.get_flag(option_ids::NO_FILENAME) {
+        return SourceNameTracking(false);
     }
+
+    // `--recursive` flag has been specified -> file names *should* be tracked
+    if matches.get_flag(option_ids::RECURSIVE) {
+        return SourceNameTracking(true);
+    }
+
     // no flags specified, but there are multiple input files -> file names *should* be tracked
     if matches
-        .get_many::<String>(OptionId::TARGET)
-        .is_some_and(|fs| fs.len() > 1)
+        .get_many::<String>(option_ids::TARGET)
+        .is_some_and(|targets| targets.len() > 1)
     {
-        return true;
+        return SourceNameTracking(true);
     }
     // default case -> file names *should not* be tracked
-    false
+    SourceNameTracking(false)
 }
 
 fn context_size_from(matches: &ArgMatches) -> ContextSize {
-    if let Some(num) = matches.get_one::<usize>(OptionId::CONTEXT).copied() {
-        ContextSize {
-            before: Lines(num),
-            after: Lines(num),
-        }
-    } else {
-        ContextSize {
-            before: Lines(
-                matches
-                    .get_one::<usize>(OptionId::BEFORE_CONTEXT)
+    matches
+        .get_one::<usize>(option_ids::CONTEXT)
+        .copied()
+        .map_or_else(
+            || ContextSize {
+                lines_before: matches
+                    .get_one::<usize>(option_ids::BEFORE_CONTEXT)
                     .copied()
                     .unwrap_or(0),
-            ),
-            after: Lines(
-                matches
-                    .get_one::<usize>(OptionId::AFTER_CONTEXT)
+                lines_after: matches
+                    .get_one::<usize>(option_ids::AFTER_CONTEXT)
                     .copied()
                     .unwrap_or(0),
-            ),
-        }
-    }
+            },
+            |num| ContextSize {
+                lines_before: num,
+                lines_after: num,
+            },
+        )
+}
+
+fn styleset_from(matches: &ArgMatches) -> StyleSet {
+    matches
+        .get_one::<StyleSet>(option_ids::COLOR_OVERRIDES)
+        .copied()
+        .unwrap_or_default()
 }
 
 fn formatting_from(matches: &ArgMatches) -> Formatting {
-    if let Some(behavior) = matches.get_one::<String>(OptionId::COLOR) {
-        let behavior = behavior.as_str();
-        if behavior == "always" || (behavior == "auto" && io::stdout().is_terminal()) {
-            let formatting_options = matches
-                .get_one::<FormattingOptions>(OptionId::COLOR_OVERRIDES)
-                .cloned()
-                .unwrap_or_default();
-            Formatting::On(formatting_options)
-        } else if behavior == "never" || (behavior == "auto" && !io::stdout().is_terminal()) {
-            Formatting::Off
-        } else {
-            unreachable!();
-        }
-    } else {
-        Formatting::On(FormattingOptions::default())
-    }
+    matches
+        .get_one::<ColorChoice>(option_ids::COLOR)
+        .map_or_else(
+            || Formatting::Enabled(StyleSet::default()),
+            |choice| match choice {
+                ColorChoice::Always => Formatting::Enabled(styleset_from(matches)),
+                ColorChoice::Never => Formatting::Disabled,
+                ColorChoice::Auto => {
+                    if io::stdout().is_terminal() {
+                        Formatting::Enabled(styleset_from(matches))
+                    } else {
+                        Formatting::Disabled
+                    }
+                }
+            },
+        )
 }
 
-fn output_behavior_from(matches: &ArgMatches) -> OutputBehavior {
-    if matches.get_flag(OptionId::QUIET) {
-        return OutputBehavior::Quiet;
+fn output_behavior_from(matches: &ArgMatches) -> Behavior {
+    if matches.get_flag(option_ids::QUIET) {
+        return Behavior::Quiet;
     }
 
-    OutputBehavior::Normal(formatting_from(matches))
+    Behavior::Normal(formatting_from(matches))
 }
 
 fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
-    if matches.get_flag(OptionId::QUIET) {
+    if matches.get_flag(option_ids::QUIET) {
         return LevelFilter::Off;
     }
 
-    match matches.get_count(OptionId::VERBOSE) {
+    match matches.get_count(option_ids::VERBOSE) {
         0 => LevelFilter::Error,
         1 => LevelFilter::Warn,
         2 => LevelFilter::Info,
@@ -776,9 +904,19 @@ fn log_verbosity_from(matches: &ArgMatches) -> LevelFilter {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::non_ascii_literal, reason = "It's tests")]
+    #![expect(clippy::unreachable, reason = "It's tests")]
+
     use super::*;
-    use crate::core::request::Lines;
+
     use yansi::Style;
+
+    fn extract_formatting_options(request: &Request) -> StyleSet {
+        match request.output_behavior {
+            Behavior::Normal(formatting) => formatting.options().unwrap(),
+            Behavior::Quiet => unreachable!(),
+        }
+    }
 
     #[test]
     fn make_request_no_targets() {
@@ -789,19 +927,19 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::Stdin,
-                strategy: MatchCollectionStrategy::CollectAll,
-                match_options: MatchOptions {
-                    track_line_numbers: false,
-                    track_file_names: false,
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(false),
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                strategy: CollectionStrategy::CollectAll,
+                output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -820,19 +958,19 @@ mod tests {
                     paths: vec![env::current_dir().unwrap()],
                     filter: None
                 },
-                strategy: MatchCollectionStrategy::CollectAll,
-                match_options: MatchOptions {
-                    track_line_numbers: false,
-                    track_file_names: false,
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(true),
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                strategy: CollectionStrategy::CollectAll,
+                output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -848,19 +986,19 @@ mod tests {
             Request {
                 query: String::from("query"),
                 targets: Targets::Files(vec![PathBuf::from("file")]),
-                strategy: MatchCollectionStrategy::CollectAll,
-                match_options: MatchOptions {
-                    track_line_numbers: false,
-                    track_file_names: false,
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking(false),
+                    source_name_tracking: SourceNameTracking(false),
                     context_size: ContextSize {
-                        before: Lines(0),
-                        after: Lines(0),
+                        lines_before: 0,
+                        lines_after: 0,
                     },
                 },
-                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
+                strategy: CollectionStrategy::CollectAll,
+                output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
+                    Formatting::Enabled(StyleSet::default())
                 } else {
-                    Formatting::Off
+                    Formatting::Disabled
                 }),
                 log_verbosity: LevelFilter::Error,
             }
@@ -868,7 +1006,7 @@ mod tests {
     }
 
     #[test]
-    fn make_request_multiple_targets() {
+    fn make_request_multiple_targets_file_name_assumed() {
         let args = ["fzgrep", "query", "file1", "file2", "file3"];
         let request = make_request(args.into_iter().map(String::from));
 
@@ -880,7 +1018,28 @@ mod tests {
                 PathBuf::from("file3")
             ])
         );
-        assert!(request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
+    }
+
+    #[test]
+    fn make_request_recursive_file_name_assumed() {
+        let args = ["fzgrep", "query", "--recursive", "."];
+        let request = make_request(args.into_iter().map(String::from));
+
+        assert_eq!(
+            request.targets,
+            Targets::RecursiveEntries {
+                paths: vec![PathBuf::from(".")],
+                filter: None
+            }
+        );
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
@@ -894,7 +1053,10 @@ mod tests {
             "file3",
         ];
         let request = make_request(args.into_iter().map(String::from));
-        assert!(!request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(false)
+        );
     }
 
     #[test]
@@ -1122,31 +1284,63 @@ mod tests {
     }
 
     #[test]
+    fn make_request_line_number_short() {
+        let args = ["fzgrep", "-n", "query", "file"];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.options.line_number_tracking,
+            LineNumberTracking(true)
+        );
+    }
+
+    #[test]
+    fn make_request_line_number_long() {
+        let args = ["fzgrep", "--line-number", "query", "file"];
+        let request = make_request(args.into_iter().map(String::from));
+        assert_eq!(
+            request.options.line_number_tracking,
+            LineNumberTracking(true)
+        );
+    }
+
+    #[test]
     fn make_request_with_file_name_short() {
         let args = ["fzgrep", "-f", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert!(request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
     fn make_request_with_file_name_long() {
         let args = ["fzgrep", "--with-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert!(request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(true)
+        );
     }
 
     #[test]
     fn make_request_no_file_name_short() {
         let args = ["fzgrep", "-F", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert!(!request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(false)
+        );
     }
 
     #[test]
     fn make_request_no_file_name_long() {
         let args = ["fzgrep", "--no-filename", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert!(!request.match_options.track_file_names);
+        assert_eq!(
+            request.options.source_name_tracking,
+            SourceNameTracking(false)
+        );
     }
 
     #[test]
@@ -1154,10 +1348,10 @@ mod tests {
         let args = ["fzgrep", "-C", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(2),
+                lines_before: 2,
+                lines_after: 2,
             }
         );
     }
@@ -1167,10 +1361,10 @@ mod tests {
         let args = ["fzgrep", "--context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(2),
+                lines_before: 2,
+                lines_after: 2,
             }
         );
     }
@@ -1180,10 +1374,10 @@ mod tests {
         let args = ["fzgrep", "-B", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(0),
+                lines_before: 2,
+                lines_after: 0,
             }
         );
     }
@@ -1193,10 +1387,10 @@ mod tests {
         let args = ["fzgrep", "--before-context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(2),
-                after: Lines(0),
+                lines_before: 2,
+                lines_after: 0,
             }
         );
     }
@@ -1206,10 +1400,10 @@ mod tests {
         let args = ["fzgrep", "-A", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(0),
-                after: Lines(2),
+                lines_before: 0,
+                lines_after: 2,
             }
         );
     }
@@ -1219,10 +1413,10 @@ mod tests {
         let args = ["fzgrep", "--after-context", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(0),
-                after: Lines(2),
+                lines_before: 0,
+                lines_after: 2,
             }
         );
     }
@@ -1232,10 +1426,10 @@ mod tests {
         let args = ["fzgrep", "-B", "1", "-A", "2", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(1),
-                after: Lines(2),
+                lines_before: 1,
+                lines_after: 2,
             }
         );
     }
@@ -1253,10 +1447,10 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request.match_options.context_size,
+            request.options.context_size,
             ContextSize {
-                before: Lines(1),
-                after: Lines(2),
+                lines_before: 1,
+                lines_after: 2,
             }
         );
     }
@@ -1265,14 +1459,14 @@ mod tests {
     fn make_request_top() {
         let args = ["fzgrep", "--top", "10", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.strategy, MatchCollectionStrategy::CollectTop(10));
+        assert_eq!(request.strategy, CollectionStrategy::CollectTop(10));
     }
 
     #[test]
     fn make_request_quiet_short() {
         let args = ["fzgrep", "-q", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.output_behavior, OutputBehavior::Quiet);
+        assert_eq!(request.output_behavior, Behavior::Quiet);
         assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
@@ -1280,7 +1474,7 @@ mod tests {
     fn make_request_quiet_long() {
         let args = ["fzgrep", "--quiet", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.output_behavior, OutputBehavior::Quiet);
+        assert_eq!(request.output_behavior, Behavior::Quiet);
         assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
@@ -1288,7 +1482,7 @@ mod tests {
     fn make_request_silent_long() {
         let args = ["fzgrep", "--silent", "query", "file"];
         let request = make_request(args.into_iter().map(String::from));
-        assert_eq!(request.output_behavior, OutputBehavior::Quiet);
+        assert_eq!(request.output_behavior, Behavior::Quiet);
         assert_eq!(request.log_verbosity, LevelFilter::Off);
     }
 
@@ -1392,10 +1586,10 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(if io::stdout().is_terminal() {
-                Formatting::On(FormattingOptions::default())
+            Behavior::Normal(if io::stdout().is_terminal() {
+                Formatting::Enabled(StyleSet::default())
             } else {
-                Formatting::Off
+                Formatting::Disabled
             })
         );
     }
@@ -1406,7 +1600,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions::default()))
+            Behavior::Normal(Formatting::Enabled(StyleSet::default()))
         );
     }
 
@@ -1416,7 +1610,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::Off)
+            Behavior::Normal(Formatting::Disabled)
         );
     }
 
@@ -1434,7 +1628,7 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::Off)
+            Behavior::Normal(Formatting::Disabled)
         );
     }
 
@@ -1451,13 +1645,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .selected_match,
+            extract_formatting_options(&request).selected_match,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1475,13 +1663,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .line_number,
+            extract_formatting_options(&request).line_number,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1499,13 +1681,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .file_name,
+            extract_formatting_options(&request).source_name,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1523,13 +1699,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .separator,
+            extract_formatting_options(&request).separator,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1547,13 +1717,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .selected_line,
+            extract_formatting_options(&request).selected_line,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1571,13 +1735,7 @@ mod tests {
         ];
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
-            request
-                .output_behavior
-                .formatting()
-                .unwrap()
-                .options()
-                .unwrap()
-                .context,
+            extract_formatting_options(&request).context,
             Style::new().green().on_yellow().bold(),
         );
     }
@@ -1596,10 +1754,10 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions {
+            Behavior::Normal(Formatting::Enabled(StyleSet {
                 selected_match: Style::new().green().on_yellow().bold(),
                 line_number: Style::new().yellow().on_blue().dim(),
-                file_name: Style::new().blue().on_magenta().italic(),
+                source_name: Style::new().blue().on_magenta().italic(),
                 ..Default::default()
             }))
         );
@@ -1619,11 +1777,11 @@ mod tests {
         let request = make_request(args.into_iter().map(String::from));
         assert_eq!(
             request.output_behavior,
-            OutputBehavior::Normal(Formatting::On(FormattingOptions {
+            Behavior::Normal(Formatting::Enabled(StyleSet {
                 selected_match: Style::new().blue().on_yellow().bold(),
                 selected_line: Style::new().white().dim(),
                 context: Style::new().white().dim(),
-                file_name: Style::new().fixed(51).underline(),
+                source_name: Style::new().fixed(51).underline(),
                 line_number: Style::new().rgb(127, 127, 127).italic().underline(),
                 separator: Style::new().magenta().on_rgb(0, 192, 0)
             }))
@@ -1642,20 +1800,20 @@ mod tests {
                     paths: vec![PathBuf::from("file")],
                     filter: None
                 },
-                strategy: MatchCollectionStrategy::CollectAll,
-                output_behavior: OutputBehavior::Normal(if io::stdout().is_terminal() {
-                    Formatting::On(FormattingOptions::default())
-                } else {
-                    Formatting::Off
-                }),
-                match_options: MatchOptions {
-                    track_line_numbers: true,
-                    track_file_names: true,
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking(true),
+                    source_name_tracking: SourceNameTracking(true),
                     context_size: ContextSize {
-                        before: Lines(1),
-                        after: Lines(2)
+                        lines_before: 1,
+                        lines_after: 2
                     },
                 },
+                strategy: CollectionStrategy::CollectAll,
+                output_behavior: Behavior::Normal(if io::stdout().is_terminal() {
+                    Formatting::Enabled(StyleSet::default())
+                } else {
+                    Formatting::Disabled
+                }),
                 log_verbosity: LevelFilter::Warn,
             }
         );
@@ -1698,22 +1856,21 @@ mod tests {
                         vec![Pattern::new("tests/*").unwrap()]
                     ))
                 },
-                strategy: MatchCollectionStrategy::CollectTop(10),
-                output_behavior: OutputBehavior::Normal(Formatting::On(FormattingOptions {
+                options: MatchOptions {
+                    line_number_tracking: LineNumberTracking(true),
+                    source_name_tracking: SourceNameTracking(true),
+                    context_size: ContextSize {
+                        lines_before: 1,
+                        lines_after: 2,
+                    },
+                },
+                strategy: CollectionStrategy::CollectTop(10),
+                output_behavior: Behavior::Normal(Formatting::Enabled(StyleSet {
                     selected_match: Style::new().blue().blink(),
                     ..Default::default()
                 })),
-                match_options: MatchOptions {
-                    track_line_numbers: true,
-                    track_file_names: true,
-                    context_size: ContextSize {
-                        before: Lines(1),
-                        after: Lines(2)
-                    },
-                },
                 log_verbosity: LevelFilter::Warn,
             }
         );
     }
-    // TODO: tests featuring '--include' and '--exclude' options, especially filenames with commas
 }

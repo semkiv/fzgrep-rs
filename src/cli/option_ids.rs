@@ -1,0 +1,16 @@
+pub const AFTER_CONTEXT: &str = "after_context";
+pub const BEFORE_CONTEXT: &str = "before_context";
+pub const COLOR: &str = "color";
+pub const COLOR_OVERRIDES: &str = "color_overrides";
+pub const CONTEXT: &str = "context";
+pub const EXCLUDE: &str = "exclude";
+pub const INCLUDE: &str = "include";
+pub const LINE_NUMBER: &str = "line_number";
+pub const NO_FILENAME: &str = "no_filename";
+pub const PATTERN: &str = "pattern";
+pub const QUIET: &str = "quiet";
+pub const RECURSIVE: &str = "recursive";
+pub const TARGET: &str = "target";
+pub const TOP: &str = "top";
+pub const VERBOSE: &str = "verbose";
+pub const WITH_FILENAME: &str = "with_filename";

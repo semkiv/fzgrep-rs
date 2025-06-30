@@ -1,4 +1,8 @@
-use crate::cli::error::{ColorSequenceParsingError, StyleSequenceParsingError};
+pub mod errors;
+
+use errors::style_sequence_parsing_error::StyleSequenceParsingError;
+use errors::style_sequence_parsing_error::color_sequence_parsing_error::ColorSequenceParsingError;
+
 use log::warn;
 use yansi::{Color, Style};
 
@@ -8,7 +12,7 @@ use yansi::{Color, Style};
 ///
 /// If the string is not a valid SGR-sequence, raises a [`StyleSequenceParsingError`].
 ///
-pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
+pub fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsingError> {
     let mut style = Style::new();
     let mut itr = sgr_sequence.split(';');
     while let Some(token) = itr.next() {
@@ -18,7 +22,7 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
 
         let code = token
             .parse::<u8>()
-            .map_err(|e| StyleSequenceParsingError::NotACode(token.to_string(), e))?;
+            .map_err(|err| StyleSequenceParsingError::NotACode(token.to_owned(), err))?;
         match code {
             0 => {}
             1 => style = style.bold(),
@@ -33,12 +37,10 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
             8 => style = style.conceal(),
             9 => style = style.strike(),
             30..=39 => {
-                style = style.fg(color_from(code, &mut itr)
-                    .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                style = style.fg(color_from(code, &mut itr)?);
             }
             40..=49 => {
-                style = style.bg(color_from(code, &mut itr)
-                    .map_err(StyleSequenceParsingError::BadColorSequence)?)
+                style = style.bg(color_from(code, &mut itr)?);
             }
             10..=29 | 50..=107 => return Err(StyleSequenceParsingError::UnsupportedCode(code)),
             _ => return Err(StyleSequenceParsingError::BadCode(code)),
@@ -48,9 +50,9 @@ pub(crate) fn style_from(sgr_sequence: &str) -> Result<Style, StyleSequenceParsi
     Ok(style)
 }
 
-fn color_from<'a>(
+fn color_from<'src>(
     code: u8,
-    itr: &mut impl Iterator<Item = &'a str>,
+    itr: &mut impl Iterator<Item = &'src str>,
 ) -> Result<Color, ColorSequenceParsingError> {
     let code_suffix = code % 10;
     match code_suffix {
@@ -64,31 +66,31 @@ fn color_from<'a>(
         7 => Ok(Color::White),
         8 => {
             if let Some(differentiator) = itr.next() {
-                let differentiator = differentiator.parse::<u8>().map_err(|e| {
-                    ColorSequenceParsingError::NotACode(differentiator.to_string(), e)
+                let differentiator = differentiator.parse::<u8>().map_err(|err| {
+                    ColorSequenceParsingError::NotACode(differentiator.to_owned(), err)
                 })?;
                 match differentiator {
                     2 => match (itr.next(), itr.next(), itr.next()) {
-                        (Some(r), Some(g), Some(b)) => {
-                            let r = r.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(r.to_string(), e)
+                        (Some(red), Some(green), Some(blue)) => {
+                            let red = red.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(red.to_owned(), err)
                             })?;
-                            let g = g.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(g.to_string(), e)
+                            let green = green.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(green.to_owned(), err)
                             })?;
-                            let b = b.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(b.to_string(), e)
+                            let blue = blue.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(blue.to_owned(), err)
                             })?;
-                            Ok(Color::Rgb(r, g, b))
+                            Ok(Color::Rgb(red, green, blue))
                         }
                         _ => Err(ColorSequenceParsingError::BadTrueColor),
                     },
                     5 => {
-                        if let Some(n) = itr.next() {
-                            let n = n.parse::<u8>().map_err(|e| {
-                                ColorSequenceParsingError::NotACode(n.to_string(), e)
+                        if let Some(val) = itr.next() {
+                            let val = val.parse::<u8>().map_err(|err| {
+                                ColorSequenceParsingError::NotACode(val.to_owned(), err)
                             })?;
-                            Ok(Color::Fixed(n))
+                            Ok(Color::Fixed(val))
                         } else {
                             Err(ColorSequenceParsingError::BadFixedColor)
                         }
@@ -100,6 +102,7 @@ fn color_from<'a>(
             }
         }
         9 => Ok(Color::Primary),
+        #[expect(clippy::unreachable, reason = "It is mathematically impossible")]
         _ => unreachable!(),
     }
 }
