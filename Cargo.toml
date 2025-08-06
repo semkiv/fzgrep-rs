@@ -13,7 +13,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = "4.5.40"
+clap = "4.5.43"
 env_logger = "0.11.8"
 glob = "0.3.2"
 log = "0.4.27"
@@ -37,7 +37,7 @@ perf = { level = "warn", priority = -1 }
 style = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 
-# 'restriction' set as of clippy version Rust 1.88
+# 'restriction' set as of clippy version Rust 1.89
 absolute_paths = "warn"
 # alloc_instead_of_core = "warn" # irrelevant: no plans regarding `no_std`
 allow_attributes = "warn"
@@ -84,6 +84,7 @@ infinite_loop = "warn"
 # inline_asm_x86_intel_syntax = "warn" # irrelevant: no assembly is anticipated
 integer_division = "warn"
 # integer_division_remainder_used = "warn" # allegedly important in cryptographic contexts, but largely irrelevant for this project
+# ip_constant = "warn" # no network code
 iter_over_hash_type = "warn"
 large_include_file = "warn"
 let_underscore_must_use = "warn"
@@ -115,6 +116,7 @@ panic_in_result_fn = "warn"
 partial_pub_fields = "warn"
 pathbuf_init_then_push = "warn"
 pattern_type_mismatch = "allow"
+pointer_format = "warn"
 precedence_bits = "warn"
 print_stderr = "warn"
 print_stdout = "allow"
