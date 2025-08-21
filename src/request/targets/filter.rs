@@ -63,7 +63,7 @@ impl Filter {
 
     /// Test `path` against the list of include globs.
     /// Returns `true` if `path` matches at least one pattern in the list of include globs
-    /// or the list of include globs is empty. Otherise returns `false`.
+    /// or the list of include globs is empty. Otherwise returns `false`.
     ///
     #[must_use]
     pub fn is_allowed_by_include(&self, path: &Path) -> bool {

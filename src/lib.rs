@@ -120,9 +120,9 @@ fn process_reader(
     let mut before_context_accumulator = SlidingAccumulator::new(context_size.lines_before);
 
     // `Option` is purely for technical purposes: `ProspectiveMatchProperties::update` method consumes the item
-    // so there must be something place in its stead. Having `Option` just makes things easiser
+    // so there must be something place in its stead. Having `Option` just makes things easier
     // (an alternative could be storing items and using `std::mem::take` on the item being updated,
-    // but this requires the items to be dafault-constructible as it leaves a default-constructed item instead,
+    // but this requires the items to be default-constructible as it leaves a default-constructed item instead,
     // which, in addition and generally speaking, might not be cheap)
     let mut pending_results =
         VecDeque::<Option<ProspectiveMatchProperties>>::with_capacity(lines_after);
