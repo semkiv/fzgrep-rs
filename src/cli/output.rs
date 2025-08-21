@@ -138,7 +138,7 @@ fn format_context_line(content: &str, location: &LocationRef, formatting: &Forma
 
     result.push_str(&format_one_piece(
         content,
-        formatting.options().map(|styleset| styleset.context),
+        formatting.options().map(|style_set| style_set.context),
     ));
 
     result
@@ -177,7 +177,7 @@ fn format_selected_line(
         if !preceding_non_match.is_empty() {
             result.push_str(&format_one_piece(
                 &preceding_non_match,
-                options.map(|styleset| styleset.selected_line),
+                options.map(|style_set| style_set.selected_line),
             ));
         }
 
@@ -194,7 +194,7 @@ fn format_selected_line(
             .collect::<String>();
         result.push_str(&format_one_piece(
             &matching_part,
-            options.map(|styleset| styleset.selected_match),
+            options.map(|style_set| style_set.selected_match),
         ));
 
         previous_range_end = range.end;
@@ -207,7 +207,7 @@ fn format_selected_line(
     if !remaining_non_match.is_empty() {
         result.push_str(&format_one_piece(
             &remaining_non_match,
-            options.map(|styleset| styleset.selected_line),
+            options.map(|style_set| style_set.selected_line),
         ));
     }
 
@@ -222,11 +222,11 @@ fn format_match_location(location: &LocationRef, formatting: &Formatting) -> Opt
         let result = result.get_or_insert(String::new());
         result.push_str(&format_one_piece(
             source_name,
-            options.map(|styleset| styleset.source_name),
+            options.map(|style_set| style_set.source_name),
         ));
         result.push_str(&format_one_piece(
             ":",
-            options.map(|styleset| styleset.separator),
+            options.map(|style_set| style_set.separator),
         ));
     }
 
@@ -234,11 +234,11 @@ fn format_match_location(location: &LocationRef, formatting: &Formatting) -> Opt
         let result = result.get_or_insert(String::new());
         result.push_str(&format_one_piece(
             &line_number.to_string(),
-            options.map(|styleset| styleset.line_number),
+            options.map(|style_set| style_set.line_number),
         ));
         result.push_str(&format_one_piece(
             ":",
-            options.map(|styleset| styleset.separator),
+            options.map(|style_set| style_set.separator),
         ));
     }
 
@@ -262,7 +262,7 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
         )]
         let one_past_last_idx = last_idx
             .checked_add(1)
-            .expect("Integer overflow occured when constructing a range");
+            .expect("Integer overflow occurred when constructing a range");
         Range {
             start: first_idx,
             end: one_past_last_idx,
@@ -278,10 +278,10 @@ fn group_indices(indices: &[usize]) -> Vec<Range<usize>> {
     for idx in itr {
         #[expect(
             clippy::expect_used,
-            reason = "Indices must be monothonic. If they are not, it's a bug in the fuzzy matching lib"
+            reason = "Indices must be monotonic. If they are not, it's a bug in the fuzzy matching lib"
         )]
         let diff = idx.checked_sub(prev_idx).expect(
-            "Indices of matching characters are not monothonic - a bug in `vscode-fuzzy-score-rs`?",
+            "Indices of matching characters are not monotonic - a bug in `vscode-fuzzy-score-rs`?",
         );
         if diff > 1 {
             ret.push(make_range(range_start, prev_idx));
